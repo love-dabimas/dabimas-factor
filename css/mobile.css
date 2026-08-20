@@ -1,6 +1,6 @@
 :root {
   --exp-mobile-app-height: 100svh;
-  --exp-mobile-main-height: calc(100svh - 116px);
+  --exp-mobile-main-height: calc(100svh - 92px);
   --exp-mobile-card-gap: 2px;
   --exp-mobile-row-height: 18px;
 }
@@ -183,6 +183,12 @@
   overflow: hidden;
   font-size: 16px !important;
   line-height: 1 !important;
+}
+
+/* 子系統モードの相性文言（最長3文字「優れた」）が 48px 幅に収まるようにする */
+.exp-mobile-layout header .mobile-nitro-rowspan.sire-line-affinity-value {
+  font-size: 11px !important;
+  white-space: nowrap;
 }
 
 .exp-mobile-layout header .mobile-cross-rowspan .v-icon {
@@ -686,4 +692,3 @@
 .exp-mobile-layout .refined-factor-dialog .selection-info {
   margin-top: 20px;
 }
-

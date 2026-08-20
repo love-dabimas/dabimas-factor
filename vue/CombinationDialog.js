@@ -17,6 +17,16 @@ Vue.component('combination-dialog', {
       savedConfigs: [],
       selectedId: null,
       newTitle: '',
+      saveKind: 'stallion',
+      // 種牡馬保存時に本人へ付与する因子（因子付与ダイアログと同じ 短速底長堅難・最大2つ）
+      stallionFactors: [],
+      factorOptions: (
+        (window.Dabimas &&
+          window.Dabimas.constants &&
+          window.Dabimas.constants.factorDefinitions &&
+          window.Dabimas.constants.factorDefinitions.MANUAL_FACTOR_OPTIONS) ||
+        ['短', '速', '底', '長', '堅', '難']
+      ).slice(),
       saving: false,
       restoring: false,
       deleting: false,
@@ -35,6 +45,12 @@ Vue.component('combination-dialog', {
       set(val) {
         this.$emit('input', val);
       }
+    },
+    selectedConfig() {
+      return this.savedConfigs.find((config) => config.id === this.selectedId) || null;
+    },
+    saveKindLabel() {
+      return this.saveKind === 'broodmare' ? '繁殖牝馬' : '種牡馬';
     }
   },
   watch: {
@@ -43,6 +59,12 @@ Vue.component('combination-dialog', {
       if (newVal) {
         console.log('Initializing dialog...');
         await this.init();
+      }
+    },
+    // 繁殖牝馬に切り替えたら本人因子はクリアする（因子付与は種牡馬のみ）
+    saveKind(newVal) {
+      if (newVal !== 'stallion') {
+        this.stallionFactors = [];
       }
     }
   },
@@ -78,6 +100,46 @@ Vue.component('combination-dialog', {
       this.isOpen = false;
       this.selectedId = null;
       this.newTitle = '';
+      this.saveKind = 'stallion';
+      this.stallionFactors = [];
+    },
+
+    // 因子付与ダイアログと同じ挙動: 最大2つに丸め、既知の因子だけ残す
+    handleStallionFactorChange(values) {
+      const normalized = Array.isArray(values) ? values : [];
+      const filtered = [];
+      normalized.forEach((value) => {
+        if (
+          typeof value === 'string' &&
+          this.factorOptions.includes(value) &&
+          !filtered.includes(value)
+        ) {
+          filtered.push(value);
+        }
+      });
+      if (filtered.length > 2) {
+        filtered.splice(2);
+      }
+      this.stallionFactors = filtered;
+    },
+    handleStallionChipClose(value, event) {
+      if (event && typeof event.stopPropagation === 'function') {
+        event.stopPropagation();
+      }
+      this.stallionFactors = this.stallionFactors.filter((factor) => factor !== value);
+    },
+    getManualFactorCssClass(value) {
+      const label = typeof value === 'string' ? value.trim() : '';
+      if (!label) {
+        return '';
+      }
+      const code = window.Dabimas.logic.factor.factorMap.get(label) || '';
+      return code && code !== '00' ? ('f' + code) : '';
+    },
+    // 保存済み配合リストの因子バッジ（空スロットは除外、右詰め配列の並びのまま）
+    configFactorBadges(config) {
+      const factors = config && Array.isArray(config.factors) ? config.factors : [];
+      return window.Dabimas.logic.horses.getHorseFactorBadges({ factors: factors });
     },
 
     async loadSavedConfigs() {
@@ -143,22 +205,49 @@ Vue.component('combination-dialog', {
 
         const configDataCopy = JSON.parse(JSON.stringify(configData));
 
+        const cells = JSON.parse(dabimasFactor);
+        const horseRecord = window.Dabimas.logic.horses.buildSavedHorseRecord(
+          this.saveKind,
+          this.newTitle.trim(),
+          cells,
+          this.saveKind === 'stallion' ? this.stallionFactors : []
+        );
+        const combinationStorage = window.Dabimas.logic.storage.combinationStorage;
+        const savedHorseRecord = await combinationStorage.saveCustomHorse(
+          this.db,
+          horseRecord
+        );
+
         const config = {
           title: this.newTitle.trim(),
           savedAt: new Date().toISOString(),
-          configData: configDataCopy
+          configData: configDataCopy,
+          kind: this.saveKind,
+          customHorseId: savedHorseRecord.id,
+          // 保存済み配合リストで因子バッジを出すために本人因子も保持する
+          // （右詰め配列。saved-horse-builder が格納した並びをそのまま持つ）。
+          factors: Array.isArray(savedHorseRecord.factors)
+            ? savedHorseRecord.factors.slice()
+            : ['', '', '']
         };
 
-        await new Promise((resolve, reject) => {
-          const transaction = this.db.transaction(['configs'], 'readwrite');
-          const objectStore = transaction.objectStore('configs');
-          const request = objectStore.add(config);
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
-        });
+        try {
+          await new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['configs'], 'readwrite');
+            const objectStore = transaction.objectStore('configs');
+            const request = objectStore.add(config);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+          });
+        } catch (error) {
+          await combinationStorage.deleteCustomHorse(this.db, savedHorseRecord.id);
+          throw error;
+        }
 
-        this.showToast(`「${this.newTitle}」を保存しました`, 'success');
+        this.showToast(`「${savedHorseRecord.name}」を保存しました`, 'success');
+        this.$emit('saved-horse-created', savedHorseRecord);
         this.newTitle = '';
+        this.stallionFactors = [];
         await this.loadSavedConfigs();
       } catch (error) {
         console.error('保存エラー:', error);
@@ -321,29 +410,39 @@ Vue.component('combination-dialog', {
     async deleteConfig() {
       if (!this.selectedId) return;
 
+      const config = this.selectedConfig;
+      if (config && config.kind) {
+        const kindLabel = this.configKindLabel(config.kind);
+        const confirmed = window.confirm(
+          `☆${config.title} を削除しますか？ ${kindLabel}の選択肢からも外れます。血統表で使用中の作業枠では、次回選択し直すことができなくなります。`
+        );
+        if (!confirmed) return;
+      }
+
       this.deleting = true;
 
       try {
-        const transaction = this.db.transaction(['configs'], 'readwrite');
-        const objectStore = transaction.objectStore('configs');
-        const deleteRequest = objectStore.delete(this.selectedId);
-
-        deleteRequest.onsuccess = () => {
-          this.showToast('配合を削除しました', 'success');
-          this.selectedId = null;
-          this.loadSavedConfigs();
-          this.deleting = false;
-        };
-
-        deleteRequest.onerror = () => {
-          this.showToast('削除に失敗しました', 'error');
-          this.deleting = false;
-        };
+        const combinationStorage = window.Dabimas.logic.storage.combinationStorage;
+        await combinationStorage.deleteConfig(this.db, this.selectedId);
+        if (config && config.customHorseId) {
+          await combinationStorage.deleteCustomHorse(this.db, config.customHorseId);
+          this.$emit('saved-horse-removed', config.customHorseId);
+        }
+        this.showToast('配合を削除しました', 'success');
+        this.selectedId = null;
+        await this.loadSavedConfigs();
       } catch (error) {
         console.error('削除エラー:', error);
         this.showToast('削除に失敗しました', 'error');
+      } finally {
         this.deleting = false;
       }
+    },
+
+    configKindLabel(kind) {
+      if (kind === 'stallion') return '種牡馬';
+      if (kind === 'broodmare') return '繁殖牝馬';
+      return '配合';
     },
 
     showToast(message, type = 'success') {
@@ -367,6 +466,7 @@ Vue.component('combination-dialog', {
       v-model="isOpen"
       max-width="900px"
       persistent
+      scrollable
       @keydown.esc="close"
     >
       <v-card>
@@ -389,6 +489,64 @@ Vue.component('combination-dialog', {
                   <v-icon small class="mr-1">mdi-content-save</v-icon>
                   新規保存
                 </h3>
+
+                <div class="combination-save-kind-row">
+                  <v-btn-toggle
+                    v-model="saveKind"
+                    mandatory
+                    dense
+                    class="combination-save-kind-toggle"
+                  >
+                    <v-btn small value="stallion" class="save-kind-stallion">種牡馬</v-btn>
+                    <v-btn small value="broodmare" class="save-kind-broodmare">繁殖牝馬</v-btn>
+                  </v-btn-toggle>
+
+                  <div v-if="saveKind === 'stallion'" class="combination-factor-inline">
+                    <v-select
+                      v-model="stallionFactors"
+                      :items="factorOptions"
+                      multiple
+                      chips
+                      clearable
+                      outlined
+                      dense
+                      hide-details
+                      label="付与する因子（最大2つ）"
+                      :disabled="!allHorsesSet"
+                      class="manual-factor-select combination-factor-select"
+                      :menu-props="{ contentClass: 'manual-factor-menu', offsetY: true }"
+                      @change="handleStallionFactorChange"
+                    >
+                      <template v-slot:item="{ item, on, attrs }">
+                        <v-list-item
+                          v-bind="attrs"
+                          v-on="on"
+                          :class="[
+                            'manual-factor-option',
+                            getManualFactorCssClass(item),
+                            stallionFactors.includes(item) ? 'manual-factor-option--selected' : ''
+                          ]"
+                        >
+                          <v-list-item-content>
+                            <v-list-item-title>{{ item }}</v-list-item-title>
+                          </v-list-item-content>
+                        </v-list-item>
+                      </template>
+                      <template v-slot:selection="{ attrs, item, selected }">
+                        <v-chip
+                          v-bind="attrs"
+                          :input-value="selected"
+                          close
+                          class="manual-factor-chip"
+                          :class="getManualFactorCssClass(item)"
+                          @click:close="handleStallionChipClose(item, $event)"
+                        >
+                          {{ item }}
+                        </v-chip>
+                      </template>
+                    </v-select>
+                  </div>
+                </div>
 
                 <v-alert
                   v-if="!allHorsesSet"
@@ -414,7 +572,9 @@ Vue.component('combination-dialog', {
                   class="combination-title-input"
                 ></v-text-field>
 
-                <div :style="$vuetify.breakpoint.smAndDown ? 'height: 12px;' : 'height: 14px;'"></div>
+                <div class="caption mt-1 combination-title-hint">
+                  「☆タイトル」として{{ saveKindLabel }}の選択肢に追加されます。<template v-if="saveKind === 'stallion'">付与した因子ごと保存され、</template>保存後に因子は変更できません。
+                </div>
 
                 <v-btn
                   color="primary"
@@ -425,7 +585,7 @@ Vue.component('combination-dialog', {
                   class="combination-save-btn"
                 >
                   <v-icon left small>mdi-content-save</v-icon>
-                  配合を保存
+                  保存する
                 </v-btn>
               </v-col>
 
@@ -455,7 +615,17 @@ Vue.component('combination-dialog', {
                   >
                     <div class="combination-list-item-content">
                       <div class="combination-list-item-title">
+                        <v-chip x-small class="mr-1">
+                          {{ configKindLabel(config.kind) }}
+                        </v-chip>
                         {{ config.title }}
+                        <v-chip
+                          v-for="badge in configFactorBadges(config)"
+                          :key="badge.key"
+                          x-small
+                          class="manual-factor-chip combination-list-factor"
+                          :class="badge.className"
+                        >{{ badge.text }}</v-chip>
                       </div>
                       <div class="combination-list-item-date">
                         {{ formatDate(config.savedAt) }}
@@ -473,40 +643,30 @@ Vue.component('combination-dialog', {
               </v-col>
             </v-row>
 
-            <v-row class="combination-button-area">
-              <v-col
-                :cols="$vuetify.breakpoint.smAndDown ? 12 : 6"
-                class="py-1"
-              >
-                <v-btn
-                  color="primary"
-                  block
-                  :disabled="!selectedId"
-                  @click="restoreConfig"
-                  :loading="restoring"
-                >
-                  <v-icon left small>mdi-reload</v-icon>
-                  復元する
-                </v-btn>
-              </v-col>
-              <v-col
-                :cols="$vuetify.breakpoint.smAndDown ? 12 : 6"
-                class="py-1"
-              >
-                <v-btn
-                  color="error"
-                  block
-                  :disabled="!selectedId"
-                  @click="deleteConfig"
-                  :loading="deleting"
-                >
-                  <v-icon left small>mdi-delete</v-icon>
-                  削除する
-                </v-btn>
-              </v-col>
-            </v-row>
           </v-container>
         </v-card-text>
+        <v-card-actions class="combination-dialog-actions">
+          <v-btn
+            color="primary"
+            :disabled="!selectedId"
+            @click="restoreConfig"
+            :loading="restoring"
+            class="combination-action-btn"
+          >
+            <v-icon left small>mdi-reload</v-icon>
+            復元する
+          </v-btn>
+          <v-btn
+            color="error"
+            :disabled="!selectedId"
+            @click="deleteConfig"
+            :loading="deleting"
+            class="combination-action-btn"
+          >
+            <v-icon left small>mdi-delete</v-icon>
+            削除する
+          </v-btn>
+        </v-card-actions>
       </v-card>
 
       <v-snackbar

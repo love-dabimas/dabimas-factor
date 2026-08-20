@@ -35,6 +35,34 @@
         allHorsesSet() {
           return this.selected.every((e) => e);
         },
+        affinityScore() {
+          if (!this.nicksReady) return null;
+
+          try {
+            return window.Dabimas.logic.theory.calculateAffinity({
+              selected: this.selected,
+              parentLines: this.parentLines,
+              category: this.category,
+              inbreedList: this.inbreedList,
+            });
+          } catch (error) {
+            return null;
+          }
+        },
+        affinityDisplayText() {
+          switch (this.affinityScore) {
+            case 1:
+              return "完璧";
+            case 2:
+              return "優れた";
+            case 3:
+              return "良い";
+            case 4:
+              return "程々";
+            default:
+              return "--";
+          }
+        },
         isCompactMobileLayout() {
           return this.$vuetify.breakpoint.smAndDown;
         },
@@ -59,6 +87,9 @@
             dispColor: this.dispColor,
             styleFactorClasses: this.styleFactorClasses,
             factorName: this.factorName,
+            dispCategory: this.dispCategory,
+            category: this.category,
+            sireLineColors: this.sireLineColorSettings,
           };
         },
         // 種牡馬側16行ぶんの rowState。selected 等が変わるたびに作り直される
@@ -88,6 +119,7 @@
             category: this.category,
             inputed: this.inputed,
             memoChange: this.memoChange,
+            sireLineColors: this.sireLineColorSettings,
           };
         },
         // pedigree-row の表示だけに関わる値（ボタンサイズ・:key用のreload・

@@ -6,4 +6,6 @@ f/
 
 artifacts/*
 
-tests/*
+tests
+
+tmp

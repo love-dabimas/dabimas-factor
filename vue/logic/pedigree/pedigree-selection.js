@@ -28,9 +28,21 @@
   function buildRowState(index, arrays) {
     var getCss = window.Dabimas.logic.pedigree.getCss;
     var themeClass = getCss(index);
+    var isCategoryMode = Number(arrays.dispCategory) % 2 === 1;
+    var categoryColorClass = "";
+    if (isCategoryMode) {
+      var sireLineColors = window.Dabimas.logic.sireLineColors;
+      categoryColorClass = sireLineColors.colorClassFor(
+        sireLineColors.colorIndexForName(
+          (arrays.category || [])[index],
+          arrays.sireLineColors
+        )
+      );
+    }
+    var fallbackThemeClass = isCategoryMode ? categoryColorClass : themeClass;
     // 因子・親系統・ハートボタン、どのCSSも「値が無いときはこの行位置の
     // テーマ色にフォールバックする」という共通ルールを持つため、ここで1回だけ作る。
-    var fallbackFactorClass = themeClass + " styleFactorClassMain";
+    var fallbackFactorClass = fallbackThemeClass + " styleFactorClassMain";
 
     var selectedEntry = (arrays.selected || [])[index];
     var selectedHorseName =
@@ -41,7 +53,11 @@
     var rawFactorClasses = (arrays.styleFactorClasses && arrays.styleFactorClasses[index]) || [];
     var factorClasses = [0, 1, 2].map(function (i) {
       var value = rawFactorClasses[i];
-      return value && value !== "00" ? value : fallbackFactorClass;
+      var hasFactorColor =
+        typeof value === "string" && /^f\d{2}(?:\s|$)/.test(value.trim());
+      return value && value !== "00" && (!isCategoryMode || hasFactorColor)
+        ? value
+        : fallbackFactorClass;
     });
 
     var rawFactorNames = (arrays.factorName && arrays.factorName[index]) || [];
@@ -52,18 +68,28 @@
     var rawParentLineClass = arrays.styleParentLineClasses
       ? arrays.styleParentLineClasses[index]
       : "";
+    var parentLineText = (arrays.parentLines || [])[index] || "";
+    var hasParentLine =
+      typeof parentLineText === "string" && parentLineText.trim() !== "";
     var parentLineClass =
-      rawParentLineClass && rawParentLineClass.trim() !== ""
+      rawParentLineClass &&
+      rawParentLineClass.trim() !== "" &&
+      (!isCategoryMode || hasParentLine)
         ? rawParentLineClass
-        : themeClass + " styleParentLine";
+        : fallbackThemeClass + " styleParentLine";
 
     var rawInbreedButtonClass = arrays.styleInbreedButtonClasses
       ? arrays.styleInbreedButtonClasses[index]
       : "";
+    var hasInbreedClass =
+      typeof rawInbreedButtonClass === "string" &&
+      rawInbreedButtonClass.split(/\s+/).indexOf("inbreed") !== -1;
     var inbreedButtonClass =
-      rawInbreedButtonClass && rawInbreedButtonClass.trim() !== ""
+      rawInbreedButtonClass &&
+      rawInbreedButtonClass.trim() !== "" &&
+      (!isCategoryMode || hasInbreedClass)
         ? rawInbreedButtonClass
-        : themeClass + " styleInbreedButton";
+        : fallbackThemeClass + " styleInbreedButton";
 
     var rawInbreedState = arrays.isInbreedButtonClicked
       ? arrays.isInbreedButtonClicked[index]
@@ -72,17 +98,19 @@
     return {
       index: index,
       selectedHorseName: selectedHorseName,
+      factorLocked: !!(selectedEntry && selectedEntry.factorLocked),
       generationLabel: (arrays.indexGenerationAssignments || [])[index] || "",
       // 世代ラベルのセルは因子の有無に関係なく、常に行位置のテーマ色を使う
       // （元の index.html でも getCss(config.index) を直接使っていた）。
       generationCellClass: fallbackFactorClass,
-      parentLineText: (arrays.parentLines || [])[index] || "",
+      parentLineText: parentLineText,
       parentLineClass: parentLineClass,
       inbreedButtonState: typeof rawInbreedState === "number" ? rawInbreedState : 0,
       inbreedButtonClass: inbreedButtonClass,
       rowColorClass: (arrays.dispColor || [])[index] || "",
       factorTexts: factorTexts,
       factorClasses: factorClasses,
+      categoryColorClass: categoryColorClass,
     };
   }
 

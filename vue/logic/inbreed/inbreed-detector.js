@@ -29,7 +29,7 @@
             if (typeof horseName !== "string") {
               return false;
             }
-            return horseName.trimStart().startsWith("★");
+            return /^[★☆]/.test(horseName.trimStart());
           };
           const isBroodmarePlaceholderHorse = (horse) => {
             const subName = horse?.subName;

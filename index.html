@@ -26,11 +26,16 @@
       rel="stylesheet"
     />
     <link href="./css/mobile.css" type="text/css" rel="stylesheet" />
+    <link href="./css/unified.css" type="text/css" rel="stylesheet" />
     <link rel="icon" href="./favicon.ico" sizes="any" />
     <!-- 32×32 -->
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <!-- 180×180 -->
     <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="ダビふぁく" />
+    <meta name="theme-color" content="#ffffff" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no"
@@ -49,13 +54,19 @@
 
     <!-- 非同期処理が完了した後に表示するコンテンツ -->
     <v-app id="app" :class="{ 'exp-mobile-layout': isCompactMobileLayout }">
-      <header ref="appHeader">
+      <home-page v-if="currentScreen === 'home'"></home-page>
+      <settings-page v-if="currentScreen === 'settings'"></settings-page>
+
+      <header ref="appHeader" v-show="currentScreen === 'category'">
+        <workspace-tab-bar></workspace-tab-bar>
         <factor-summary-header
           :factor-nums="factorNumtoString"
           :inbreed-factor-nums="inbreedFactorNumtoString"
           :category-num="categoryNumtoString"
+          :affinity-text="affinityDisplayText"
           :theory-class="styleThoeryClass"
           :disp-category="dispCategory"
+          :sire-line-counts="dispCategory % 2 === 1 ? buildSireLineColorCounts() : null"
           :combination-cell-style="combinationCellStyle"
           :is-capturing-screenshot="isCapturingScreenshot"
           @toggle-category="handleClick"
@@ -70,6 +81,8 @@
         v-model="combinationDialogVisible"
         :all-horses-set="allHorsesSet"
         @restore="onCombinationRestore"
+        @saved-horse-created="handleSavedHorseCreated"
+        @saved-horse-removed="handleSavedHorseRemoved"
       ></combination-dialog>
 
       <!-- detail（血統）取得失敗時の再試行メッセージ -->
@@ -88,7 +101,7 @@
       </v-snackbar>
 
 
-      <main ref="appMain">
+      <main ref="appMain" v-show="currentScreen === 'category'">
         <v-container fluid>
           <v-spacer class="my-1 px-0 mx-0 my-0" />
           <v-row class="mx-1" align-content="center">
@@ -98,6 +111,7 @@
               side="stallion"
               :rows="rowConfigs"
               :row-states="stallionRowStates"
+              :category-mode="dispCategory % 2 === 1"
               :horse-options="horseSelectionOptions"
               :display-options="rowDisplayOptions"
               @inbreed-toggle="onRowInbreedToggle"
@@ -109,6 +123,7 @@
               side="broodmare"
               :rows="rowConfigsBloodmare"
               :row-states="broodmareRowStates"
+              :category-mode="dispCategory % 2 === 1"
               :horse-options="horseSelectionOptions"
               :display-options="rowDisplayOptions"
               @inbreed-toggle="onRowInbreedToggle"
@@ -135,11 +150,14 @@
   <script src="./vue/logic/factor/factor-counts.js"></script>
   <script src="./vue/logic/factor/manual-factors.js"></script>
   <script src="./vue/logic/pedigree/row-configs.js"></script>
+  <script src="./vue/logic/sire-line-colors.js"></script>
   <script src="./vue/logic/pedigree/pedigree-selection.js"></script>
   <script src="./vue/logic/horses/horse-search.js"></script>
   <script src="./vue/logic/storage/local-storage.js"></script>
   <script src="./vue/logic/theory/compatibility.js"></script>
+  <script src="./vue/logic/theory/affinity.js"></script>
   <script src="./vue/logic/pedigree/pedigree-builder.js"></script>
+  <script src="./vue/logic/horses/saved-horse-builder.js"></script>
   <script src="./vue/logic/inbreed/inbreed-exceptions.js"></script>
   <script src="./vue/logic/inbreed/inbreed-detector.js"></script>
   <script src="./vue/logic/inbreed/inbreed-counts.js"></script>
@@ -152,6 +170,20 @@
   <script src="./vue/components/pedigree/pedigree-card.js"></script>
   <script src="./vue/components/header/factor-summary-header.js"></script>
 
+  <!-- 統合版（カテゴリ・作業枠）: dabifaku_unified への接続はこの層のみが持つ -->
+  <script src="./vue/logic/storage/unified-db.js"></script>
+  <script src="./vue/logic/storage/category-repository.js"></script>
+  <script src="./vue/logic/storage/workspace-repository.js"></script>
+  <script src="./vue/logic/storage/app-meta-repository.js"></script>
+  <script src="./vue/logic/workspace-sync.js"></script>
+  <script src="./vue/logic/storage/edit-stallion-repository.js"></script>
+  <script src="./vue/components/settings/edit-stallion-manager.js"></script>
+  <script src="./vue/components/settings/sire-line-color-manager.js"></script>
+  <script src="./vue/components/settings/settings-page.js"></script>
+  <script src="./vue/components/home/category-dialog.js"></script>
+  <script src="./vue/components/home/home-page.js"></script>
+  <script src="./vue/components/workspace/workspace-tab-bar.js"></script>
+
   <script src="./vue/app/app-state.js"></script>
   <script src="./vue/app/app-computed.js"></script>
   <script src="./vue/app/app-lifecycle.js"></script>
@@ -162,10 +194,12 @@
   <script src="./vue/app/methods/selection.js"></script>
   <script src="./vue/app/methods/inbreed-ui.js"></script>
   <script src="./vue/app/methods/pedigree-cells.js"></script>
+  <script src="./vue/app/methods/sire-line-color-settings.js"></script>
   <script src="./vue/app/app-options.js"></script>
 
   <script src="./vue/app/boot.js"></script>
   <script src="./vue/app/main.js"></script>
+  <script type="module" src="./vue/logic/nicks/nicks-boot.js"></script>
 </html>
 <!--
 【最適化のまとめ】

@@ -60,6 +60,7 @@
           if (configData.dabimasMemoBroodmare) {
             this.inputedMemoBroodmare = configData.dabimasMemoBroodmare;
           }
+          window.Dabimas.workspaceSync?.notifyLocalChange();
         },
         fetchSavedCombinations: function () {
           return new Promise((resolve, reject) => {
@@ -162,6 +163,7 @@
           window.Dabimas.logic.storage.localStorage.writeManualInbreedIndexes(
             manualIndexes
           );
+          window.Dabimas.workspaceSync?.notifyLocalChange();
         },
         clearManualInbreedForIndex: function (index) {
           if (
@@ -184,6 +186,7 @@
           window.Dabimas.logic.storage.localStorage.writeManualInbreedIndexes(
             filtered
           );
+          window.Dabimas.workspaceSync?.notifyLocalChange();
         },
         restoreManualInbreedState: function () {
           if (typeof window === "undefined" || !window.localStorage) {

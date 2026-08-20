@@ -166,8 +166,13 @@
                 @click="selectMobileHorse(horse)"
               >
                 <div class="exp-option-item">
+                  <v-chip
+                    v-if="horse.source === 'edit'"
+                    x-small
+                    class="edit-stallion-chip"
+                  >E</v-chip>
                   <span class="exp-option-label exp-mobile-option-name">
-                    {{ getHorseBaseText(horse) }}
+                    {{ getHorseListText(horse) }}
                   </span>
                   <span
                     v-for="(factor, factorIndex) in getHorseFactorBadges(horse)"
@@ -260,6 +265,12 @@
       },
       getHorseBaseText(horse) {
         return window.Dabimas.logic.horses.getHorseBaseText(horse);
+      },
+      // 候補リストは行頭に E バッジを出しているので、名前側の [E] は省く。
+      getHorseListText(horse) {
+        return window.Dabimas.logic.horses.getHorseBaseText(horse, {
+          hideEditTag: true,
+        });
       },
       getHorseSelectedText(horse) {
         return this.getHorseBaseText(horse);

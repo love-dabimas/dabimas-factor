@@ -385,7 +385,7 @@
               // 自家製種牡馬名
               const handMadeName = `★${window.Dabimas.logic.pedigree.replaceHalfToFull(
                 reverseCnt.toString(10)
-              )}薄め${name.trim()}${subName.trim()}`;
+              )}薄め${name.trim().replace(/^☆/, "")}${subName.trim()}`;
               if (reverseNum === 0 && sex === 1) {
                 // 【最適化】オブジェクトを事前作成
                 const broodmareData = {

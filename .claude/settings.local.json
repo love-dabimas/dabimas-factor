@@ -8,7 +8,8 @@
       "Bash(awk '{print $5, $9}')",
       "Bash(node --check service-worker.js)",
       "Bash(node --check \"C:/renaissance/scripts/sheep-ro-reserve-autobook.user.js\")",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(git status *)"
     ]
   }
 }

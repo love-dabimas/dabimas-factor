@@ -2,7 +2,9 @@
     "short_name": "ダビふぁく",
     "name": "ダビふぁく",
     "display": "standalone",
-    "start_url": "https://dabimastools.github.io/dabimasFactor/index.html",
+    "start_url": "./index.html",
+    "scope": "./",
+    "theme_color": "#ffffff",
     "background_color": "#4169e1",
     "icons": [
         { "src": "./icon-192.png", "type": "image/png", "sizes": "192x192" },

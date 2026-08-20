@@ -55,6 +55,15 @@
 
       mounted: function () {
         try {
+          this.onNicksReadyHandler = () => {
+            this.nicksReady = true;
+          };
+          window.addEventListener("dabimas:nicks-ready", this.onNicksReadyHandler);
+          const nicks = window.Dabimas.logic && window.Dabimas.logic.nicks;
+          if (nicks && typeof nicks.isReady === "function" && nicks.isReady()) {
+            this.nicksReady = true;
+          }
+
           // インブリード例外ルールの読み込み（loadInbreedExceptions）と血統データの
           // 読み込み（c1 → dbinitializer の summary fetch）は互いに依存しないため、
           // 直列 then ではなく並行に開始する（起動時のネットワーク待ちを縮める）。
@@ -111,6 +120,9 @@
       },
 
       beforeDestroy() {
+        if (this.onNicksReadyHandler) {
+          window.removeEventListener("dabimas:nicks-ready", this.onNicksReadyHandler);
+        }
         if (this.onOrientationChangeHandler) {
           window.removeEventListener("orientationchange", this.onOrientationChangeHandler);
         }

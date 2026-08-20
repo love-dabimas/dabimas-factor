@@ -56,12 +56,17 @@
   }
 
   // 画面に表示する馬名（種別タグ＋名前＋補足）を組み立てる。
-  function getHorseBaseText(horse) {
+  // options.hideEditTag を立てるとエディット種牡馬の [E] を省く。
+  // 候補リストのように行頭へ E バッジを別途出す場所で、同じ情報が
+  // 二重に並ぶのを避けるために使う（血統表など、バッジが無い場所は付けたまま）。
+  function getHorseBaseText(horse, options) {
     if (!horse) {
       return "";
     }
+    var hideEditTag = !!(options && options.hideEditTag);
+    var editTag = horse.source === "edit" && !hideEditTag ? "[E]" : "";
     var natureTag = horse.nature ? "[" + horse.nature.charAt(0) + "]" : "";
-    return [natureTag, horse.name || "", horse.subName || ""]
+    return [editTag, natureTag, horse.name || "", horse.subName || ""]
       .filter(Boolean)
       .join("");
   }

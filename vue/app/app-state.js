@@ -32,6 +32,17 @@
           // ここで data() に書くと Vue 2 が32行分の headCells まで再帰的に
           // reactive化してしまい起動コストが増えるため、あえて宣言しない。
           INDEX_GENERATION_ASSIGNMENTS,
+          // "home" | "category" | "settings"。settings は永続化せず、
+          // home との間だけで直接切り替える。vue/app/main.js が
+          // workspaceSync.boot() の解決を待ってから new Vue(...) するため、
+          // ここに来た時点で workspaceSync.resolvedInitialScreen は確定している。
+          // workspaceSync 未ロード時（万一）は本体単独動作のフェイルセーフとして
+          // "category" とする。
+          currentScreen:
+            (window.Dabimas.workspaceSync && window.Dabimas.workspaceSync.resolvedInitialScreen) ||
+            "category",
+          nicksReady: false,
+          onNicksReadyHandler: null,
           windowSize: 0,
           // メモの
           inputed: Array.from(new Array(32).fill(null)),
@@ -47,6 +58,8 @@
           parentLines: Array.from(new Array(32).fill("")),
           // 子系統
           category: Array.from(new Array(32).fill(null)),
+          // アプリ全体で共有する子系統カラー設定（appMeta から非同期で復元）。
+          sireLineColorSettings: null,
           stallions: [],
           stallionsBase: [],
           broodmares: [],
@@ -60,6 +73,8 @@
           horseDetailChunkPromises: {},
           customHorseDetails: {},
           customHorseDb: null,
+          savedHorseSummaries: [],
+          editStallions: [],
           horseSummaryLoaded: false,
           horseSummaryChunkSize: 128,
           horseDetailTotalChunks: 0,

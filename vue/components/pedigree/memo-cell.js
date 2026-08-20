@@ -46,18 +46,24 @@
         type: Array,
         required: true,
       },
+      colorSettings: {
+        type: Object,
+        default: null,
+      },
     },
     template: `
       <v-row no-gutters>
         <v-col :style="getWidth(index,0)">
           <v-text-field
-            :value="category[index]"
+            :class="colorCellClass"
+            :value="categoryDisplayValue"
             solo
             readonly
           ></v-text-field>
         </v-col>
         <v-col :style="getWidth(index,1)">
           <v-text-field
+            :class="colorCellClass"
             placeholder="メモ入力"
             :value="inputed[index]"
             @change="handleMemoChange"
@@ -66,6 +72,26 @@
         </v-col>
       </v-row>
     `,
+    computed: {
+      colorIndex() {
+        return window.Dabimas.logic.sireLineColors.colorIndexForName(
+          this.category[this.index],
+          this.colorSettings
+        );
+      },
+      colorCellClass() {
+        var colorClass = window.Dabimas.logic.sireLineColors.colorClassFor(
+          this.colorIndex
+        );
+        return colorClass ? "sire-color-cell " + colorClass : "";
+      },
+      categoryDisplayValue() {
+        var value = this.category[this.index] || "";
+        return (
+          window.Dabimas.logic.sireLineColors.badgeFor(this.colorIndex) + value
+        );
+      },
+    },
     methods: {
       getWidth(index, type) {
         let coefficient = 0;

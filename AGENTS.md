@@ -30,3 +30,5 @@ These rules exist to prevent:
 - UTF-8 corruption / mojibake
 - broken Vue option object structure (`watch`, `methods`, etc.)
 - undefined handler regressions such as `handleCombinationCellClick is not defined`
+
+## Imported Claude Cowork project instructions

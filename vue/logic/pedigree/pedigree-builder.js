@@ -108,11 +108,13 @@
                 childName: null,
               };
 
-              // 0番目以降は祖全データ＋subName''＋使用不可フラグを設定（因子配列も念のためコピー）
+              // 0番目以降は祖全データ＋使用不可フラグを設定（因子配列も念のためコピー）。
+              // subName は spread した祖先データの値をそのまま活かす。DB馬の祖先は
+              // subName が空なので従来どおりだが、☆保存馬・エディット種牡馬を祖先に
+              // 持つ場合はその因名（例「神速」）を保持して表示する。
               bros = getValueByKey(brosData, horseData.descendants[0].name);
               retDataForPedigree[1] = {
                 ...horseData.descendants[0],
-                subName: "",
                 factors: [...horseData.descendants[0].factors],
                 disabled: true,
                 selectedHorse:
@@ -135,7 +137,6 @@
               bros = getValueByKey(brosData, horseData.descendants[1].name);
               retDataForPedigree[2] = {
                 ...horseData.descendants[1],
-                subName: "",
                 factors: [...horseData.descendants[1].factors],
                 disabled: true,
                 selectedHorse:
@@ -158,7 +159,6 @@
               bros = getValueByKey(brosData, horseData.descendants[8].name);
               retDataForPedigree[3] = {
                 ...horseData.descendants[8],
-                subName: "",
                 factors: [...horseData.descendants[8].factors],
                 disabled: true,
                 selectedHorse:
@@ -181,7 +181,6 @@
               bros = getValueByKey(brosData, horseData.descendants[2].name);
               retDataForPedigree[4] = {
                 ...horseData.descendants[2],
-                subName: "",
                 factors: [...horseData.descendants[2].factors],
                 disabled: true,
                 selectedHorse:
@@ -204,7 +203,6 @@
               bros = getValueByKey(brosData, horseData.descendants[5].name);
               retDataForPedigree[5] = {
                 ...horseData.descendants[5],
-                subName: "",
                 factors: [...horseData.descendants[5].factors],
                 disabled: true,
                 selectedHorse:
@@ -227,7 +225,6 @@
               bros = getValueByKey(brosData, horseData.descendants[9].name);
               retDataForPedigree[6] = {
                 ...horseData.descendants[9],
-                subName: "",
                 factors: [...horseData.descendants[9].factors],
                 disabled: true,
                 selectedHorse:
@@ -250,7 +247,6 @@
               bros = getValueByKey(brosData, horseData.descendants[12].name);
               retDataForPedigree[7] = {
                 ...horseData.descendants[12],
-                subName: "",
                 factors: [...horseData.descendants[12].factors],
                 disabled: true,
                 selectedHorse:
@@ -273,7 +269,6 @@
               bros = getValueByKey(brosData, horseData.descendants[3].name);
               retDataForPedigree[8] = {
                 ...horseData.descendants[3],
-                subName: "",
                 factors: [...horseData.descendants[3].factors],
                 disabled: true,
                 selectedHorse:
@@ -296,7 +291,6 @@
               bros = getValueByKey(brosData, horseData.descendants[4].name);
               retDataForPedigree[9] = {
                 ...horseData.descendants[4],
-                subName: "",
                 factors: [...horseData.descendants[4].factors],
                 disabled: true,
                 selectedHorse:
@@ -319,7 +313,6 @@
               bros = getValueByKey(brosData, horseData.descendants[6].name);
               retDataForPedigree[10] = {
                 ...horseData.descendants[6],
-                subName: "",
                 factors: [...horseData.descendants[6].factors],
                 disabled: true,
                 selectedHorse:
@@ -342,7 +335,6 @@
               bros = getValueByKey(brosData, horseData.descendants[7].name);
               retDataForPedigree[11] = {
                 ...horseData.descendants[7],
-                subName: "",
                 factors: [...horseData.descendants[7].factors],
                 disabled: true,
                 selectedHorse:
@@ -365,7 +357,6 @@
               bros = getValueByKey(brosData, horseData.descendants[10].name);
               retDataForPedigree[12] = {
                 ...horseData.descendants[10],
-                subName: "",
                 factors: [...horseData.descendants[10].factors],
                 disabled: true,
                 selectedHorse:
@@ -388,7 +379,6 @@
               bros = getValueByKey(brosData, horseData.descendants[11].name);
               retDataForPedigree[13] = {
                 ...horseData.descendants[11],
-                subName: "",
                 factors: [...horseData.descendants[11].factors],
                 disabled: true,
                 selectedHorse:
@@ -411,7 +401,6 @@
               bros = getValueByKey(brosData, horseData.descendants[13].name);
               retDataForPedigree[14] = {
                 ...horseData.descendants[13],
-                subName: "",
                 factors: [...horseData.descendants[13].factors],
                 disabled: true,
                 selectedHorse:
@@ -434,7 +423,6 @@
               bros = getValueByKey(brosData, horseData.descendants[14].name);
               retDataForPedigree[15] = {
                 ...horseData.descendants[14],
-                subName: "",
                 factors: [...horseData.descendants[14].factors],
                 disabled: true,
                 selectedHorse:
@@ -805,6 +793,23 @@
               retDataForPedigree[15] = "broodmares";
             }
           }
+          // subName を必ず文字列へ正規化する。DB馬の祖先は subName キーを持たず
+          // undefined になり、getCellIdQue 等の subName.substring(...) が落ちるため
+          // （従来は各セルで subName:"" と上書きして防いでいた）。ここで一括して
+          // undefined→"" にすることで、☆保存馬・エディット種牡馬の因名（例「神速」）
+          // は文字列なのでそのまま保持しつつ、DB祖先は "" に揃える。
+          // retDataForPedigree[15] は "broodmares" 文字列の番兵になり得るので、
+          // オブジェクトのときだけ処理する。
+          for (var normIdx = 0; normIdx < retDataForPedigree.length; normIdx++) {
+            var normEntry = retDataForPedigree[normIdx];
+            if (
+              normEntry &&
+              typeof normEntry === "object" &&
+              typeof normEntry.subName !== "string"
+            ) {
+              normEntry.subName = "";
+            }
+          }
           return retDataForPedigree;
         }
 
@@ -906,6 +911,7 @@
           return cell_id_que;
         }
 
+  window.Dabimas.logic.pedigree.generateUuid = generateUuid;
   window.Dabimas.logic.pedigree.getValueByKey = getValueByKey;
   window.Dabimas.logic.pedigree.setDataForPedigree = setDataForPedigree;
   window.Dabimas.logic.pedigree.isEven = isEven;

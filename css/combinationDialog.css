@@ -1,10 +1,10 @@
 /* 配合保存ダイアログ専用スタイル */
 
-/* ヘッダー */
+/* ヘッダー（高さを抑えてダイアログ全体を短く） */
 .combination-dialog-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
   color: white !important;
-  padding: 16px 20px !important;
+  padding: 10px 20px !important;
 }
 
 .combination-dialog-title {
@@ -81,9 +81,18 @@
   align-self: center !important;
 }
 
-/* テキストボックスの下余白をゼロに */
+/* テキストボックスの下に、直後の説明文と重ならない程度の余白を確保 */
 .combination-title-input {
-  margin-bottom: 0 !important;
+  margin-bottom: 10px !important;
+}
+
+/* outlined+dense の入力欄は、コンパクト版 Vuetify の影響で
+   .v-input__control（=フローの高さ）が .v-input__slot（可視枠, min-height:40px）
+   を包含できずに潰れ、枠が親からはみ出す。その結果、直後の説明文が枠線に
+   重なってしまう。control に最低高さを与えてスロットを包含させ、
+   margin-bottom を確実にクリアランスとして効かせる。 */
+.combination-title-input.v-text-field .v-input__control {
+  min-height: 40px;
 }
 
 /* テキストボックスのフォントサイズを16pxに固定（スマホズーム防止） */
@@ -116,9 +125,95 @@
   font-size: 16px !important;
 }
 
-/* 保存ボタンの上に余白 - より強力な指定 */
+/* 説明文（ヒント）と保存ボタンの間隔は詰めめに */
+.combination-title-hint {
+  line-height: 1.35;
+}
+
+/* 種牡馬/繁殖牝馬トグルと因子セレクトを横並びにする行 */
+.combination-save-kind-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.combination-save-kind-toggle {
+  flex: 0 0 auto;
+}
+
+.combination-save-kind-toggle.v-btn-toggle > .v-btn.v-btn {
+  height: 36px !important;
+}
+
+/* トグル右の余白に因子セレクトを配置（種牡馬選択時のみ表示）。
+   幅が足りないときは折り返して次行いっぱいに広がる。 */
+.combination-factor-inline {
+  flex: 1 1 160px;
+  min-width: 160px;
+}
+
+/* 左のトグルと同じ高さ（36px）に収める。
+   コンパクト版 Vuetify の outlined+dense は control / slot / selections が
+   それぞれ最低高さを持っていて、放っておくとトグルより一回り高くなる。 */
+.combination-factor-select.v-text-field--outlined .v-input__control,
+.combination-factor-select.v-text-field--outlined .v-input__slot {
+  min-height: 36px !important;
+}
+
+.combination-factor-select.v-text-field--outlined .v-input__slot {
+  padding: 0 8px !important;
+}
+
+.combination-factor-select .v-select__selections {
+  min-height: 34px !important;
+  flex-wrap: nowrap;
+  padding: 0 !important;
+}
+
+.combination-factor-select .v-input__append-inner {
+  margin-top: 6px !important;
+}
+
+/* 付与する因子のチップ。セレクト1行に2つ並ぶ大きさにする */
+.combination-factor-select .manual-factor-chip.v-chip {
+  height: 22px !important;
+  margin: 0 4px 0 0;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.combination-factor-select .manual-factor-chip .v-chip__close.v-icon {
+  font-size: 14px;
+  margin-left: 2px;
+}
+
+/* 種牡馬・繁殖牝馬の選択色を配合表の父（青）・母（赤）に合わせる */
+.combination-save-kind-toggle .v-btn--active::before {
+  opacity: 0 !important;
+}
+
+.combination-save-kind-toggle .save-kind-stallion.v-btn.v-btn--active {
+  background-color: #3e499c !important;
+  border-color: #3e499c !important;
+  color: #ffffff !important;
+}
+
+.combination-save-kind-toggle .save-kind-broodmare.v-btn.v-btn--active {
+  background-color: #b34e5f !important;
+  border-color: #b34e5f !important;
+  color: #ffffff !important;
+}
+
+.combination-save-kind-toggle .save-kind-stallion.v-btn.v-btn--active .v-btn__content,
+.combination-save-kind-toggle .save-kind-broodmare.v-btn.v-btn--active .v-btn__content {
+  color: #ffffff !important;
+}
+
+/* 保存ボタンの上の余白（説明文との間隔） */
 .combination-input-area .combination-save-btn.v-btn {
-  margin-top: 14px !important;
+  margin-top: 10px !important;
 }
 
 /* リストエリア */
@@ -172,6 +267,18 @@
   line-height: 1.3;
 }
 
+/* 保存済み配合リストの因子バッジ（因子付与ダイアログのチップと同じ配色を流用） */
+.combination-list-factor.manual-factor-chip.v-chip {
+  height: 20px !important;
+  min-width: 20px;
+  margin: 0 0 0 4px;
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 3px !important;
+  vertical-align: middle;
+}
+
 .combination-list-item-date {
   font-size: 11px;
   color: #6c757d;
@@ -185,15 +292,17 @@
   font-size: 14px;
 }
 
-/* ボタンエリア */
-.combination-button-area {
-  padding-top: 16px !important;
+/* 固定フッター（復元・削除ボタン）。v-card-text の外にあるので
+   リストが増えてもスクロールで隠れない */
+.combination-dialog-actions {
+  display: flex;
+  gap: 12px;
+  padding: 12px 20px !important;
   border-top: 2px solid #e9ecef;
-  margin-top: 16px !important;
 }
 
-.combination-button-area .v-col {
-  padding: 6px 8px !important;
+.combination-dialog-actions .combination-action-btn.v-btn {
+  flex: 1 1 0;
 }
 
 /* スクロールバーのスタイリング */
@@ -239,13 +348,13 @@
     margin-bottom: 10px !important;
   }
 
-  .combination-button-area .v-col {
-    padding: 5px 6px !important;
-    margin-bottom: 6px !important;
+  .combination-dialog-actions {
+    gap: 8px;
+    padding: 10px 14px !important;
   }
 
   .combination-dialog-header {
-    padding: 14px 16px !important;
+    padding: 9px 16px !important;
   }
 
   .combination-dialog-title {
@@ -280,9 +389,9 @@
     margin-bottom: 10px;
   }
 
-  /* テキストボックスの下余白をゼロに */
+  /* テキストボックスの下に、説明文と重ならない程度の余白を確保 */
   .combination-title-input {
-    margin-bottom: 0 !important;
+    margin-bottom: 10px !important;
   }
 
   /* テキストボックスのフォントサイズを16pxに固定（スマホズーム防止） */
@@ -307,14 +416,15 @@
     font-size: 16px !important;
   }
 
-  /* 保存ボタンの上に余白 - より強力な指定 */
+  /* 保存ボタンの上の余白（説明文との間隔・モバイル） */
   .combination-input-area .combination-save-btn.v-btn {
-    margin-top: 12px !important;
+    margin-top: 8px !important;
   }
 
-  /* スマホ版のリスト - 削除ボタンが見えるよう高さを抑える */
+  /* スマホでは v-card-text のスクロールに統一し、二重スクロールを避ける */
   .combination-saved-list {
-    max-height: 240px;  /* スマホ版は240pxに制限して削除ボタンを表示 */
+    max-height: none;
+    overflow-y: visible;
     gap: 6px;
   }
 
@@ -338,10 +448,6 @@
     font-size: 13px;
   }
 
-  .combination-button-area {
-    padding-top: 14px !important;
-    margin-top: 14px !important;
-  }
 }
 
 /* より小さい画面用 */
@@ -373,10 +479,6 @@
     padding: 10px !important;
   }
 
-  /* さらに小さい画面では、リストをより小さく */
-  .combination-saved-list {
-    max-height: 220px;
-  }
 }
 
 /* 非常に小さい画面 */
@@ -400,7 +502,4 @@
     padding: 8px 10px !important;
   }
 
-  .combination-saved-list {
-    max-height: 200px;
-  }
 }

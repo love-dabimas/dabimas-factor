@@ -22,6 +22,7 @@ Excel 依存なしで `dabimasFactor.json` を生成するスクリプト。
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import re
@@ -94,67 +95,27 @@ FACTOR_SHORT_DICT = {
     14: "雷",
 }
 
-# 親系統名 -> 2文字コード。
-# サイト上の表記ゆれを辞書で正規化する。
-PARENTAL_LINE_DICT = {
-    "エクリプス系": "Ec",
-    "フェアウェイ系": "Fa",
-    "フェアトライアル系": "Fa",
-    "オーエンテューダー系": "Ha",
-    "オリオール系": "Ha",
-    "カーレッド系": "Ha",
-    "サンインロー系": "Ha",
-    "ハイペリオン系": "Ha",
-    "ハンプトン系": "Ha",
-    "ファイントップ系": "Ha",
-    "ロックフェラ系": "Ha",
-    "クラリオン系": "He",
-    "トウルビヨン系": "He",
-    "ヘロド系": "He",
-    "マイバブー系": "He",
-    "ヒムヤー系": "Hi",
-    "インテント系": "Ma",
-    "マッチェム系": "Ma",
-    "マンノウォー系": "Ma",
-    "レリック系": "Ma",
-    "エタン系": "Na",
-    "ネイティヴダンサー系": "Na",
-    "レイズアネイティヴ系": "Na",
-    "ニアークティック系": "Ne",
-    "ノーザンダンサー系": "Ne",
-    "グレイソヴリン系": "Ns",
-    "ゼダーン系": "Ns",
-    "ソヴリンパス系": "Ns",
-    "ナスルーラ系": "Ns",
-    "ネヴァーセイダイ系": "Ns",
-    "ネヴァーベンド系": "Ns",
-    "フォルティノ系": "Ns",
-    "プリンスリーギフト系": "Ns",
-    "ボールドルーラー系": "Ns",
-    "レッドゴッド系": "Ns",
-    "ダンテ系": "Ph",
-    "ネアルコ系": "Ph",
-    "ファロス系": "Ph",
-    "ファラリス系": "Ph",
-    "ファリス系": "Ph",
-    "モスボロー系": "Ph",
-    "サーゲイロード系": "Ro",
-    "ハビタット系": "Ro",
-    "ヘイルトゥリーズン系": "Ro",
-    "ロイヤルチャージャー系": "Ro",
-    "セントサイモン系": "St",
-    "プリンスキロ系": "St",
-    "プリンスビオ系": "St",
-    "プリンスローズ系": "St",
-    "ボワルセル系": "St",
-    "リボー系": "St",
-    "ワイルドリスク系": "St",
-    "スインフォード系": "Sw",
-    "ブラントーム系": "Sw",
-    "ブランドフォード系": "Sw",
-    "ブレニム系": "Sw",
-    "テディ系": "Te",
-    "トムフール系": "To",
+SIRE_LINES_CSV_PATH = Path(__file__).resolve().parent / "data" / "sire_lines.csv"
+
+
+def load_sire_line_dict(path: Path = SIRE_LINES_CSV_PATH) -> dict[str, dict[str, object]]:
+    """子系統CSVを、系統名からIDと親系統略号を引ける辞書へ変換する。"""
+    with path.open("r", encoding="utf-8", newline="") as fp:
+        rows = csv.DictReader(fp)
+        return {
+            row["name"].strip(): {
+                "sonId": int(row["id"]),
+                "parentLineId": int(row["sire_line_base_id"]),
+                "abbr": row["base_abbr"].strip(),
+            }
+            for row in rows
+        }
+
+
+SIRE_LINE_DICT = load_sire_line_dict()
+CONVERSION_WARNING_COUNTS = {
+    "unknown_sire_line": 0,
+    "invalid_rare": 0,
 }
 
 # 旧実装で使っていた「特殊アイコン除外」対象。
@@ -180,6 +141,38 @@ def safe_str(v: object) -> str:
     if v is None:
         return ""
     return str(v).strip()
+
+
+def reset_conversion_warning_counts() -> None:
+    """変換警告の集計を、新しい実行単位向けにリセットする。"""
+    for key in CONVERSION_WARNING_COUNTS:
+        CONVERSION_WARNING_COUNTS[key] = 0
+
+
+def resolve_sire_line(value: object, identifier: str) -> Optional[dict[str, object]]:
+    """子系統名を解決し、未知の非空値は警告・集計する。"""
+    name = safe_str(value)
+    if not name:
+        return None
+    sire_line = SIRE_LINE_DICT.get(name)
+    if sire_line is None:
+        CONVERSION_WARNING_COUNTS["unknown_sire_line"] += 1
+        print(f"[warn] unknown sire line: {name} ({identifier})")
+    return sire_line
+
+
+def parse_stallion_rare(value: object, identifier: str) -> Optional[int]:
+    """種牡馬レア度を1〜5へ正規化し、不正値は警告・集計する。"""
+    raw_value = safe_str(value)
+    try:
+        rare = int(raw_value)
+    except ValueError:
+        rare = None
+    if rare is not None and 1 <= rare <= 5:
+        return rare
+    CONVERSION_WARNING_COUNTS["invalid_rare"] += 1
+    print(f"[warn] invalid rare: {raw_value} ({identifier})")
+    return None
 
 
 def extract_numbers(text: str) -> str:
@@ -445,7 +438,14 @@ def parse_stallion(url: str, serial_no: int, soup: BeautifulSoup) -> Optional[li
         return None
 
     # レア星数とアイコンを取得。
-    star_count = len(row0_tds[1].find_all("img"))
+    # 同じ td には因子アイコン（icn_factor_*.png）も並ぶため、星画像だけを数える。
+    star_count = len(
+        [
+            img
+            for img in row0_tds[1].find_all("img")
+            if "stallion_list_star" in img.get("src", "")
+        ]
+    )
     icon_img = row1_tds[0].find("img")
     icon_src = normalize_src(icon_img.get("src", "")) if icon_img else ""
     # 特殊アイコンによる除外（現在デフォルト無効）。
@@ -598,6 +598,8 @@ def all_row_to_dabifac_entry(row: list[str]) -> dict:
         pure_name = horse_name.replace(sub_name, "").replace("-", "")
 
     parent_line_raw = row_get(row, HD_PARENT_LINE)
+    identifier = row_get(row, HD_HORSE_ID)
+    sire_line = resolve_sire_line(parent_line_raw, identifier)
 
     f1, f2, f3 = get_factor(
         row_get(row, HD_FACTOR_NAME1),
@@ -611,6 +613,7 @@ def all_row_to_dabifac_entry(row: list[str]) -> dict:
         n = row_get(row, HD_NAME_T + i)
         pl = get_parent_line_name(row_get(row, HD_PARENT_LINE_T + i))
         son = row_get(row, HD_SON_T + i)
+        descendant_line = resolve_sire_line(son, identifier)
         df1, df2, df3 = get_factor(
             row_get(row, HD_FACTOR_T1 + i * 3),
             row_get(row, HD_FACTOR_T1 + i * 3 + 1),
@@ -620,7 +623,11 @@ def all_row_to_dabifac_entry(row: list[str]) -> dict:
             {
                 "name": n,
                 "parentLine": pl,
+                "parentLineId": (
+                    descendant_line["parentLineId"] if descendant_line else None
+                ),
                 "son": son,
+                "sonId": descendant_line["sonId"] if descendant_line else None,
                 "factors": [
                     get_factor_short(df1),
                     get_factor_short(df2),
@@ -630,6 +637,7 @@ def all_row_to_dabifac_entry(row: list[str]) -> dict:
         )
 
     sex = row_get(row, HD_GENDER)
+    rare = parse_stallion_rare(row_get(row, HD_RARE), identifier) if sex == "0" else None
 
     # 親系統コードは辞書優先、見つからなければ2文字化で補完。
     return {
@@ -640,8 +648,11 @@ def all_row_to_dabifac_entry(row: list[str]) -> dict:
         "subName": sub_name,
         "nature": row_get(row, HD_NATURE),
         "sex": sex,
-        "parentLine": PARENTAL_LINE_DICT.get(parent_line_raw.strip(), get_parent_line_name(parent_line_raw)),
+        "rare": rare,
+        "parentLine": sire_line["abbr"] if sire_line else get_parent_line_name(parent_line_raw),
+        "parentLineId": sire_line["parentLineId"] if sire_line else None,
         "son": parent_line_raw,
+        "sonId": sire_line["sonId"] if sire_line else None,
         "factors": [
             get_factor_short(f1),
             get_factor_short(f2),
@@ -667,8 +678,11 @@ def entry_to_summary(entry: dict, detail_chunk: int) -> dict:
         "subName": entry["subName"],
         "nature": entry["nature"],
         "sex": entry["sex"],
+        "rare": entry["rare"],
         "parentLine": entry["parentLine"],
+        "parentLineId": entry["parentLineId"],
         "son": entry["son"],
+        "sonId": entry["sonId"],
         "factors": entry["factors"],
         "displayName": display_name,
         "searchText": build_search_text(
@@ -763,9 +777,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument(
         "--fail-on-error",
         action="store_true",
-        help="取得/解析エラーが1件でもあれば終了コード1にする。",
+        help="取得/解析エラー・未知系統・不正レア度が1件でもあれば終了コード1にする。",
     )
     args = parser.parse_args(argv)
+    reset_conversion_warning_counts()
 
     output_path = Path(args.output)
     summary_output_path = Path(args.summary_output) if args.summary_output else None
@@ -925,8 +940,13 @@ def main(argv: Optional[list[str]] = None) -> int:
             num_chunks = write_details(details_output_dir, entries, chunk_size)
             print(f"details written: {details_output_dir} ({num_chunks} chunks)")
 
-    print(f"done: written={written}, skipped={skipped}, errors={errors}")
-    if args.fail_on_error and errors > 0:
+    unknown_sire_lines = CONVERSION_WARNING_COUNTS["unknown_sire_line"]
+    invalid_rares = CONVERSION_WARNING_COUNTS["invalid_rare"]
+    print(
+        f"done: written={written}, skipped={skipped}, errors={errors}, "
+        f"unknown_sire_lines={unknown_sire_lines}, invalid_rares={invalid_rares}"
+    )
+    if args.fail_on_error and (errors > 0 or unknown_sire_lines > 0 or invalid_rares > 0):
         return 1
     return 0
 

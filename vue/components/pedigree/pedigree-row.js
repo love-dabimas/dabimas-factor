@@ -36,7 +36,7 @@
         >{{ cell.text }}</td>
       </template>
 
-      <td :class="row.autoClass" :colspan="row.autoColspan">
+      <td :class="[row.autoClass, rowState.categoryColorClass]" :colspan="row.autoColspan">
         <horse-cell
           :class="rowState.rowColorClass"
           :index="row.index"
@@ -47,6 +47,7 @@
           :category="horseOptions.category"
           :inputed="horseOptions.inputed"
           :memo-change="horseOptions.memoChange"
+          :color-settings="horseOptions.sireLineColors"
         />
       </td>
 
@@ -227,7 +228,9 @@
         },
         isStarSelection() {
           const name = this.selectedHorseName;
-          return !!name && name.startsWith("★");
+          return (
+            !!name && name.startsWith("★") && !this.rowState.factorLocked
+          );
         },
         hasConfiguredFactorClasses() {
           const classes = (this.rowState && this.rowState.factorClasses) || [];

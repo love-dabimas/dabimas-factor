@@ -885,3 +885,153 @@ v1 ドラフトで「未確定」だったものを、本版では以下のと�
 - 移行時に localStorage の旧データを削除しない
 - snapshot を parse して別形式に変換しない（生文字列のまま保存する）
 - 新規ライブラリ（vuedraggable 等）を追加しない
+
+---
+
+## 24. 追補（2026-07-07）: 配合の種牡馬・繁殖牝馬保存／配合ステータスバー
+
+統合版の実装完了後の機能拡張。詳細設計は `docs/save-as-horse-and-status-bar-design.md` を正とする（本章はサマリと本仕様との関係の記録のみ）。
+
+### 24.1 追加する機能
+
+1. **配合の種牡馬・繁殖牝馬保存**: 配合保存ダイアログの保存種別を「種牡馬／繁殖牝馬」の2択にし、1回の保存で「復元用 configData（従来どおり）」と「候補リスト用の馬レコード（`DabifacCombinationDB.customHorses`、descendants 15件）」の両方を作る。保存馬は「☆タイトル」として候補リスト先頭に出る。★セルの手動因子は保存時の値で固定され、☆馬の血統内では因子設定不可（`factorLocked`）。旧形式の保存済み配合は「配合」バッジ付きの復元専用として残す。
+2. **配合ステータスバー**: `<header ref="appHeader">` 内・集計ヘッダー直下に高さ24px固定のバーを常時表示（PC・モバイル共通）。左に相性値（計算未実装のうちは「--」、`vue/logic/theory/affinity.js` の `calculateAffinity` が差し込み口）、右に保存ダイアログを開く「保存」ボタン。モバイルで `dispCategory` の切替なしに保存ダイアログへ到達できるようになる。
+
+### 24.2 本仕様との関係
+
+- §23 の「本体 UI・本体ロジックを改変しない」は統合版ラッパー導入時のスコープであり、本追補には適用しない。改変してよい箇所は詳細設計 §8 の一覧に限定する。
+- 次の不変条件は本追補でも維持する: `DabifacCombinationDB` の version・ストア構成（フィールド追加のみ可）、localStorage 6キーの形式・キー名、`configData` の構築・復元ロジック、`applyMobileViewportLayout` の計算式（バーは header 内に置くため実測に自動で含まれる）、統合版（workspace-sync / repositories / home / tab-bar）のコード。
+- 保存馬・配合保存は引き続き**全カテゴリ・全作業枠で共有のグローバル資産**（§5.5 と同方針）。作業枠 snapshot 内の☆馬参照は従来の自家製馬と同じく `customHorses` から解決される。
+- 新規 JS/CSS は `service-worker.js` の `urlsToCache` へ追加し `CACHE_NAME` を bump する（§4.6 と同運用）。
+
+---
+
+## 25. 追補（2026-07-17）: 相性（ニックス）表示
+
+配合ステータスバー（§24.2 / `docs/save-as-horse-and-status-bar-design.md`）の相性枠に、**相性を数値ではなく文言で**表示する。計算は配布済みの WASM（nicks v1.3, hash `43c73869f1a2`）に委ね、アプリは入力値の組み立てと戻り値（`commentId`）→文言の変換だけを行う。
+
+§24 時点の「相性値（数値）を表示、未実装のうちは `--`」という記述は本章で置き換える。**表示は常に文言であり、数値は画面に出さない。**
+
+### 25.1 配布物と配置
+
+公開リリース `dabimas_nicks_wasm_public_release_js_v1.3_43c73869f1a2` の内容を以下に配置する。
+
+| リリース内ファイル | 配置先 | 備考 |
+|---|---|---|
+| `assets/nicks.43c73869f1a2.wasm` | `assets/nicks.43c73869f1a2.wasm` | 4,224 bytes。sha256 は `wasm-asset.json` のとおり |
+| `data/sire_lines_public.json` | `data/sire_lines_public.json` | 子系統マスター（id 1–58）。名前→ID 再解決のフォールバック表を兼ねる |
+| `src/services/nicks/nicksCalculator.js` | `vue/logic/nicks/nicksCalculator.js` | **無改変で配置**（ES Modules）。バージョン更新時はファイル差し替えのみで済ませる |
+| `wasm-asset.json` | `assets/wasm-asset.json` | 整合性確認の記録用。配信・キャッシュ対象にしなくてよい |
+
+- 平文相性マスタ・生成ヘッダー・private manifest・C 生成元は**リポジトリにコミットしない**（リリース README の指示どおり）。
+- `nicksCalculator.js` は ES Modules のため、既存の classic `<script>` 群とは別に `<script type="module">` で読み込む（§25.5）。
+- WASM・`sire_lines_public.json`・新規 JS は `service-worker.js` の `urlsToCache` へ追加し `CACHE_NAME` を bump する（§4.6 と同運用）。ラッパー側の `fetch(..., { cache: "force-cache" })` と二重キャッシュになるが害はない。
+
+### 25.2 WASM の入出力と表示文言
+
+`LocalNicksCalculator#calculate(input)` を用いる。入力は次のとおり（すべて必須。範囲外はラッパーが例外を投げる）。
+
+| 入力 | 値 | 出どころ |
+|---|---|---|
+| `rarity` | 1–5 | 種牡馬（`selected[0]`）の `rare`（★数。`docs/sire-line-id-design.md` §4.2-7 で付与） |
+| `sireLineId` | 1–58 | 種牡馬（`selected[0]`）の `sonId`（子系統ID） |
+| `partnerLineIds` | 長さ4の配列, 各 1–58 | 繁殖牝馬側の牝系ラインの種牡馬4頭の `sonId` を**この順で**: 父（`selected[17]`）→ 母父（`selected[19]`）→ 母母父（`selected[23]`）→ 母母母父（`selected[31]`） |
+| `miracle` | boolean | 奇跡の血量ボーナスの照合結果（§25.3） |
+
+戻り値 `commentId`（0–4）を次の文言へ変換して表示する。
+
+| commentId | 表示 |
+|---|---|
+| 1 | 完璧 |
+| 2 | 優れた |
+| 3 | 良い |
+| 4 | 程々 |
+| 0 | `--`（文言なし） |
+| 計算不能（§25.4） | `--` |
+
+`calculateDebug()` は調査・検証専用とし、本番コードから呼ばない。
+
+### 25.3 奇跡の血量ボーナス（`miracle`）の照合
+
+**独立した判定である。** 既存の奇跡配合判定（`vue/logic/theory/compatibility.js` の theory_06）の結果を流用してはならない。theory_06 は「面白配合成立（親系統ユニーク数≥7）かつ 共通要素数=4（完璧の条件）かつ 至高不成立」の場合にしか位置照合を行わないため、それ以外の配合では位置が一致していても theory_06 側は奇跡と判定しない。相性用の `miracle` は**配合理論の成立状況（面白・完璧・至高など）に一切左右されず**、以下の位置照合だけで判定する。
+
+照合位置は次のとおり。**馬名の完全一致**で照合する。
+
+- 繁殖牝馬側: `母→父`、つまり繁殖牝馬の**母父**（血統表 index 19）の1か所
+- 種牡馬側: 種牡馬の血統表の次の4か所
+  - 父父父（index 4）
+  - 父母父（index 5）
+  - 母父父（index 6）
+  - 母母父（index 7）
+
+産駒の血統上では種牡馬側が4代目、繁殖牝馬側が3代目になるため、実質的な **4×3 クロス判定**である。
+
+成立条件: 繁殖牝馬の母父と同名の馬が、種牡馬側4か所のうち**ちょうど1か所**にいるとき `miracle = true`。**同じ奇跡対象が種牡馬側の候補に2頭以上いると成立しない**（`false`）。0か所なら当然 `false`。
+
+既存 theory_06 との対応関係（実装時の指針）:
+
+| 観点 | 既存 theory_06 | 相性用 `miracle` |
+|---|---|---|
+| 照合位置（index 19 × index 4–7） | 同じ | 同じ |
+| 馬名完全一致・ちょうど1か所 | 同じ | 同じ |
+| 前提条件 | 面白成立かつ共通要素数4かつ至高不成立のときのみ評価 | **前提条件なし**（位置照合のみ） |
+
+したがって照合ロジックは `affinity.js` 内に独立して実装する（`compatibility()` を呼ばない・`styleThoeryClass` を参照しない）。参照するのは `context.selected` の該当 index の馬名のみ。
+
+なお `miracle = true` を渡しても、ボーナスを実際に適用するかどうかの最終判断は WASM 内部で行われる（デバッグ出力の `miracleBonusApplied` が実適用の有無）。アプリ側は位置照合の結果を渡すだけでよい。
+
+### 25.4 計算可能条件とフォールバック
+
+以下をすべて満たすときだけ WASM を呼ぶ。1つでも欠ければ計算不能として `--` を表示する（WASM は呼ばない）。
+
+1. **血統表32セルすべてが選択済み**であること（`selected.every((e) => e)`。配合理論判定 `dispTheory` と同じトリガー条件）。相性の判定は32個そろってからでよく、それまでは常に `--`
+2. 種牡馬の `rare` が 1–5 の整数（自家製馬・☆馬など `rare` を持たない種牡馬は計算不能）
+3. 入力に使う5頭（種牡馬 `selected[0]`、繁殖牝馬側 `selected[17]`, `[19]`, `[23]`, `[31]`）すべての子系統IDが解決できること。`sonId` が `null`/undefined の馬（旧保存データ・自家製馬）は、`son`（子系統名）を `data/sire_lines_public.json` の `name` と突き合わせて再解決する（`docs/sire-line-id-design.md` §4.4 で予告済みのフォールバック）。名前でも解決できなければ計算不能
+
+さらに、WASM 未初期化・初期化失敗・ラッパー例外（RangeError 等）もすべて計算不能扱い（`--`）とし、**アプリ本体の動作には影響させない**（相性表示が `--` のままになるだけ）。
+
+### 25.5 実装構成
+
+差し込み口は §24.2 で確定済みの `vue/logic/theory/affinity.js` の `calculateAffinity(context)` を維持する。
+
+- **新規 `vue/logic/nicks/nicks-boot.js`**（ES Module・`<script type="module">` で読み込み）:
+  - `nicksCalculator.js` から `LocalNicksCalculator` を import し、`./assets/nicks.43c73869f1a2.wasm` で生成・`initialize()` する（起動をブロックしない）。
+  - `data/sire_lines_public.json` を読み込み、子系統名→ID の再解決表を作る。
+  - `window.Dabimas.logic.nicks` として同期 API（`isReady()` / `calculate(input)` / `resolveLineId(sonId, sonName)`）を公開する。
+  - 初期化完了・失敗を root app へ通知し、完了時に相性の computed が再評価されるようにする（reactive なフラグを1つ立てる）。
+- **`vue/logic/theory/affinity.js`**: スタブを実装に置き換える。`context.selected` から §25.2 の入力を組み立て、§25.3 の照合を行い、`calculate()` の戻り値 `commentId`（number）または `null`（計算不能）を返す。
+- **`affinityDisplayText`**（`vue/app/app-computed.js`）: 「数値の文字列化」から「§25.2 の commentId→文言マップ」へ変更する。`null`・0 はともに `--`。
+- 表示コンポーネント（配合ステータスバー）は変更なし（`affinityText` prop に文言が入るだけ）。
+
+### 25.6 制約・禁止事項
+
+- `nicksCalculator.js`・`.wasm` は改変しない（更新はリリース一式の差し替えで行う）。
+- 相性の内部値（`totalPoint` / `basePoint`）を UI に表示しない。表示するのは §25.2 の文言のみ。
+- §24.2 の不変条件（`DabifacCombinationDB`・localStorage 6キー・`configData`・`applyMobileViewportLayout`・統合版コード）は本章でも維持する。
+
+### 25.7 受入条件
+
+1. 血統表32セルがすべて選択済みになった時点で、ステータスバーに文言（完璧／優れた／良い／程々）または `--` が表示される。31セル以下の間は常に `--`
+2. 繁殖牝馬の母父が種牡馬側4か所のちょうど1か所と同名のとき `miracle=true` で計算され、2か所以上一致のときは `miracle=false` になる（`calculateDebug()` で検証）
+3. **配合理論が奇跡（theory_06）に到達しない配合**（例: 面白不成立・共通要素数≠4）でも、§25.3 の位置照合が成立していれば `miracle=true` で計算される（theory_06 非流用の確認）
+4. `sonId` を持たない旧保存データ・自家製馬でも、子系統名から ID 再解決できれば相性が表示される
+5. `rare` なし・系統解決不能のときは `--` 表示のまま、他機能は正常動作する
+6. WASM の取得・初期化に失敗しても（オフライン初回など）アプリは正常動作し、相性は `--` のままになる
+7. オフライン時（service worker キャッシュ済み）でも相性が計算できる
+
+---
+
+## 26. 追補（2026-08-01）: PWA スタンドアロン対応と配合ステータスバー廃止
+
+### 26.1 配合ステータスバーの廃止と集計ヘッダーへの集約
+
+- §24.2 の配合ステータスバー（高さ 24px・PC/モバイル共通・常時表示）は本節で廃止する。相性の表示先は子系統モード集計ヘッダー右端の旧「子系統数」欄へ移し、保存導線は同ヘッダーの配合ダイアログ起動セル（旧・馬アイコン）へ一本化する。起動セルには以後、保存アイコンを表示する。
+- §25 の「表示コンポーネントは配合ステータスバー」という記述は本節で置き換える。相性文言（完璧／優れた／良い／程々／`--`）の算出仕様そのものは §25 から変更しない。
+- 通常モード（`dispCategory % 2 === 0`）には相性を表示しない。子系統数の件数表示は画面から廃止する。
+- §24.2 が挙げていた「モバイルで `dispCategory` の切替なしに保存ダイアログへ到達できる」利点は、本節の変更により失われる（依頼者了承済み）。
+
+### 26.2 PWA スタンドアロン対応
+
+- `index.html` に `apple-mobile-web-app-capable`、`apple-mobile-web-app-status-bar-style=default`、`theme-color=#ffffff` を追加する。
+- manifest の `start_url` は `./index.html` へ相対化し、`scope=./` と `theme_color=#ffffff` を追加する。これにより本番 URL の解決結果を変えず、LAN 開発サーバからインストールした場合は同サーバのアプリを起動できる。
+- `viewport-fit=cover` は採用しない。安全領域へコンテンツを広げてもタップ可能要素を守る余白が必要になり、縦方向の実利がないうえ既存レイアウト計算の回帰リスクが増えるためである。

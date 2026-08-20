@@ -26,6 +26,7 @@
       side: { type: String, required: true },
       rows: { type: Array, required: true },
       rowStates: { type: Array, required: true },
+      categoryMode: { type: Boolean, default: false },
     },
     computed: {
       // この class は見た目だけでなく、mobile-viewport が高さ計算の目印として使う。
@@ -37,7 +38,10 @@
     template: `
       <v-col sm="12" md="6" lg="6" xl="6" cols="12" class="pedigree-card-col">
         <v-card elevation="3" align-content="center" class="custom-card pedigree-card-shell">
-          <div class="pedigree-card-table-wrap">
+          <div
+            class="pedigree-card-table-wrap"
+            :class="{ 'exp-category-mode': categoryMode }"
+          >
             <pedigree-table
               :rows="rows"
               :row-states="rowStates"

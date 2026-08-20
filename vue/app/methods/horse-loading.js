@@ -19,6 +19,62 @@
   window.Dabimas.app = window.Dabimas.app || {};
   window.Dabimas.app.methods = window.Dabimas.app.methods || {};
 
+  // 選択状態の復元用 extras は、同じマスター馬が候補へ二重に入らないようにする。
+  // 現行データは id を優先し、id がない旧 snapshot は表示内容で照合する。
+  function mergeHorseCandidateExtras(baseCandidates, extraCandidates) {
+    const merged = Array.isArray(baseCandidates) ? [...baseCandidates] : [];
+    const seenIds = new Set();
+    const seenLegacyKeys = new Set();
+
+    const getId = (horse) => {
+      if (!horse || typeof horse !== "object") {
+        return "";
+      }
+      return horse.id === undefined || horse.id === null
+        ? ""
+        : String(horse.id);
+    };
+    const getLegacyKey = (horse) => {
+      if (!horse || typeof horse !== "object" || !horse.name) {
+        return "";
+      }
+      const factors = Array.isArray(horse.factors)
+        ? horse.factors.map((factor) => String(factor || ""))
+        : [];
+      return [
+        String(horse.name || ""),
+        String(horse.subName || ""),
+        JSON.stringify(factors),
+      ].join("|");
+    };
+    const remember = (horse) => {
+      const id = getId(horse);
+      const legacyKey = getLegacyKey(horse);
+      if (id) {
+        seenIds.add(id);
+      }
+      if (legacyKey) {
+        seenLegacyKeys.add(legacyKey);
+      }
+    };
+
+    merged.forEach(remember);
+    (Array.isArray(extraCandidates) ? extraCandidates : []).forEach((horse) => {
+      const id = getId(horse);
+      const legacyKey = getLegacyKey(horse);
+      const isDuplicate = id
+        ? seenIds.has(id)
+        : legacyKey && seenLegacyKeys.has(legacyKey);
+      if (isDuplicate) {
+        return;
+      }
+      merged.push(horse);
+      remember(horse);
+    });
+
+    return merged;
+  }
+
   Object.assign(window.Dabimas.app.methods, {
         // ===== JSON 分割ロード（summary + detail chunk）=====
         // summary 1 件を候補リスト用の馬オブジェクトへ整える（descendants は持たない）。
@@ -32,8 +88,12 @@
             subName: horse.subName || "",
             nature: horse.nature || "",
             sex: horse.sex,
+            rare: typeof horse.rare === "number" ? horse.rare : null,
             parentLine: horse.parentLine || "",
+            parentLineId:
+              typeof horse.parentLineId === "number" ? horse.parentLineId : null,
             son: horse.son || "",
+            sonId: typeof horse.sonId === "number" ? horse.sonId : null,
             factors: Array.isArray(horse.factors) ? horse.factors : ["", "", ""],
             source: "base",
           };
@@ -42,18 +102,210 @@
         buildHorseLists(horsesList) {
           horsesList.forEach((horse) => Object.freeze(horse));
           this.horsesBase = Object.freeze(horsesList);
-          this.horses = this.horsesBase.filter(
+          const selectableHorses = this.horsesBase.filter(
             (horse) => horse.sex === "0" || horse.sex === "1"
           );
           this.stallionsBase = Object.freeze(
-            this.horses.filter((horse) => horse.sex === "0")
+            selectableHorses.filter((horse) => horse.sex === "0")
           );
-          this.stallions = [...this.stallionsBase];
           this.broodmaresBase = Object.freeze(
-            this.horses.filter((horse) => horse.sex === "1")
+            selectableHorses.filter((horse) => horse.sex === "1")
           );
-          this.broodmares = [...this.broodmaresBase];
+          this.refreshCandidateLists();
+        },
+        createSavedHorseSummary(record) {
+          return {
+            id: record.id,
+            customHorseId: record.id,
+            source: "custom",
+            name: record.name,
+            ruby: "",
+            subName: "",
+            nature: "",
+            sex: record.sex,
+            parentLine: record.parentLine || "",
+            son: record.son || "",
+            // 保存時に本人へ付与した因子を候補・配合表へ反映する
+            // （エディット種牡馬の createEditStallionSummary と同じ扱い）。
+            // hydrateHorseWithDetail は {...horse, descendants} で top-level を
+            // 引き継ぐため、ここで factors を持たせればセル0にも表示される。
+            factors: [0, 1, 2].map(
+              (index) => String((record.factors || [])[index] || "")
+            ),
+            factorLocked: true,
+          };
+        },
+        createEditStallionSummary(record, baseHorse) {
+          return Object.freeze({
+            id: record.id,
+            source: "edit",
+            baseHorseId: record.baseHorseId,
+            detailChunk: baseHorse.detailChunk,
+            name: baseHorse.name,
+            ruby: baseHorse.ruby,
+            subName: record.factorName,
+            nature: baseHorse.nature,
+            sex: "0",
+            rare: baseHorse.rare,
+            parentLine: baseHorse.parentLine,
+            parentLineId: baseHorse.parentLineId,
+            son: baseHorse.son,
+            sonId: baseHorse.sonId,
+            factors: [0, 1, 2].map(
+              (index) => String((record.factors || [])[index] || "")
+            ),
+          });
+        },
+        insertEditStallions(baseList, records = this.editStallions) {
+          const bases = Array.isArray(baseList) ? baseList : [];
+          const baseById = new Map(bases.map((horse) => [horse.id, horse]));
+          const editsByBaseId = new Map();
+
+          (Array.isArray(records) ? records : [])
+            .slice()
+            .sort((a, b) => {
+              const createdOrder = String(a.createdAt || "").localeCompare(
+                String(b.createdAt || "")
+              );
+              return createdOrder || String(a.id || "").localeCompare(String(b.id || ""));
+            })
+            .forEach((record) => {
+              const baseHorse = baseById.get(record.baseHorseId);
+              if (!baseHorse) {
+                console.warn(
+                  "edit stallion base horse not found",
+                  record.id,
+                  record.baseHorseId
+                );
+                return;
+              }
+              const summaries = editsByBaseId.get(record.baseHorseId) || [];
+              summaries.push(this.createEditStallionSummary(record, baseHorse));
+              editsByBaseId.set(record.baseHorseId, summaries);
+            });
+
+          return bases.reduce((result, baseHorse) => {
+            result.push(baseHorse);
+            const edits = editsByBaseId.get(baseHorse.id);
+            if (edits) {
+              result.push(...edits);
+            }
+            return result;
+          }, []);
+        },
+        refreshCandidateLists(horseExtras = [], broodmareExtras = []) {
+          const savedAll = Array.isArray(this.savedHorseSummaries)
+            ? this.savedHorseSummaries
+            : [];
+          const savedStallions = savedAll.filter((horse) => horse.sex === "0");
+          const savedBroodmares = savedAll.filter((horse) => horse.sex === "1");
+          const horsesWithEdits = this.insertEditStallions(this.horsesBase);
+          const stallionsWithEdits = this.insertEditStallions(this.stallionsBase);
+          this.horses = mergeHorseCandidateExtras(
+            [...savedAll, ...horsesWithEdits],
+            horseExtras
+          );
+          this.stallions = mergeHorseCandidateExtras(
+            [...savedStallions, ...stallionsWithEdits],
+            horseExtras
+          );
+          this.broodmares = mergeHorseCandidateExtras(
+            [...savedBroodmares, ...this.broodmaresBase],
+            broodmareExtras
+          );
           this.horseDataLists = [this.horses, this.stallions, this.broodmares];
+        },
+        refreshCandidateListsFromSelection() {
+          const selectedHorses = this.selected.filter((horse) => horse);
+          const selectedBroodmare = this.selected[16] ? [this.selected[16]] : [];
+          this.refreshCandidateLists(selectedHorses, selectedBroodmare);
+        },
+        loadSavedHorseSummaries() {
+          return this.ensureCustomHorseDb()
+            .then((db) =>
+              window.Dabimas.logic.storage.combinationStorage.loadCustomHorses(db)
+            )
+            .then((records) => {
+              const savedRecords = (records || [])
+                .filter(
+                  (record) =>
+                    record &&
+                    (record.kind === "stallion" || record.kind === "broodmare")
+                )
+                .sort((a, b) =>
+                  String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+                );
+              savedRecords.forEach((record) => {
+                this.$set(this.customHorseDetails, record.id, record);
+              });
+              this.savedHorseSummaries = savedRecords.map((record) =>
+                this.createSavedHorseSummary(record)
+              );
+              return this.savedHorseSummaries;
+            })
+            .catch((error) => {
+              console.warn("saved horse summary load failed", error);
+              this.savedHorseSummaries = [];
+              return [];
+            });
+        },
+        loadEditStallions() {
+          const repository = window.Dabimas.repositories.editStallions;
+          return repository
+            .loadAll()
+            .then((records) => {
+              this.editStallions = records || [];
+              return this.editStallions;
+            })
+            .catch((error) => {
+              console.warn("edit stallion load failed", error);
+              this.editStallions = [];
+              return [];
+            });
+        },
+        saveEditStallion(record) {
+          const repository = window.Dabimas.repositories.editStallions;
+          return repository.save(record).then((saved) => {
+            this.editStallions = [
+              ...this.editStallions.filter((item) => item.id !== saved.id),
+              saved,
+            ].sort((a, b) => {
+              const createdOrder = String(a.createdAt || "").localeCompare(
+                String(b.createdAt || "")
+              );
+              return createdOrder || String(a.id || "").localeCompare(String(b.id || ""));
+            });
+            this.refreshCandidateListsFromSelection();
+            return saved;
+          });
+        },
+        removeEditStallion(id) {
+          const repository = window.Dabimas.repositories.editStallions;
+          return repository.remove(id).then(() => {
+            this.editStallions = this.editStallions.filter(
+              (record) => record.id !== id
+            );
+            this.refreshCandidateListsFromSelection();
+          });
+        },
+        handleSavedHorseCreated(record) {
+          if (!record || !record.id || !record.kind) {
+            return;
+          }
+          this.$set(this.customHorseDetails, record.id, record);
+          const summary = this.createSavedHorseSummary(record);
+          this.savedHorseSummaries = [
+            summary,
+            ...this.savedHorseSummaries.filter((horse) => horse.id !== record.id),
+          ];
+          this.refreshCandidateListsFromSelection();
+        },
+        handleSavedHorseRemoved(customHorseId) {
+          this.savedHorseSummaries = this.savedHorseSummaries.filter(
+            (horse) => horse.id !== customHorseId
+          );
+          this.$delete(this.customHorseDetails, customHorseId);
+          this.refreshCandidateListsFromSelection();
         },
         // detail chunk を取得して Map<id, detail> を返す。Promise / 結果を cache する。
         fetchHorseDetailChunk(chunkIndex) {
@@ -133,6 +385,69 @@
           // 1) 旧 snapshot 互換: 既に descendants を持つならそのまま使う（指摘 E）
           if (Array.isArray(horse.descendants) && horse.descendants.length === 15) {
             return Promise.resolve(horse);
+          }
+          // 1.5) エディット種牡馬: ベース馬の static detail を参照する。
+          if (horse.source === "edit" && horse.baseHorseId) {
+            const findBaseHorse = () => {
+              const matched = this.findSummaryHorse({
+                id: horse.baseHorseId,
+                name: horse.name,
+                subName: horse.subName,
+                sex: "0",
+              });
+              if (matched) {
+                return matched;
+              }
+              return (this.horsesBase || []).find(
+                (candidate) => candidate.name === horse.name && candidate.sex === "0"
+              );
+            };
+            let chunkIndex = horse.detailChunk;
+            let lookupId = horse.baseHorseId;
+            if (chunkIndex === undefined || chunkIndex === null || !lookupId) {
+              const matched = findBaseHorse();
+              if (!matched) {
+                return Promise.reject(new Error("Edit stallion detail metadata missing"));
+              }
+              chunkIndex = matched.detailChunk;
+              lookupId = matched.id;
+            }
+            const retryFromSummary = (originalError) => {
+              const matched = findBaseHorse();
+              if (
+                matched &&
+                (matched.id !== lookupId || matched.detailChunk !== chunkIndex)
+              ) {
+                return this.fetchHorseDetailChunk(matched.detailChunk).then(
+                  (retryMap) => {
+                    const retryDetail = retryMap.get(matched.id);
+                    if (retryDetail && Array.isArray(retryDetail.descendants)) {
+                      return this.hydrateHorseWithDetail(
+                        horse,
+                        retryDetail.descendants
+                      );
+                    }
+                    return Promise.reject(
+                      new Error("Edit stallion detail not found: " + horse.baseHorseId)
+                    );
+                  }
+                );
+              }
+              return Promise.reject(
+                originalError ||
+                  new Error("Edit stallion detail not found: " + horse.baseHorseId)
+              );
+            };
+            return this.fetchHorseDetailChunk(chunkIndex).then(
+              (detailMap) => {
+                const detail = detailMap.get(lookupId);
+                if (detail && Array.isArray(detail.descendants)) {
+                  return this.hydrateHorseWithDetail(horse, detail.descendants);
+                }
+                return retryFromSummary();
+              },
+              (error) => retryFromSummary(error)
+            );
           }
           // 2) 自家製馬: IndexedDB の customHorses から detail を解決（指摘 H）
           if (horse.source === "custom" || horse.customHorseId) {
@@ -334,6 +649,7 @@
             "dabimasFactorCategory",
             JSON.stringify(this.category)
           );
+          window.Dabimas.workspaceSync?.notifyLocalChange();
         },
         // detail 取得失敗時の再試行可能メッセージ（既存セルは保持済み・指摘 F）。
         notifyHorseDetailError(message) {
@@ -349,6 +665,14 @@
         // 例外ルールを使う）だけはこの Promise の解決を待ってから行う。
         dbinitializer(readyPromise) {
           const waitReady = () => Promise.resolve(readyPromise);
+          const savedHorsePromise = this.loadSavedHorseSummaries();
+          const editStallionPromise = this.loadEditStallions();
+          // グローバル設定は復元チェーンを待たせず、マスターと並行で読み込む。
+          this.loadSireLineColorSettings();
+          const composeSavedHorsesAfterRestore = () =>
+            Promise.all([savedHorsePromise, editStallionPromise]).then(() => {
+              this.refreshCandidateListsFromSelection();
+            });
 
           // 旧 full JSON を読み込む退避経路（summary 取得失敗時のフォールバック）。
           const loadFullJsonFallback = () =>
@@ -362,7 +686,9 @@
               .then((json) => {
                 this.horseSummaryLoaded = false;
                 this.buildHorseLists(json.horseLists);
-                return waitReady().then(() => this.c4());
+                return waitReady()
+                  .then(() => this.c4())
+                  .then(composeSavedHorsesAfterRestore);
               });
 
           // 通常経路: 軽量 summary を読み込む。descendants はここでは持たない。
@@ -388,7 +714,9 @@
               this.horseSummaryLoaded = true;
               this.buildHorseLists(horsesList);
               // 保存されていた場合はリストア処理を行う
-              const restoreDone = waitReady().then(() => this.c4());
+              const restoreDone = waitReady()
+                .then(() => this.c4())
+                .then(composeSavedHorsesAfterRestore);
               // 初期表示を邪魔しない idle のタイミングで detail を先読みする
               this.prefetchHorseDetails();
               return restoreDone;

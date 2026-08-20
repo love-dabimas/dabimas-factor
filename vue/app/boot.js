@@ -115,6 +115,24 @@
     });
   }
 
+  // 新しい Service Worker が有効化され、このページの制御を奪った瞬間に
+  // 一度だけ自動リロードして、新しい JS/CSS を確実に反映する。
+  // これが無いと skipWaiting で新SWが有効化されても、開いたままのページは
+  // 旧 JS を実行し続け、デプロイしても「古い挙動」が残り続ける（更新未反映の主因）。
+  // 初回インストール時（=読み込み時点で controller が無い）は既に最新を
+  // 読み込んでいるためリロードしない。既に controller がある＝更新なので
+  // そのときだけリロードする。
+  if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+    let reloadedForSwUpdate = false;
+    navigator.serviceWorker.addEventListener("controllerchange", function () {
+      if (reloadedForSwUpdate) {
+        return;
+      }
+      reloadedForSwUpdate = true;
+      window.location.reload();
+    });
+  }
+
   registerServiceWorker();
 
   var ua = navigator.userAgent.toLowerCase();

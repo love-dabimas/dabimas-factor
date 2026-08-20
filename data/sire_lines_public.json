@@ -1,0 +1,418 @@
+{
+  "schemaVersion": 1,
+  "sireLines": [
+    {
+      "id": 1,
+      "name": "エクリプス系",
+      "sireLineBaseId": 1,
+      "baseName": "Eclipse",
+      "baseAbbr": "Ec"
+    },
+    {
+      "id": 2,
+      "name": "ファラリス系",
+      "sireLineBaseId": 2,
+      "baseName": "Phalaris",
+      "baseAbbr": "Ph"
+    },
+    {
+      "id": 3,
+      "name": "ファロス系",
+      "sireLineBaseId": 2,
+      "baseName": "Phalaris",
+      "baseAbbr": "Ph"
+    },
+    {
+      "id": 4,
+      "name": "ネアルコ系",
+      "sireLineBaseId": 2,
+      "baseName": "Phalaris",
+      "baseAbbr": "Ph"
+    },
+    {
+      "id": 5,
+      "name": "ナスルーラ系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 6,
+      "name": "グレイソヴリン系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 7,
+      "name": "ソヴリンパス系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 8,
+      "name": "フォルティノ系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 9,
+      "name": "ゼダーン系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 10,
+      "name": "ネヴァーセイダイ系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 11,
+      "name": "プリンスリーギフト系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 12,
+      "name": "ボールドルーラー系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 13,
+      "name": "レッドゴッド系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 14,
+      "name": "ネヴァーベンド系",
+      "sireLineBaseId": 3,
+      "baseName": "Nasrullah",
+      "baseAbbr": "Ns"
+    },
+    {
+      "id": 15,
+      "name": "ロイヤルチャージャー系",
+      "sireLineBaseId": 4,
+      "baseName": "Royal Charger",
+      "baseAbbr": "Ro"
+    },
+    {
+      "id": 16,
+      "name": "ヘイルトゥリーズン系",
+      "sireLineBaseId": 4,
+      "baseName": "Royal Charger",
+      "baseAbbr": "Ro"
+    },
+    {
+      "id": 17,
+      "name": "サーゲイロード系",
+      "sireLineBaseId": 4,
+      "baseName": "Royal Charger",
+      "baseAbbr": "Ro"
+    },
+    {
+      "id": 18,
+      "name": "ハビタット系",
+      "sireLineBaseId": 4,
+      "baseName": "Royal Charger",
+      "baseAbbr": "Ro"
+    },
+    {
+      "id": 19,
+      "name": "ダンテ系",
+      "sireLineBaseId": 2,
+      "baseName": "Phalaris",
+      "baseAbbr": "Ph"
+    },
+    {
+      "id": 20,
+      "name": "モスボロー系",
+      "sireLineBaseId": 2,
+      "baseName": "Phalaris",
+      "baseAbbr": "Ph"
+    },
+    {
+      "id": 21,
+      "name": "ニアークティック系",
+      "sireLineBaseId": 5,
+      "baseName": "Nearctic",
+      "baseAbbr": "Ne"
+    },
+    {
+      "id": 22,
+      "name": "ノーザンダンサー系",
+      "sireLineBaseId": 5,
+      "baseName": "Nearctic",
+      "baseAbbr": "Ne"
+    },
+    {
+      "id": 23,
+      "name": "ファリス系",
+      "sireLineBaseId": 2,
+      "baseName": "Phalaris",
+      "baseAbbr": "Ph"
+    },
+    {
+      "id": 24,
+      "name": "ネイティヴダンサー系",
+      "sireLineBaseId": 6,
+      "baseName": "Native Dancer",
+      "baseAbbr": "Na"
+    },
+    {
+      "id": 25,
+      "name": "エタン系",
+      "sireLineBaseId": 6,
+      "baseName": "Native Dancer",
+      "baseAbbr": "Na"
+    },
+    {
+      "id": 26,
+      "name": "レイズアネイティヴ系",
+      "sireLineBaseId": 6,
+      "baseName": "Native Dancer",
+      "baseAbbr": "Na"
+    },
+    {
+      "id": 27,
+      "name": "フェアウェイ系",
+      "sireLineBaseId": 7,
+      "baseName": "Fairway",
+      "baseAbbr": "Fa"
+    },
+    {
+      "id": 28,
+      "name": "フェアトライアル系",
+      "sireLineBaseId": 7,
+      "baseName": "Fairway",
+      "baseAbbr": "Fa"
+    },
+    {
+      "id": 29,
+      "name": "トムフール系",
+      "sireLineBaseId": 8,
+      "baseName": "Tom Fool",
+      "baseAbbr": "To"
+    },
+    {
+      "id": 30,
+      "name": "テディ系",
+      "sireLineBaseId": 9,
+      "baseName": "Teddy",
+      "baseAbbr": "Te"
+    },
+    {
+      "id": 31,
+      "name": "スインフォード系",
+      "sireLineBaseId": 10,
+      "baseName": "Swynford",
+      "baseAbbr": "Sw"
+    },
+    {
+      "id": 32,
+      "name": "ブランドフォード系",
+      "sireLineBaseId": 10,
+      "baseName": "Swynford",
+      "baseAbbr": "Sw"
+    },
+    {
+      "id": 33,
+      "name": "ブレニム系",
+      "sireLineBaseId": 10,
+      "baseName": "Swynford",
+      "baseAbbr": "Sw"
+    },
+    {
+      "id": 34,
+      "name": "ブラントーム系",
+      "sireLineBaseId": 10,
+      "baseName": "Swynford",
+      "baseAbbr": "Sw"
+    },
+    {
+      "id": 35,
+      "name": "ハンプトン系",
+      "sireLineBaseId": 11,
+      "baseName": "Hampton",
+      "baseAbbr": "Ha"
+    },
+    {
+      "id": 36,
+      "name": "サンインロー系",
+      "sireLineBaseId": 11,
+      "baseName": "Hampton",
+      "baseAbbr": "Ha"
+    },
+    {
+      "id": 37,
+      "name": "ファイントップ系",
+      "sireLineBaseId": 11,
+      "baseName": "Hampton",
+      "baseAbbr": "Ha"
+    },
+    {
+      "id": 38,
+      "name": "ハイペリオン系",
+      "sireLineBaseId": 11,
+      "baseName": "Hampton",
+      "baseAbbr": "Ha"
+    },
+    {
+      "id": 39,
+      "name": "オーエンテューダー系",
+      "sireLineBaseId": 11,
+      "baseName": "Hampton",
+      "baseAbbr": "Ha"
+    },
+    {
+      "id": 40,
+      "name": "ロックフェラ系",
+      "sireLineBaseId": 11,
+      "baseName": "Hampton",
+      "baseAbbr": "Ha"
+    },
+    {
+      "id": 41,
+      "name": "カーレッド系",
+      "sireLineBaseId": 11,
+      "baseName": "Hampton",
+      "baseAbbr": "Ha"
+    },
+    {
+      "id": 42,
+      "name": "オリオール系",
+      "sireLineBaseId": 11,
+      "baseName": "Hampton",
+      "baseAbbr": "Ha"
+    },
+    {
+      "id": 43,
+      "name": "ヒムヤー系",
+      "sireLineBaseId": 12,
+      "baseName": "Himyar",
+      "baseAbbr": "Hi"
+    },
+    {
+      "id": 44,
+      "name": "セントサイモン系",
+      "sireLineBaseId": 13,
+      "baseName": "St.Simon",
+      "baseAbbr": "St"
+    },
+    {
+      "id": 45,
+      "name": "プリンスローズ系",
+      "sireLineBaseId": 13,
+      "baseName": "St.Simon",
+      "baseAbbr": "St"
+    },
+    {
+      "id": 46,
+      "name": "プリンスキロ系",
+      "sireLineBaseId": 13,
+      "baseName": "St.Simon",
+      "baseAbbr": "St"
+    },
+    {
+      "id": 47,
+      "name": "プリンスビオ系",
+      "sireLineBaseId": 13,
+      "baseName": "St.Simon",
+      "baseAbbr": "St"
+    },
+    {
+      "id": 48,
+      "name": "ボワルセル系",
+      "sireLineBaseId": 13,
+      "baseName": "St.Simon",
+      "baseAbbr": "St"
+    },
+    {
+      "id": 49,
+      "name": "リボー系",
+      "sireLineBaseId": 13,
+      "baseName": "St.Simon",
+      "baseAbbr": "St"
+    },
+    {
+      "id": 50,
+      "name": "ワイルドリスク系",
+      "sireLineBaseId": 13,
+      "baseName": "St.Simon",
+      "baseAbbr": "St"
+    },
+    {
+      "id": 51,
+      "name": "マッチェム系",
+      "sireLineBaseId": 14,
+      "baseName": "Matchem",
+      "baseAbbr": "Ma"
+    },
+    {
+      "id": 52,
+      "name": "マンノウォー系",
+      "sireLineBaseId": 14,
+      "baseName": "Matchem",
+      "baseAbbr": "Ma"
+    },
+    {
+      "id": 53,
+      "name": "レリック系",
+      "sireLineBaseId": 14,
+      "baseName": "Matchem",
+      "baseAbbr": "Ma"
+    },
+    {
+      "id": 54,
+      "name": "インテント系",
+      "sireLineBaseId": 14,
+      "baseName": "Matchem",
+      "baseAbbr": "Ma"
+    },
+    {
+      "id": 55,
+      "name": "ヘロド系",
+      "sireLineBaseId": 15,
+      "baseName": "Herod",
+      "baseAbbr": "He"
+    },
+    {
+      "id": 56,
+      "name": "トウルビヨン系",
+      "sireLineBaseId": 15,
+      "baseName": "Herod",
+      "baseAbbr": "He"
+    },
+    {
+      "id": 57,
+      "name": "クラリオン系",
+      "sireLineBaseId": 15,
+      "baseName": "Herod",
+      "baseAbbr": "He"
+    },
+    {
+      "id": 58,
+      "name": "マイバブー系",
+      "sireLineBaseId": 15,
+      "baseName": "Herod",
+      "baseAbbr": "He"
+    }
+  ],
+  "commentLabels": {
+    "0": "相性コメントなし",
+    "1": "Perfect",
+    "2": "Better",
+    "3": "Good",
+    "4": "SoSo"
+  }
+}

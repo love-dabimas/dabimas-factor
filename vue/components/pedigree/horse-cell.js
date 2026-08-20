@@ -65,6 +65,7 @@
         :index="index"
         :category="category"
         :inputed="inputed"
+        :color-settings="colorSettings"
         @memo-change="memoChange(index, $event)"
       ></memo-cell>
     </div>    `,
@@ -100,6 +101,10 @@
         category: {
           type: Array,
           required: true,
+        },
+        colorSettings: {
+          type: Object,
+          default: null,
         },
       },
       // data() / beforeDestroy() は mobile-horse-picker.js に外部化済み

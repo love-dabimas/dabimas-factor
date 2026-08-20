@@ -53,7 +53,7 @@
       <v-autocomplete
         :value="selected[index]"
         :items="lists"
-        :item-text="horse => [horse.nature ? '[' + horse.nature.charAt(0) + ']' : '', horse.name, horse.subName].filter(Boolean).join('')"
+        :item-text="getHorseBaseText"
         :filter="filterHorse"
         solo
         dense
@@ -65,7 +65,14 @@
         <template v-slot:item="data">
           <template >
             <v-list-item-content>
-              <v-list-item-title v-html="getHorse(data.item)"></v-list-item-title>
+              <v-list-item-title>
+                <v-chip
+                  v-if="data.item.source === 'edit'"
+                  x-small
+                  class="edit-stallion-chip"
+                >E</v-chip>
+                <span v-html="getHorse(data.item)"></span>
+              </v-list-item-title>
             </v-list-item-content>
           </template>
         </template>
@@ -75,10 +82,17 @@
       filterHorse(horse, queryText, itemText) {
         return window.Dabimas.logic.horses.filterHorse(horse, queryText, itemText);
       },
+      getHorseBaseText(horse) {
+        return window.Dabimas.logic.horses.getHorseBaseText(horse);
+      },
       getHorse(horse) {
         if (!horse?.disabled) {
-          const natureTag = horse.nature ? `[${horse.nature.charAt(0)}]` : '';
-          return natureTag + horse.name + horse.subName + this.getFactor(horse.factors);
+          // 候補リストは行頭に E バッジを出しているので、名前側の [E] は省く。
+          // 選択後の表示（item-text）は素の getHorseBaseText なので [E] が残る。
+          const text = window.Dabimas.logic.horses.getHorseBaseText(horse, {
+            hideEditTag: true,
+          });
+          return text + this.getFactor(horse.factors);
         }
       },
       getFactor(factors) {

@@ -1,0 +1,586 @@
+/* 統合版（ホーム画面・作業枠タブバー）専用スタイル。
+   docs/dabifaku_unified_spec_draft.md §9.6 のデザイントークンに準拠。
+   本体側の style.css / mobile.css には手を入れない。 */
+
+/* css/vuetify_compact.min.css は既存UIで使われるクラスの組み合わせだけを
+   前提に手動で削られており、.v-btn--icon.v-size--x-small の高さ指定が
+   コメントアウトされたまま（アイコン側も height:0 になっている）。
+   既存UIはこの組み合わせ（icon x-small）を使っていないため影響はないが、
+   統合版の削除バッジ・並び替えボタンで新たに使うため、ここで補う。 */
+.v-btn--icon.v-size--x-small {
+  height: 20px;
+  width: 20px;
+}
+.v-btn--icon.v-size--x-small .v-icon {
+  height: 18px;
+  width: 18px;
+  font-size: 18px;
+}
+
+.dabimas-home {
+  min-height: 100vh;
+  background-color: #ffffff;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* 洗練されたホームヘッダー: ほのかなブランド地＋ブランドカラーの下線 */
+.dabimas-home-appbar {
+  border-bottom: 2px solid #5b4b8a;
+  background: linear-gradient(180deg, #f6f4fb 0%, #ffffff 100%) !important;
+  box-shadow: 0 2px 8px rgba(91, 75, 138, 0.08) !important;
+}
+
+.dabimas-home-title {
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 1px;
+  color: #33324a;
+}
+
+/* ＋・設定アイコンをブランドカラーで大きく */
+.dabimas-home-action.v-btn--icon .v-icon {
+  color: #5b4b8a;
+}
+
+/* 編集ボタンの文字を読みやすく（editMode 時の primary 色は Vuetify に任せる） */
+.dabimas-home-edit.v-btn {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: normal;
+  min-width: 52px;
+}
+
+.dabimas-home-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 12px;
+  color: #757575;
+  text-align: center;
+}
+
+.dabimas-category-card {
+  position: relative;
+  min-height: 96px;
+  border-radius: 12px !important;
+  cursor: pointer;
+  padding: 12px 8px;
+}
+
+.dabimas-category-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 4px;
+  text-align: center;
+}
+
+.dabimas-category-name {
+  font-weight: 600;
+  font-size: 14px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dabimas-category-count {
+  color: #757575;
+}
+
+.dabimas-category-delete {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  z-index: 1;
+}
+
+.dabimas-category-reorder {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  display: flex;
+  z-index: 1;
+}
+
+.dabimas-icon-grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* カテゴリ追加／編集ダイアログ
+   コンパクト版 Vuetify の outlined フローティングラベルは、枠線の上に
+   ラベルが乗る（切り欠きが窮屈で重なって見える）。そこでフローティング
+   ラベルは使わず、枠の外・上に独立したラベルを置く方式にする。
+   これで重なりが根絶でき、高さも dense のまま詰められる。 */
+.dabimas-field-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 6px;
+}
+
+/* dense outlined の入力欄は、コンパクト版の影響で .v-input__control が
+   スロット(可視枠 min-height:40px)を包含できずに潰れ、枠が親からはみ出して
+   直後のアイコン群と重なる。control に最低高さを与えて包含させる。 */
+.dabimas-category-dialog .dabimas-category-name-input .v-input__control {
+  min-height: 44px;
+}
+
+/* 入力文字・プレースホルダーが小さい（コンパクト版の 13px）ため、
+   スマホでも読みやすい 16px に引き上げる（iOS のズーム防止にもなる） */
+.dabimas-category-dialog .dabimas-category-name-input input {
+  font-size: 16px;
+}
+
+.dabimas-category-dialog .dabimas-category-name-input input::placeholder {
+  font-size: 16px;
+}
+
+/* ===== 作業枠タブバー（統合版仕様 §9.4） ===== */
+
+.dabimas-tab-bar {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #ffffff;
+}
+
+.dabimas-tab-bar-name {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 30vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0 4px;
+}
+
+.dabimas-tab-bar-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* 「編集／完了」ボタン。コンパクト版 Vuetify では文字が極小になるため
+   読みやすいサイズに引き上げる */
+.dabimas-tab-bar-edit.v-btn {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: normal;
+  min-width: 48px;
+  padding: 0 10px;
+}
+
+.dabimas-tab-wrapper {
+  position: relative;
+  display: inline-block;
+  margin: 0 6px;
+}
+
+.dabimas-tab-btn {
+  min-width: 40px !important;
+  height: 32px !important;
+}
+
+.dabimas-tab-btn-close {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+}
+
+/* ===== 設定・エディット種牡馬 ===== */
+
+.dabimas-settings {
+  min-height: 100vh;
+  background-color: #fff;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* スマホ表示では #app と .v-application--wrap が
+   height 固定＋overflow:hidden（css/mobile.css の .exp-mobile-layout）になる。
+   血統表を1画面に収めるための指定だが、設定画面まで巻き添えで固定され、
+   子系統カラーのような長い一覧が下までスクロールできなくなる。
+   設定画面自身をスクロールコンテナにして逃がす。 */
+.exp-mobile-layout .dabimas-settings {
+  max-height: var(--exp-mobile-app-height);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  /* 最終行がホームインジケーターに潜り込まないように */
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+
+.dabimas-settings-appbar {
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.dabimas-settings-title {
+  font-size: 18px !important;
+  font-weight: 700;
+}
+
+.dabimas-settings-menu {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.dabimas-settings-empty {
+  display: flex;
+  min-height: 60vh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: #757575;
+  text-align: center;
+}
+
+.edit-stallion-list {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.edit-stallion-row {
+  border-bottom: 1px solid #eeeeee;
+}
+
+.edit-stallion-name,
+.edit-stallion-factors {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-stallion-chip {
+  background: #5b4b8a !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.edit-stallion-factor-badge {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111;
+}
+
+/* 因子バッジ／チップの配色。
+   血統表セル用の .fXX（css/style.css）は画面高さのメディアクエリの中にしか
+   無いため設定画面では当てにならない。同じ色をここで独立に定義する。 */
+.factor-color-badge {
+  color: #000 !important;
+  text-shadow:
+    1px 1px 0 #ffffff,
+    -1px 1px 0 #ffffff,
+    1px -1px 0 #ffffff,
+    -1px -1px 0 #ffffff,
+    1px 0 0 #ffffff,
+    0 1px 0 #ffffff,
+    -1px 0 0 #ffffff,
+    0 -1px 0 #ffffff;
+}
+
+.factor-color-badge.f01 { background: #fdfd00 !important; } /* 短 */
+.factor-color-badge.f02 { background: #fdfda2 !important; } /* 速 */
+.factor-color-badge.f03 { background: #fc6e00 !important; } /* 底 */
+.factor-color-badge.f04 { background: #03fdfd !important; } /* 長 */
+.factor-color-badge.f05 { background: #4682ff !important; } /* 適 */
+.factor-color-badge.f06 { background: #feabdd !important; } /* 丈 */
+.factor-color-badge.f07 { background: #02fe02 !important; } /* 早 */
+.factor-color-badge.f08 { background: #a7de0d !important; } /* 晩 */
+.factor-color-badge.f09 { background: #a1a1a3 !important; } /* 堅 */
+.factor-color-badge.f10 { background: #fc00fc !important; } /* 難 */
+.factor-color-badge.f11 { background: #f1eeea !important; } /* 走 */
+.factor-color-badge.f12 { background: #117e28 !important; } /* 中 */
+.factor-color-badge.f13 { background: #3e3b5c !important; } /* 強 */
+.factor-color-badge.f14 { background: #c64562 !important; } /* 雷 */
+
+/* 因名候補の1行（因名＋その因名が表す因子セットのバッジ） */
+.edit-stallion-name-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-stallion-name-option-text {
+  margin-right: auto;
+}
+
+.edit-stallion-actions {
+  flex-direction: row;
+  align-items: center;
+}
+
+.edit-stallion-missing {
+  text-decoration: line-through;
+  color: #757575;
+}
+
+.edit-stallion-factor-selects {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.edit-stallion-factor-selects .v-chip {
+  height: 24px;
+  font-size: 12px;
+  color: #111;
+}
+
+@media (max-width: 599px) {
+  .edit-stallion-factor-selects {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
+
+/* ============================================================
+   エディット種牡馬 登録／編集ダイアログ 専用スタイル
+   ------------------------------------------------------------
+   コンパクト版 Vuetify は .v-input{font-size:10px} かつ
+   .v-text-field{padding-top:12px;margin-top:0} と極端に詰めている。
+   フォームが密集してラベルのフロートが上の欄と重なり、文字も小さくて
+   読みづらい。このダイアログ専用に font-size と余白を作り直す。
+   （content-class="edit-stallion-dialog" でスコープを限定しているので
+   他画面の入力欄には影響しない）
+   ============================================================ */
+
+/* タイトルをラベル状のヘッダーに */
+.edit-stallion-dialog .edit-stallion-dialog-title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #33333a;
+  padding: 16px 20px;
+  border-left: 4px solid #5b4b8a;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f6f4fb;
+  word-break: break-all;
+}
+
+.edit-stallion-dialog .v-card__text {
+  padding: 20px 20px 8px;
+}
+
+/* 入力欄全体のフォントを読める大きさに戻す */
+.edit-stallion-dialog .v-input {
+  font-size: 15px;
+}
+
+/* 欄ごとに縦の余白を確保して、フロートしたラベルが上の欄と
+   重ならないようにする */
+.edit-stallion-dialog .v-text-field {
+  padding-top: 18px;
+  margin-bottom: 12px;
+}
+
+.edit-stallion-dialog .v-input .v-label {
+  height: auto;
+  line-height: 1.4;
+  font-size: 15px;
+}
+
+/* ベース種牡馬名・因名など選択済みの値を大きめに */
+.edit-stallion-dialog .v-select__selection,
+.edit-stallion-dialog .v-select__selection--comma,
+.edit-stallion-dialog .v-autocomplete input,
+.edit-stallion-dialog .v-combobox input {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* 因子セレクトは値がチップ表示なので通常ウェイトに戻す */
+.edit-stallion-dialog .edit-stallion-factor-selects .v-select__selection {
+  font-weight: normal;
+}
+
+/* 「なし」表示や因子チップも読める大きさに */
+.edit-stallion-dialog .edit-stallion-factor-selects .v-chip {
+  height: 26px;
+  font-size: 14px;
+}
+
+/* 3つの因子セレクト間の余白（グリッド gap と別に下側も確保） */
+.edit-stallion-dialog .edit-stallion-factor-selects {
+  margin-top: 4px;
+}
+
+/* 最後のドロップダウンの下線と、その下の説明文がくっついて見えないように */
+.edit-stallion-dialog .edit-stallion-dialog-note {
+  margin-top: 16px;
+}
+
+/* ダイアログ外に描画されるドロップダウン候補も読める大きさに
+   （.v-menu__content 側で当てる必要がある） */
+.edit-stallion-menu .v-list-item {
+  min-height: 40px;
+}
+
+.edit-stallion-menu .v-list-item__title,
+.edit-stallion-menu .v-list-item__content {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ===== 子系統カラー ===== */
+
+/* 子系統モード中だけ、既存の行テーマ背景を中和する。 */
+.exp-category-mode .AliceBlue,
+.exp-category-mode .SalmonPink,
+.exp-category-mode .Broodmare,
+.exp-category-mode .omoshiro_0,
+.exp-category-mode .migoto_0,
+.exp-category-mode .factor_AliceBlue,
+.exp-category-mode .factor_SalmonPink,
+.exp-category-mode .factor_omoshiro,
+.exp-category-mode .factor_migoto {
+  background: transparent;
+}
+
+/* 設定画面とヘッダの凡例。 */
+.sire-color-1 { background-color: #F4B8B8; }
+.sire-color-2 { background-color: #F6CD9E; }
+.sire-color-3 { background-color: #F2E388; }
+.sire-color-4 { background-color: #BCDD9A; }
+.sire-color-5 { background-color: #8FDEC1; }
+.sire-color-6 { background-color: #9BD6EF; }
+.sire-color-7 { background-color: #AABCF0; }
+.sire-color-8 { background-color: #D4B8EC; }
+.sire-color-9 { background-color: #F1B3D8; }
+
+/* 血統表の td は中和ルールより強いセレクタで塗る。 */
+.exp-category-mode td.sire-color-1 { background-color: #F4B8B8; }
+.exp-category-mode td.sire-color-2 { background-color: #F6CD9E; }
+.exp-category-mode td.sire-color-3 { background-color: #F2E388; }
+.exp-category-mode td.sire-color-4 { background-color: #BCDD9A; }
+.exp-category-mode td.sire-color-5 { background-color: #8FDEC1; }
+.exp-category-mode td.sire-color-6 { background-color: #9BD6EF; }
+.exp-category-mode td.sire-color-7 { background-color: #AABCF0; }
+.exp-category-mode td.sire-color-8 { background-color: #D4B8EC; }
+.exp-category-mode td.sire-color-9 { background-color: #F1B3D8; }
+
+/* Vuetify solo の白背景も、子系統色がある場合だけ上書きする。 */
+.exp-category-mode .sire-color-cell.sire-color-1 .v-input__slot { background-color: #F4B8B8 !important; }
+.exp-category-mode .sire-color-cell.sire-color-2 .v-input__slot { background-color: #F6CD9E !important; }
+.exp-category-mode .sire-color-cell.sire-color-3 .v-input__slot { background-color: #F2E388 !important; }
+.exp-category-mode .sire-color-cell.sire-color-4 .v-input__slot { background-color: #BCDD9A !important; }
+.exp-category-mode .sire-color-cell.sire-color-5 .v-input__slot { background-color: #8FDEC1 !important; }
+.exp-category-mode .sire-color-cell.sire-color-6 .v-input__slot { background-color: #9BD6EF !important; }
+.exp-category-mode .sire-color-cell.sire-color-7 .v-input__slot { background-color: #AABCF0 !important; }
+.exp-category-mode .sire-color-cell.sire-color-8 .v-input__slot { background-color: #D4B8EC !important; }
+.exp-category-mode .sire-color-cell.sire-color-9 .v-input__slot { background-color: #F1B3D8 !important; }
+
+.sire-line-color-toolbar,
+.sire-line-color-list {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.sire-line-color-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sire-line-color-count {
+  margin-right: auto;
+  font-weight: 600;
+}
+
+.sire-line-color-group-header {
+  min-height: 32px;
+  padding: 6px 16px;
+  background-color: #f5f5f5;
+  color: #424242;
+  font-weight: 700;
+}
+
+.sire-line-color-row {
+  min-height: 44px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.sire-line-color-swatch {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 0, 0, 0.38);
+  border-radius: 50%;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.sire-line-color-palette {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.sire-line-color-option {
+  min-height: 44px;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.sire-line-color-option:not([class*="sire-color-"]) {
+  background-color: #fff;
+}
+
+.sire-line-color-option--selected {
+  border-color: #212121;
+  box-shadow: inset 0 0 0 1px #fff;
+}
+
+/* バッジと入力欄の高さをそろえて中央で揃える。
+   コンパクト版 Vuetify の .v-text-field{padding-top:12px} が残っていると
+   枠だけ下にずれるので、この行では打ち消す。 */
+.sire-line-color-label-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sire-line-color-label-row .v-text-field {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* コンパクト版 Vuetify の outlined+dense は .v-input__control が
+   .v-input__slot（可視枠）を包含できずに潰れる。control 側にも最低高さを
+   与えて、行の高さ＝入力欄の見た目の高さになるようにする。 */
+.sire-line-color-label-row .v-input__control,
+.sire-line-color-label-row .v-input__slot {
+  min-height: 40px;
+}
+
+/* iOS で入力時に拡大されないよう16px以上を維持する */
+.sire-line-color-label-row .v-text-field input,
+.sire-line-color-label-row .v-text-field .v-label {
+  font-size: 16px;
+}

@@ -93,19 +93,9 @@
           // 【最適化】不要なArray.fromを削減
           // ローカルストレージから取得したものでnull要素は排除してからセット
           const filteredArray = parseArray.filter((v) => v);
-          this.horses = [
-            ...this.horsesBase,
-            ...filteredArray,
-          ];
-          this.stallions = [
-            ...this.stallionsBase,
-            ...filteredArray,
-          ];
-          this.broodmares = [
-            ...this.broodmaresBase,
+          this.refreshCandidateLists(filteredArray, [
             parseArray[16] ? parseArray[16] : "",
-          ];
-          this.horseDataLists = [this.horses, this.stallions, this.broodmares];
+          ]);
           this.selected = JSON.parse(localStorage.getItem("dabimasFactor"));
           this.category = JSON.parse(localStorage.getItem("dabimasFactorCategory"));
 
@@ -163,10 +153,7 @@
 
           this.dispColor = Array.from(new Array(32).fill(""));
           // baseをコピーする
-          this.stallions = [...this.stallionsBase];
-          this.broodmares = [...this.broodmaresBase];
-          this.horses = [...this.horsesBase];
-          this.horseDataLists = [this.horses, this.stallions, this.broodmares];
+          this.refreshCandidateLists();
 
           // 因子部分のCSS初期設定
           for (var i = 0; i < this.styleFactorClasses.length; i++) {
@@ -222,6 +209,8 @@
           this.dispCategory = 0;
 
           this.reload++;
+
+          window.Dabimas.workspaceSync?.notifyLocalChange();
         },
         handleClick() {
           this.dispCategory++;

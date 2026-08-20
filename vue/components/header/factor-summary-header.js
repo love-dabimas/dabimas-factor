@@ -23,14 +23,33 @@
       factorNums: { type: Array, required: true },
       inbreedFactorNums: { type: Array, required: true },
       categoryNum: { type: String, required: true },
+      affinityText: { type: String, default: "--" },
       theoryClass: { type: String, required: true },
       dispCategory: { type: Number, required: true },
       combinationCellStyle: { type: [Object, String], required: true },
       isCapturingScreenshot: { type: Boolean, required: true },
+      sireLineCounts: { type: Object, default: null },
+    },
+    computed: {
+      sireLineBuckets: function () {
+        return Array.from({ length: 10 }, function (_, index) {
+          return {
+            index: index,
+            label: index === 0 ? "未" : window.Dabimas.logic.sireLineColors.badgeFor(index),
+            className: window.Dabimas.logic.sireLineColors.colorClassFor(index),
+          };
+        });
+      },
+    },
+    methods: {
+      sireLineBucketValue: function (kind, index) {
+        var values = this.sireLineCounts && this.sireLineCounts[kind];
+        return values && typeof values[index] === "number" ? values[index] : 0;
+      },
     },
     template: `
         <table width="100%" style="border-collapse: collapse">
-          <tbody v-if="$vuetify.breakpoint.mdAndUp">
+          <tbody v-if="$vuetify.breakpoint.mdAndUp && dispCategory % 2 === 0">
             <tr>
               <th rowspan="3" class="f00_nitro_space"></th>
               <th width="1%" rowspan="3" class="f00_nitro">
@@ -48,9 +67,11 @@
                 rowspan="3"
                 width="3%"
                 :style="combinationCellStyle"
+                aria-label="保存"
+                title="保存"
                 @click="$emit('combination-open')"
               >
-                <v-icon size="x-large" color="white">mdi-horse-variant</v-icon>
+                <v-icon size="x-large" color="white">mdi-content-save</v-icon>
               </th>
               <th
                 rowspan="3"
@@ -125,7 +146,62 @@
             </tr>
           </tbody>
 
-          <tbody v-if="$vuetify.breakpoint.smAndDown">
+          <tbody
+            v-if="$vuetify.breakpoint.mdAndUp && dispCategory % 2 === 1"
+            class="sire-line-summary sire-line-summary--desktop"
+          >
+            <tr>
+              <th
+                width="1%"
+                rowspan="3"
+                class="f00_inbreed sire-line-summary-back"
+                @click="$emit('toggle-category')"
+              ><span>系統</span></th>
+              <th class="f00_inbreed_header">色</th>
+              <th
+                v-for="bucket in sireLineBuckets"
+                :key="'desktop-head-' + bucket.index"
+                colspan="3"
+                :class="bucket.className"
+              >{{ bucket.label }}</th>
+              <th rowspan="2" class="table_footer_TH_theory">相性</th>
+              <th
+                rowspan="3"
+                width="3%"
+                :style="combinationCellStyle"
+                aria-label="保存"
+                title="保存"
+                @click="$emit('combination-open')"
+              ><v-icon size="x-large" color="white">mdi-content-save</v-icon></th>
+              <th
+                rowspan="3"
+                width="3%"
+                @click="$emit('reset')"
+                style="background-color: #aa0000; cursor: pointer"
+              ><v-icon size="x-large" color="white">mdi-reload</v-icon></th>
+            </tr>
+            <tr>
+              <th class="f00_nitro">系統数</th>
+              <td
+                v-for="bucket in sireLineBuckets"
+                :key="'desktop-distinct-' + bucket.index"
+                colspan="3"
+                class="factorNumCell"
+              >{{ sireLineBucketValue('distinct', bucket.index) }}</td>
+            </tr>
+            <tr>
+              <th class="f00_inbreed">出現数</th>
+              <td
+                v-for="bucket in sireLineBuckets"
+                :key="'desktop-total-' + bucket.index"
+                colspan="3"
+                class="factorNumCell"
+              >{{ sireLineBucketValue('total', bucket.index) }}</td>
+              <td class="sire-line-affinity-value">{{ affinityText }}</td>
+            </tr>
+          </tbody>
+
+          <tbody v-if="$vuetify.breakpoint.smAndDown && dispCategory % 2 === 0">
             <tr>
               <td colspan="2" class="exp-mobile-screenshot-cell">
                 <button
@@ -190,7 +266,7 @@
                 align="center"
                 class="mobile-cross-rowspan"
                 @click="$emit('combination-open')"
-              ><v-icon size="large" color="white">mdi-horse-variant</v-icon></td>
+              ><v-icon size="large" color="white">mdi-content-save</v-icon></td>
             </tr>
             <tr class="mobile-cross-value-row">
               <td colspan="2" class="f00_inbreed">クロス</td>
@@ -209,6 +285,56 @@
               <td class="factorNumCell">{{inbreedFactorNums[6]}}</td>
               <td class="factorNumCell">{{inbreedFactorNums[7]}}</td>
             </tr>            <!-- ここから下がいらない -->
+          </tbody>
+
+          <tbody
+            v-if="$vuetify.breakpoint.smAndDown && dispCategory % 2 === 1"
+            class="sire-line-summary sire-line-summary--mobile"
+          >
+            <tr>
+              <td colspan="2" class="exp-mobile-screenshot-cell">
+                <button
+                  type="button"
+                  class="exp-mobile-screenshot-button"
+                  :disabled="isCapturingScreenshot"
+                  aria-label="Save screenshot"
+                  title="Save screenshot"
+                  data-html2canvas-ignore="true"
+                  @click.stop.prevent="$emit('capture-screenshot')"
+                ><v-icon small color="white">mdi-camera</v-icon></button>
+              </td>
+              <th
+                v-for="bucket in sireLineBuckets"
+                :key="'mobile-head-' + bucket.index"
+                :class="bucket.className"
+              >{{ bucket.label }}</th>
+              <th class="f00_theory">相性</th>
+            </tr>
+            <tr>
+              <td colspan="2" class="f00_nitro">系統数</td>
+              <td
+                v-for="bucket in sireLineBuckets"
+                :key="'mobile-distinct-' + bucket.index"
+                class="factorNumCell"
+              >{{ sireLineBucketValue('distinct', bucket.index) }}</td>
+              <td class="mobile-nitro-rowspan sire-line-affinity-value" align="center">{{ affinityText }}</td>
+            </tr>
+            <tr>
+              <td colspan="2" class="f00_inbreed">出現数</td>
+              <td
+                v-for="bucket in sireLineBuckets"
+                :key="'mobile-total-' + bucket.index"
+                class="factorNumCell"
+              >{{ sireLineBucketValue('total', bucket.index) }}</td>
+              <td
+                :style="combinationCellStyle"
+                align="center"
+                class="mobile-cross-rowspan"
+                aria-label="保存"
+                title="保存"
+                @click="$emit('combination-open')"
+              ><v-icon size="large" color="white">mdi-content-save</v-icon></td>
+            </tr>
           </tbody>
         </table>
     `,
