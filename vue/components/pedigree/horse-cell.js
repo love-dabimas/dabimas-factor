@@ -28,8 +28,19 @@
   // カスタムコンポーネント定義（コンボボックス）
   Vue.component("horse-cell", {
       template: `
-      <div class="exp-mobile-autocomplete-root">
+      <div
+        class="exp-mobile-autocomplete-root"
+        :class="{ 'exp-horse-cell--select': dispCategory%2 === 0 }"
+      >
         <template v-if="dispCategory%2 === 0">
+          <span v-if="cellBadges.length" class="exp-horse-badges">
+            <span
+              v-for="badge in cellBadges"
+              :key="badge.key"
+              :class="['exp-horse-badge', badge.className]"
+              :title="badge.title"
+            >{{ badge.text }}</span>
+          </span>
           <template v-if="isMobileLayout">
             <button
               type="button"
@@ -116,11 +127,11 @@
       methods: {
         // normalizeSearchText / getHorseKey / getHorseListKey は
         // vue/components/pedigree/mobile-horse-picker.js に外部化済み。
-        getHorseBaseText(horse) {
-          return window.Dabimas.logic.horses.getHorseBaseText(horse);
+        getHorseNameText(horse) {
+          return window.Dabimas.logic.horses.getHorseNameText(horse);
         },
         getHorseSelectedText(horse) {
-          return this.getHorseBaseText(horse);
+          return this.getHorseNameText(horse);
         },
         // getHorseSearchIndexText / getHorseFactorBadges /
         // clearMobileQuerySyncTimer 〜 isSelectedHorse（ダイアログ本体の
@@ -195,6 +206,12 @@
             return this.mobilePlaceholderText;
           }
           return this.getHorseSelectedText(horse) || this.placeholderText;
+        },
+        cellBadges() {
+          const horse = this.selected[this.index];
+          return horse
+            ? window.Dabimas.logic.horses.getHorseBadges(horse)
+            : [];
         },
         // mobileDialogTitle / mobileDialogContextLabel / mobileCurrentSelectionLabel /
         // mobileInputId / filteredMobileLists は

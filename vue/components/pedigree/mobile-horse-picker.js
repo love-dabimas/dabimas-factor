@@ -119,7 +119,18 @@
                 {{ mobileDialogContextLabel }}
               </div>
               <div class="exp-mobile-current-selection-value">
-                {{ mobileCurrentSelectionLabel }}
+                <span
+                  v-if="mobileCurrentSelectionBadges.length"
+                  class="exp-horse-badges"
+                >
+                  <span
+                    v-for="badge in mobileCurrentSelectionBadges"
+                    :key="badge.key"
+                    :class="['exp-horse-badge', badge.className]"
+                    :title="badge.title"
+                  >{{ badge.text }}</span>
+                </span>
+                <span>{{ mobileCurrentSelectionLabel }}</span>
               </div>
             </div>
             <label
@@ -166,11 +177,17 @@
                 @click="selectMobileHorse(horse)"
               >
                 <div class="exp-option-item">
-                  <v-chip
-                    v-if="horse.source === 'edit'"
-                    x-small
-                    class="edit-stallion-chip"
-                  >E</v-chip>
+                  <span
+                    v-if="getHorseBadges(horse).length"
+                    class="exp-horse-badges"
+                  >
+                    <span
+                      v-for="badge in getHorseBadges(horse)"
+                      :key="badge.key"
+                      :class="['exp-horse-badge', badge.className]"
+                      :title="badge.title"
+                    >{{ badge.text }}</span>
+                  </span>
                   <span class="exp-option-label exp-mobile-option-name">
                     {{ getHorseListText(horse) }}
                   </span>
@@ -213,6 +230,9 @@
           return "未選択";
         }
         return this.getHorseSelectedText(horse) || "未選択";
+      },
+      mobileCurrentSelectionBadges() {
+        return this.getHorseBadges(this.selected[this.index]);
       },
       mobileInputId() {
         return `exp-mobile-search-${this.index}`;
@@ -263,17 +283,17 @@
         }
         return key;
       },
-      getHorseBaseText(horse) {
-        return window.Dabimas.logic.horses.getHorseBaseText(horse);
+      getHorseBadges(horse) {
+        return window.Dabimas.logic.horses.getHorseBadges(horse);
       },
-      // 候補リストは行頭に E バッジを出しているので、名前側の [E] は省く。
+      getHorseNameText(horse) {
+        return window.Dabimas.logic.horses.getHorseNameText(horse);
+      },
       getHorseListText(horse) {
-        return window.Dabimas.logic.horses.getHorseBaseText(horse, {
-          hideEditTag: true,
-        });
+        return this.getHorseNameText(horse);
       },
       getHorseSelectedText(horse) {
-        return this.getHorseBaseText(horse);
+        return this.getHorseNameText(horse);
       },
       getHorseSearchIndexText(horse) {
         return window.Dabimas.logic.horses.getHorseSearchIndexText(horse);

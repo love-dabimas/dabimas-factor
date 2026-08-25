@@ -262,10 +262,109 @@
   gap: 6px;
 }
 
-.edit-stallion-chip {
-  background: #5b4b8a !important;
-  color: #fff !important;
+.exp-horse-badges {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 4px;
+  pointer-events: none;
+}
+
+.exp-horse-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 14px;
+  min-width: 14px;
+  padding: 0 2px;
+  border-radius: 3px;
+  font-size: 10px;
+  line-height: 1;
   font-weight: 700;
+  color: #fff;
+}
+
+.exp-horse-badge--edit { background: #5b4b8a; }
+.exp-horse-badge--nature { background: #00796b; }
+.exp-horse-badge--focused { background: #a67c00; }
+.exp-horse-badge--double { background: #01579b; }
+.exp-horse-badge--normal { background: #c62828; }
+.exp-horse-badge--noability { background: #8d9aa5; }
+.exp-horse-badge--inmeisai { background: #ad1457; }
+.exp-horse-badge--saved { background: #2e7d32; }
+
+.table_main .exp-horse-cell--select {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.table_main .exp-horse-cell--select > .v-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* PC表示の血統表は「ヘッダの下に残る高さ」を16行へ配分する。
+   以前は max-height:769px の端末向けに行高を28px固定していたが、それだと
+   全画面表示（F11）のように縦だけ伸びたときに16行が下へ伸びず、画面下に
+   大きな余白が残ってしまう。--exp-pc-row-height を viewport 追従にして
+   16行が常にヘッダ下を使い切るようにする。
+   変数の既定値はヘッダ高を約133pxと見なした近似で、実測値による上書きは
+   vue/app/methods/ui-viewport.js の applyDesktopViewportLayout() が行う
+   （子系統表示でヘッダが高くなるケースもそこで吸収する）。 */
+@media screen and (min-width: 960px) {
+  .v-application {
+    --exp-pc-row-height: clamp(28px, calc((100vh - 133px) / 16), 44px);
+  }
+
+  .table_main > tbody > tr,
+  .table_main > tbody > tr > td {
+    height: var(--exp-pc-row-height);
+    max-height: var(--exp-pc-row-height);
+  }
+
+  .table_main .v-text-field.v-text-field--solo .v-input__control,
+  .table_main .v-text-field.v-text-field--solo.v-input--dense > .v-input__control,
+  .table_main .v-text-field.v-text-field--solo .v-input__slot {
+    min-height: var(--exp-pc-row-height);
+    height: var(--exp-pc-row-height);
+  }
+
+  /* Factor text (notably .f01's inherited 1.6 line-height) and the row-16
+     category button must not make selected rows taller than empty rows. */
+  .table_main .styleFactorClassMain {
+    line-height: var(--exp-pc-row-height);
+  }
+
+  /* 因子セルの「因」ボタン（★エディット種牡馬の手動因子）は v-btn の既定の
+     min-width:64px / padding:0 16px のせいで、そのセルだけ列幅が広がって
+     隣の因子セルと揃わない。行高だけ合わせて左右は詰める。 */
+  .table_main .v-btn.v-size--default {
+    min-height: var(--exp-pc-row-height);
+    height: var(--exp-pc-row-height);
+    min-width: 0;
+    padding: 0 2px;
+  }
+
+  /* 馬名セルのバッジ（回／非／ナ など）。PC版は馬名が24pxまで大きくなるのに
+     バッジだけ14px固定だと小さすぎるため、ケータイ版（css/mobile.css の
+     --exp-mobile-row-height 追従）と同じ考え方で行高に追従させる。
+     .table_main に閉じているので、body 直下へ portal される
+     autocomplete のドロップダウン内のバッジ（今のサイズで問題ない）は変わらない。 */
+  .table_main .exp-horse-badges {
+    gap: 3px;
+    padding-left: 4px;
+  }
+
+  .table_main .exp-horse-badge {
+    height: clamp(14px, calc(var(--exp-pc-row-height) * 0.58), 26px);
+    min-width: clamp(14px, calc(var(--exp-pc-row-height) * 0.58), 26px);
+    padding: 0 3px;
+    border-radius: 4px;
+    font-size: clamp(10px, calc(var(--exp-pc-row-height) * 0.4), 18px);
+  }
 }
 
 .edit-stallion-factor-badge {

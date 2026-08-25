@@ -215,7 +215,21 @@
         this.snackbar = { show: true, message: message, color: color || "success" };
       },
       getHorseText: function (horse) {
-        return horseSearch.getHorseBaseText(horse);
+        return horseSearch.getHorseNameText(horse);
+      },
+      getHorseBadges: function (horse) {
+        return horseSearch.getHorseBadges(horse);
+      },
+      getEditStallionBadges: function (row) {
+        if (!row || !row.baseHorse) {
+          return horseSearch.getHorseBadges({ source: "edit" });
+        }
+        return horseSearch.getHorseBadges(
+          Object.assign({}, row.baseHorse, {
+            source: "edit",
+            subName: row.record.factorName || "",
+          })
+        );
       },
       filterBaseHorse: function (item, queryText) {
         return horseSearch.filterHorse(item, queryText);
@@ -373,7 +387,14 @@
           <v-list-item v-for="row in rows" :key="row.record.id" class="edit-stallion-row">
             <v-list-item-content :class="{ 'edit-stallion-missing': !row.baseHorse }">
               <v-list-item-title class="edit-stallion-name">
-                <v-chip x-small class="edit-stallion-chip">E</v-chip>
+                <span class="exp-horse-badges">
+                  <span
+                    v-for="badge in getEditStallionBadges(row)"
+                    :key="badge.key"
+                    :class="['exp-horse-badge', badge.className]"
+                    :title="badge.title"
+                  >{{ badge.text }}</span>
+                </span>
                 <span>{{ displayName(row) }}</span>
               </v-list-item-title>
               <v-list-item-subtitle v-if="row.baseHorse" class="edit-stallion-factors">
@@ -408,7 +429,26 @@
                 label="ベース種牡馬"
                 :menu-props="{ contentClass: 'edit-stallion-menu', offsetY: true }"
                 clearable
-              ></v-autocomplete>
+              >
+                <template v-slot:item="{ item }">
+                  <v-list-item-content>
+                    <v-list-item-title>
+                      <span
+                        v-if="getHorseBadges(item).length"
+                        class="exp-horse-badges"
+                      >
+                        <span
+                          v-for="badge in getHorseBadges(item)"
+                          :key="badge.key"
+                          :class="['exp-horse-badge', badge.className]"
+                          :title="badge.title"
+                        >{{ badge.text }}</span>
+                      </span>
+                      <span>{{ getHorseText(item) }}</span>
+                    </v-list-item-title>
+                  </v-list-item-content>
+                </template>
+              </v-autocomplete>
               <v-combobox
                 v-model="form.factorName"
                 :items="factorNameCandidates"

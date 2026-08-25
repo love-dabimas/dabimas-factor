@@ -22,6 +22,42 @@
   // getHorseSearchIndexText の結果をキャッシュする。馬オブジェクトは
   // Object.freeze 済みで instance が使い回されるため、WeakMap で参照ベースにキャッシュできる。
   var horseSearchIndexCache = new WeakMap();
+  var ABILITY_BADGES = {
+    none: {
+      text: "凡",
+      className: "exp-horse-badge--noability",
+      title: "非凡なし",
+    },
+    normal: {
+      text: "非",
+      className: "exp-horse-badge--normal",
+      title: "非凡あり",
+    },
+    double: {
+      text: "弐",
+      className: "exp-horse-badge--double",
+      title: "弐重非凡",
+    },
+    focused: {
+      text: "特",
+      className: "exp-horse-badge--focused",
+      title: "特化非凡",
+    },
+  };
+  var ABILITY_ALIASES = {
+    none: "非凡なし|ひぼんなし",
+    normal: "非凡あり|ひぼんあり",
+    double: "非凡あり|ひぼんあり|弐重非凡|にじゅうひぼん",
+    focused: "非凡あり|ひぼんあり|特化非凡|とっかひぼん",
+  };
+  var INMEISAI_CATEGORY_ICON = "14";
+  var INMEISAI_ALIASES = "因名祭|いんめいさい";
+  // 配合保存ダイアログで作った馬（自家製）。保存レコードの name は
+  // "☆タイトル" で、インブリード判定（vue/logic/inbreed/inbreed-detector.js）が
+  // この ☆ を見て対象外にしているため、名前そのものは変えない。
+  // 表示のときだけ ☆ を落として「自」バッジに置き換える。
+  var SAVED_NAME_PREFIX = /^☆/;
+  var SAVED_ALIASES = "自家製|じかせい";
 
   // 全角/半角・カタカナ/ひらがな・空白の揺れを吸収して検索しやすい形にする。
   // 例: "ｷﾀｻﾝﾌﾞﾗｯｸ" と "きたさんぶらっく" が同じ結果になるようにする。
@@ -55,6 +91,90 @@
     ].join("|");
   }
 
+  // 非凡バッジ対象になる★5種牡馬の既知種別だけを返す。
+  function getAbilityType(horse) {
+    if (!horse || horse.sex !== "0" || horse.rare !== 5) {
+      return "";
+    }
+    return ABILITY_BADGES[horse.abilityType] ? horse.abilityType : "";
+  }
+
+  function isInmeisai(horse) {
+    return !!horse && horse.categoryIcon === INMEISAI_CATEGORY_ICON;
+  }
+
+  // 配合保存ダイアログで保存した馬かどうか。候補一覧に載る summary は
+  // source:"custom" を持つが、localStorage から復元した selected など
+  // source が落ちている経路もあるため、customHorseId と名前の ☆ も見る。
+  function isSavedHorse(horse) {
+    if (!horse) {
+      return false;
+    }
+    return (
+      horse.source === "custom" ||
+      !!horse.customHorseId ||
+      SAVED_NAME_PREFIX.test(String(horse.name || ""))
+    );
+  }
+
+  // 画面共通の1文字バッジを、表示順どおりの新しい配列で返す。
+  function getHorseBadges(horse, options) {
+    if (!horse) {
+      return [];
+    }
+    var badges = [];
+    var hideEditBadge = !!(options && options.hideEditBadge);
+    if (isSavedHorse(horse)) {
+      badges.push({
+        key: "saved",
+        text: "自",
+        className: "exp-horse-badge--saved",
+        title: "自家製（保存した配合）",
+      });
+    }
+    if (horse.source === "edit" && !hideEditBadge) {
+      badges.push({
+        key: "edit",
+        text: "E",
+        className: "exp-horse-badge--edit",
+        title: "エディット種牡馬",
+      });
+    }
+    if (typeof horse.nature === "string" && horse.nature) {
+      badges.push({
+        key: "nature",
+        text: horse.nature.charAt(0),
+        className: "exp-horse-badge--nature",
+        title: "天性: " + horse.nature,
+      });
+    }
+    var abilityType = getAbilityType(horse);
+    if (abilityType) {
+      badges.push(Object.assign({ key: "ability" }, ABILITY_BADGES[abilityType]));
+    }
+    if (isInmeisai(horse)) {
+      badges.push({
+        key: "inmeisai",
+        text: "祭",
+        className: "exp-horse-badge--inmeisai",
+        title: "因名祭",
+      });
+    }
+    return badges;
+  }
+
+  // バッジを別DOMで描画する場所向けの、タグを含まない馬名。
+  function getHorseNameText(horse) {
+    if (!horse) {
+      return "";
+    }
+    // 自家製馬の先頭の ☆ は「自」バッジで表すので、表示名からは外す。
+    // この関数を呼ぶ場所（血統表のセル・候補一覧・スマホの検索ダイアログ）は
+    // いずれも同じ場所へ getHorseBadges の結果を並べている。
+    var name = String(horse.name || "").replace(SAVED_NAME_PREFIX, "");
+    return [name, horse.subName || ""].filter(Boolean).join("");
+  }
+
   // 画面に表示する馬名（種別タグ＋名前＋補足）を組み立てる。
   // options.hideEditTag を立てるとエディット種牡馬の [E] を省く。
   // 候補リストのように行頭へ E バッジを別途出す場所で、同じ情報が
@@ -64,11 +184,12 @@
       return "";
     }
     var hideEditTag = !!(options && options.hideEditTag);
-    var editTag = horse.source === "edit" && !hideEditTag ? "[E]" : "";
-    var natureTag = horse.nature ? "[" + horse.nature.charAt(0) + "]" : "";
-    return [editTag, natureTag, horse.name || "", horse.subName || ""]
-      .filter(Boolean)
+    var badgeText = getHorseBadges(horse, { hideEditBadge: hideEditTag })
+      .map(function (badge) {
+        return "[" + badge.text + "]";
+      })
       .join("");
+    return badgeText + getHorseNameText(horse);
   }
 
   // 検索対象にする文字列（表示名＋名前＋補足＋ふりがな＋種別）をまとめて正規化する。
@@ -81,6 +202,7 @@
     if (typeof cached === "string") {
       return cached;
     }
+    var abilityType = getAbilityType(horse);
     var searchText = normalizeSearchText(
       [
         getHorseBaseText(horse),
@@ -88,6 +210,14 @@
         horse.subName || "",
         horse.ruby || "",
         horse.nature || "",
+        getHorseBadges(horse)
+          .map(function (badge) {
+            return badge.text;
+          })
+          .join(""),
+        abilityType ? ABILITY_ALIASES[abilityType] : "",
+        isInmeisai(horse) ? INMEISAI_ALIASES : "",
+        isSavedHorse(horse) ? SAVED_ALIASES : "",
       ]
         .filter(Boolean)
         .join("|")
@@ -133,6 +263,11 @@
 
   window.Dabimas.logic.horses.normalizeSearchText = normalizeSearchText;
   window.Dabimas.logic.horses.getHorseKey = getHorseKey;
+  window.Dabimas.logic.horses.getAbilityType = getAbilityType;
+  window.Dabimas.logic.horses.isInmeisai = isInmeisai;
+  window.Dabimas.logic.horses.isSavedHorse = isSavedHorse;
+  window.Dabimas.logic.horses.getHorseBadges = getHorseBadges;
+  window.Dabimas.logic.horses.getHorseNameText = getHorseNameText;
   window.Dabimas.logic.horses.getHorseBaseText = getHorseBaseText;
   window.Dabimas.logic.horses.getHorseSearchIndexText = getHorseSearchIndexText;
   window.Dabimas.logic.horses.getHorseFactorBadges = getHorseFactorBadges;

@@ -22,6 +22,15 @@
   window.Dabimas.app = window.Dabimas.app || {};
   window.Dabimas.app.methods = window.Dabimas.app.methods || {};
 
+  // PC表示の行高の下限・上限。下限は 607px 級（Chromeのツールバーとタスクバーを
+  // 引いた 768px クラスのPC）で16行を収めるための値、上限は縦に十分広い画面で
+  // 行が間延びしないための値。
+  var DESKTOP_ROW_HEIGHT_MIN = 28;
+  var DESKTOP_ROW_HEIGHT_MAX = 44;
+  // 1回の適用で行高を詰め直す回数。1回目で実測との差はほぼ埋まり、
+  // 残りは罫線・小数px丸め分の追い込み。
+  var DESKTOP_ROW_HEIGHT_FIT_STEPS = 4;
+
   Object.assign(window.Dabimas.app.methods, {
         getStableViewportHeight: function () {
           const docEl = document.documentElement || {};
@@ -181,6 +190,78 @@
             this.isCapturingScreenshot = false;
           }
         },
+        // PC表示（smAndDown 以外）の血統表の行高を決める。
+        // css/unified.css の --exp-pc-row-height はヘッダ高を固定値で近似した
+        // フォールバックなので、ここで実測値へ寄せる。
+        // 「16行がヘッダ下をどれだけ余らせている / はみ出しているか」を1行あたりに
+        // 割り戻して足す、を数回繰り返して詰める。container の padding や表の外枠
+        // ボーダー、子系統表示でヘッダが高くなるケースを個別に数えずに済み、
+        // 行高と実際に使う高さの差（罫線分など）も繰り返しの中で吸収される。
+        applyDesktopViewportLayout: function () {
+          const app = this.$el;
+          if (!app) {
+            return;
+          }
+          if (this.$vuetify.breakpoint.smAndDown) {
+            app.style.removeProperty("--exp-pc-row-height");
+            return;
+          }
+          const docEl = document.documentElement || {};
+          // clientHeight は横スクロールバーを含まない実際の表示領域。
+          const viewportHeight =
+            Number(docEl.clientHeight) || Number(window.innerHeight) || 0;
+          if (!(viewportHeight > 0)) {
+            return;
+          }
+          // 余白の測定は列（.pedigree-card-col）の下端で行う。カード自身の下端だと
+          // 列の padding-bottom が漏れて、その分だけ縦スクロールバーが出てしまう。
+          const col = app.querySelector(".pedigree-card-col");
+          const row = col
+            ? col.querySelector(".pedigree-card-shell .table_main > tbody > tr")
+            : null;
+          if (!col || !row) {
+            return;
+          }
+          let rowHeight = row.getBoundingClientRect().height;
+          if (!(rowHeight > 0)) {
+            // 画面が非表示（currentScreen が category 以外）のときはまだ測れない。
+            return;
+          }
+          for (let i = 0; i < DESKTOP_ROW_HEIGHT_FIT_STEPS; i++) {
+            const scrollTop = window.scrollY || window.pageYOffset || 0;
+            const slack =
+              viewportHeight - (col.getBoundingClientRect().bottom + scrollTop);
+            if (Math.abs(slack) < 1) {
+              break;
+            }
+            const nextRowHeight = Math.min(
+              DESKTOP_ROW_HEIGHT_MAX,
+              Math.max(DESKTOP_ROW_HEIGHT_MIN, rowHeight + slack / 16)
+            );
+            if (Math.abs(nextRowHeight - rowHeight) < 0.01) {
+              // 上限／下限に張り付いていて、これ以上詰められない。
+              break;
+            }
+            rowHeight = nextRowHeight;
+            app.style.setProperty(
+              "--exp-pc-row-height",
+              `${Math.round(rowHeight * 100) / 100}px`
+            );
+          }
+        },
+        scheduleInitialDesktopViewportLayout: function () {
+          if (this.$vuetify.breakpoint.smAndDown) {
+            return;
+          }
+          // 起動直後は血統表がまだ描画途中で行高が測れないことがあるため、
+          // モバイル側と同じく数回に分けて適用する。
+          [0, 160, 480, 960].forEach((delay) => {
+            const timerId = setTimeout(() => {
+              this.applyDesktopViewportLayout();
+            }, delay);
+            this.mobileViewportLockTimerIds.push(timerId);
+          });
+        },
         clearMobileViewportGeometryTimer: function () {
           if (this.mobileViewportGeometryTimerId !== null) {
             clearTimeout(this.mobileViewportGeometryTimerId);
@@ -324,8 +405,12 @@
               : 0;
           const rowStyle = rowEl ? window.getComputedStyle(rowEl) : null;
           const rowGap = rowStyle ? parseFloat(rowStyle.rowGap) || 0 : 0;
-          const safetyPerCard = 8;
-          const layoutSafety = 12;
+          // collapsed table の罫線と小数px丸めを含む内部予算。カード高の式にも
+          // 同じ値を足すため外枠は変えず、320x568 でも16行を wrap 内へ収める。
+          const safetyPerCard = 15;
+          // container / gap / border は個別計上済みなので、残りの高さは
+          // 2枚のカードへ使い切る。
+          const layoutSafety = 0;
 
           const measuredCards = cardCols
             .map((col) => {

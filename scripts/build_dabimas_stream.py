@@ -73,8 +73,31 @@ HD_NAME_T = 23
 HD_PARENT_LINE_T = 38
 HD_SON_T = 53
 HD_FACTOR_T1 = 68
+HD_ABILITY_ICON = 113
 
-ROW_SIZE = 112
+ROW_SIZE = 113
+
+ABILITY_TYPE_BY_ICON = {
+    "icon_ability_00.png": "none",
+    "icon_ability_99.png": "normal",
+    "icon_ability_98.png": "focused",
+    "icon_ability_97.png": "double",
+}
+INMEISAI_CATEGORY_ICON = "14"
+CATEGORY_ICON_RE = re.compile(r"list_icn_cat_(.+)\.png$")
+ABILITY_BADGE_CHAR = {
+    "none": "凡",
+    "normal": "非",
+    "double": "弐",
+    "focused": "特",
+}
+ABILITY_ALIASES = {
+    "none": ("非凡なし", "ひぼんなし"),
+    "normal": ("非凡あり", "ひぼんあり"),
+    "double": ("非凡あり", "ひぼんあり", "弐重非凡", "にじゅうひぼん"),
+    "focused": ("非凡あり", "ひぼんあり", "特化非凡", "とっかひぼん"),
+}
+INMEISAI_ALIASES = ("因名祭", "いんめいさい")
 
 
 # 因子番号 -> 1文字略称（出力 JSON で使用）。
@@ -116,6 +139,8 @@ SIRE_LINE_DICT = load_sire_line_dict()
 CONVERSION_WARNING_COUNTS = {
     "unknown_sire_line": 0,
     "invalid_rare": 0,
+    "missing_ability_icon": 0,
+    "unknown_ability_icon": 0,
 }
 
 # 旧実装で使っていた「特殊アイコン除外」対象。
@@ -175,6 +200,30 @@ def parse_stallion_rare(value: object, identifier: str) -> Optional[int]:
     return None
 
 
+def parse_ability_type(icon_url: str, sex: str, identifier: str) -> Optional[str]:
+    """非凡アイコン URL から種別を判定する。牝馬・判定不能は None。"""
+    if sex != "0":
+        return None
+    icon = safe_str(icon_url)
+    if not icon:
+        CONVERSION_WARNING_COUNTS["missing_ability_icon"] += 1
+        print(f"[warn] ability icon not found ({identifier})")
+        return None
+    icon_name = icon.rsplit("/", 1)[-1]
+    ability_type = ABILITY_TYPE_BY_ICON.get(icon_name)
+    if ability_type is None:
+        CONVERSION_WARNING_COUNTS["unknown_ability_icon"] += 1
+        print(f"[warn] unknown ability icon: {icon_name} ({identifier})")
+        return "normal"
+    return ability_type
+
+
+def parse_category_icon(icon_url: str) -> Optional[str]:
+    """カテゴリアイコン URL から生の識別子を取り出す。"""
+    match = CATEGORY_ICON_RE.search(safe_str(icon_url))
+    return match.group(1) if match else None
+
+
 def extract_numbers(text: str) -> str:
     """文字列から数字だけを抽出する。"""
     if not text:
@@ -192,6 +241,34 @@ def normalize_src(src: str) -> str:
     if src.startswith("/"):
         return urljoin(BASE_URL, src)
     return src
+
+
+def find_spec_section(detail: Optional[Tag], heading: str) -> Optional[Tag]:
+    """一致する仕様見出しの直後にある兄弟要素を返す。"""
+    if detail is None:
+        return None
+    for h4 in detail.find_all("h4"):
+        if safe_str(h4.get_text()) == heading:
+            return h4.find_next_sibling()
+    return None
+
+
+def extract_ability_icon(detail: Optional[Tag]) -> str:
+    """「非凡な才能」セクションのアイコン URL を返す。"""
+    section = find_spec_section(detail, "非凡な才能")
+    if section is None:
+        return ""
+    img = section.select_one("div.ability img.icon")
+    return normalize_src(img.get("src", "")) if img else ""
+
+
+def extract_spec_name(detail: Optional[Tag], heading: str) -> str:
+    """対象仕様セクションの能力名を返す。能力なし・未検出なら空文字。"""
+    section = find_spec_section(detail, heading)
+    if section is None:
+        return ""
+    name = section.select_one(".ability_info p.large")
+    return safe_str(name.get_text()) if name else ""
 
 
 def to_hiragana_ruby(text: str) -> str:
@@ -304,16 +381,52 @@ def normalize_search_text(text: str) -> str:
     return "".join(out)
 
 
-def build_display_name(name: str, sub_name: str, nature: str) -> str:
-    """index.html の `getHorseBaseText` と同じ表示名を生成する。"""
-    nature_tag = f"[{nature[0]}]" if nature else ""
-    return "".join(part for part in (nature_tag, name or "", sub_name or "") if part)
+def get_entry_ability_type(entry: dict) -> str:
+    """表示対象になる既知の非凡種別だけを返す。"""
+    if entry.get("sex") != "0" or entry.get("rare") != 5:
+        return ""
+    ability_type = entry.get("abilityType")
+    return ability_type if ability_type in ABILITY_BADGE_CHAR else ""
 
 
-def build_search_text(name: str, sub_name: str, ruby: str, nature: str, display_name: str) -> str:
-    """index.html の `getHorseSearchIndexText` と同じ検索テキストを生成する。"""
+def build_badge_text(entry: dict) -> str:
+    """JS の getHorseBadges と同じ順序の1文字バッジ列を返す。"""
+    parts = []
+    nature = safe_str(entry.get("nature"))
+    if nature:
+        parts.append(nature[0])
+    ability_type = get_entry_ability_type(entry)
+    if ability_type:
+        parts.append(ABILITY_BADGE_CHAR[ability_type])
+    if entry.get("categoryIcon") == INMEISAI_CATEGORY_ICON:
+        parts.append("祭")
+    return "".join(parts)
+
+
+def build_display_name(entry: dict) -> str:
+    """JS の `getHorseBaseText` と同じタグ付き表示名を生成する。"""
+    badge_tags = "".join(f"[{char}]" for char in build_badge_text(entry))
+    return "".join((badge_tags, entry.get("name") or "", entry.get("subName") or ""))
+
+
+def build_search_text(entry: dict, display_name: str) -> str:
+    """JS の `getHorseSearchIndexText` と同じ検索テキストを生成する。"""
+    ability_type = get_entry_ability_type(entry)
+    aliases = list(ABILITY_ALIASES[ability_type]) if ability_type else []
+    if entry.get("categoryIcon") == INMEISAI_CATEGORY_ICON:
+        aliases.extend(INMEISAI_ALIASES)
     raw = "|".join(
-        part for part in (display_name, name or "", sub_name or "", ruby or "", nature or "") if part
+        part
+        for part in (
+            display_name,
+            entry.get("name") or "",
+            entry.get("subName") or "",
+            entry.get("ruby") or "",
+            entry.get("nature") or "",
+            build_badge_text(entry),
+            *aliases,
+        )
+        if part
     )
     return normalize_search_text(raw)
 
@@ -476,13 +589,9 @@ def parse_stallion(url: str, serial_no: int, soup: BeautifulSoup) -> Optional[li
         for i, img in enumerate(imgs[:3]):
             row[HD_FACTOR_NAME1 + i] = normalize_src(img.get("src", ""))
 
-    a_tags = detail.find_all("a") if detail else []
-    ability_name = ""
-    if a_tags:
-        p = a_tags[0].find("p")
-        if p:
-            ability_name = safe_str(p.get_text())
-    row[HD_ABILITY] = ability_name
+    row[HD_ABILITY_ICON] = extract_ability_icon(detail)
+    row[HD_ABILITY] = extract_spec_name(detail, "非凡な才能")
+    row[HD_NATURE] = extract_spec_name(detail, "天性")
 
     # 詳細テーブル（距離・成長・各スペック）をパース。
     if detail is not None:
@@ -524,17 +633,6 @@ def parse_stallion(url: str, serial_no: int, soup: BeautifulSoup) -> Optional[li
                         if len(div_imgs) >= 2:
                             img = div_imgs[1].find("img")
                             row[target_idx] = normalize_src(img.get("src", "")) if img else ""
-
-        # 天性の場所はページ差異があるため、VBA と同じフォールバックで取得。
-        h4_tags = detail.find_all("h4")
-        if len(h4_tags) >= 2:
-            p = None
-            if len(a_tags) >= 2:
-                p = a_tags[1].find("p")
-            elif len(a_tags) >= 1:
-                p = a_tags[0].find("p")
-            if p:
-                row[HD_NATURE] = safe_str(p.get_text())
 
     # 血統45件 + 因子45件を埋める。
     fill_pedigree_and_factors(row, soup)
@@ -638,6 +736,8 @@ def all_row_to_dabifac_entry(row: list[str]) -> dict:
 
     sex = row_get(row, HD_GENDER)
     rare = parse_stallion_rare(row_get(row, HD_RARE), identifier) if sex == "0" else None
+    ability_type = parse_ability_type(row_get(row, HD_ABILITY_ICON), sex, identifier)
+    category_icon = parse_category_icon(row_get(row, HD_ICON))
 
     # 親系統コードは辞書優先、見つからなければ2文字化で補完。
     return {
@@ -649,6 +749,8 @@ def all_row_to_dabifac_entry(row: list[str]) -> dict:
         "nature": row_get(row, HD_NATURE),
         "sex": sex,
         "rare": rare,
+        "abilityType": ability_type,
+        "categoryIcon": category_icon,
         "parentLine": sire_line["abbr"] if sire_line else get_parent_line_name(parent_line_raw),
         "parentLineId": sire_line["parentLineId"] if sire_line else None,
         "son": parent_line_raw,
@@ -669,7 +771,7 @@ def all_row_to_sparse_dict(row: list[str]) -> dict[str, str]:
 
 def entry_to_summary(entry: dict, detail_chunk: int) -> dict:
     """full entry 1 件を summary 1 件へ変換する（descendants は含めない）。"""
-    display_name = build_display_name(entry["name"], entry["subName"], entry["nature"])
+    display_name = build_display_name(entry)
     return {
         "id": entry["id"],
         "detailChunk": detail_chunk,
@@ -679,15 +781,15 @@ def entry_to_summary(entry: dict, detail_chunk: int) -> dict:
         "nature": entry["nature"],
         "sex": entry["sex"],
         "rare": entry["rare"],
+        "abilityType": entry["abilityType"],
+        "categoryIcon": entry["categoryIcon"],
         "parentLine": entry["parentLine"],
         "parentLineId": entry["parentLineId"],
         "son": entry["son"],
         "sonId": entry["sonId"],
         "factors": entry["factors"],
         "displayName": display_name,
-        "searchText": build_search_text(
-            entry["name"], entry["subName"], entry["ruby"], entry["nature"], display_name
-        ),
+        "searchText": build_search_text(entry, display_name),
     }
 
 
@@ -777,7 +879,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument(
         "--fail-on-error",
         action="store_true",
-        help="取得/解析エラー・未知系統・不正レア度が1件でもあれば終了コード1にする。",
+        help=(
+            "取得/解析エラー・未知系統・不正レア度・非凡アイコン警告が"
+            "1件でもあれば終了コード1にする。"
+        ),
     )
     args = parser.parse_args(argv)
     reset_conversion_warning_counts()
@@ -942,11 +1047,21 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     unknown_sire_lines = CONVERSION_WARNING_COUNTS["unknown_sire_line"]
     invalid_rares = CONVERSION_WARNING_COUNTS["invalid_rare"]
+    missing_ability_icons = CONVERSION_WARNING_COUNTS["missing_ability_icon"]
+    unknown_ability_icons = CONVERSION_WARNING_COUNTS["unknown_ability_icon"]
     print(
         f"done: written={written}, skipped={skipped}, errors={errors}, "
-        f"unknown_sire_lines={unknown_sire_lines}, invalid_rares={invalid_rares}"
+        f"unknown_sire_lines={unknown_sire_lines}, invalid_rares={invalid_rares}, "
+        f"missing_ability_icons={missing_ability_icons}, "
+        f"unknown_ability_icons={unknown_ability_icons}"
     )
-    if args.fail_on_error and (errors > 0 or unknown_sire_lines > 0 or invalid_rares > 0):
+    if args.fail_on_error and (
+        errors > 0
+        or unknown_sire_lines > 0
+        or invalid_rares > 0
+        or missing_ability_icons > 0
+        or unknown_ability_icons > 0
+    ):
         return 1
     return 0
 

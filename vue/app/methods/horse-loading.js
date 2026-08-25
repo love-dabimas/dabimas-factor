@@ -89,6 +89,10 @@
             nature: horse.nature || "",
             sex: horse.sex,
             rare: typeof horse.rare === "number" ? horse.rare : null,
+            abilityType:
+              typeof horse.abilityType === "string" ? horse.abilityType : null,
+            categoryIcon:
+              typeof horse.categoryIcon === "string" ? horse.categoryIcon : null,
             parentLine: horse.parentLine || "",
             parentLineId:
               typeof horse.parentLineId === "number" ? horse.parentLineId : null,
@@ -147,6 +151,8 @@
             nature: baseHorse.nature,
             sex: "0",
             rare: baseHorse.rare,
+            abilityType: baseHorse.abilityType,
+            categoryIcon: baseHorse.categoryIcon,
             parentLine: baseHorse.parentLine,
             parentLineId: baseHorse.parentLineId,
             son: baseHorse.son,
@@ -350,6 +356,49 @@
         hydrateHorseWithDetail(horse, descendants) {
           return { ...horse, descendants };
         },
+        // 保存済み配合の descendants[0] にバッジ用フィールド（天性・非凡・因名祭）を補う。
+        // vue/logic/horses/saved-horse-builder.js がこれらを保存するようになる前の
+        // レコードは name / subName / parentLine / factors しか持っておらず、
+        // 保存前は1行目に出ていたバッジが2行目へ降りた途端に消えてしまう。
+        //
+        // 対象を先頭の1件に限るのは、保存時に写せるのもここだけだから。
+        // descendants[0] は「保存する前に1行目にいた馬」＝ユーザーが自分で選んだ馬で、
+        // それより深い祖先は元々どの経路でもバッジを持たない（DB馬を直接選んだときの
+        // 祖先セルと同じ）。全件を補完すると、同じ血統表でも「直接選んだとき」と
+        // 「保存した配合から復元したとき」でバッジの数が変わってしまう。
+        //
+        // 名前＋馬名補足が summary 内で一意に決まるときだけ補完する
+        // （同名馬が複数いるときに別の馬の天性を貼ってしまわないように）。
+        restoreDescendantBadgeFields(descendants) {
+          if (!Array.isArray(descendants) || !Array.isArray(this.horsesBase)) {
+            return descendants;
+          }
+          const head = descendants[0];
+          if (!head || head.nature !== undefined) {
+            // 新しい形式（保存時に写してある）はそのまま使う。
+            return descendants;
+          }
+          const name = head.name || "";
+          const subName = head.subName || "";
+          const matches = this.horsesBase.filter(
+            (candidate) =>
+              candidate.name === name && (candidate.subName || "") === subName
+          );
+          if (matches.length !== 1) {
+            return descendants;
+          }
+          const base = matches[0];
+          const restored = descendants.slice();
+          restored[0] = {
+            ...head,
+            sex: base.sex,
+            nature: base.nature || "",
+            rare: base.rare,
+            abilityType: base.abilityType,
+            categoryIcon: base.categoryIcon,
+          };
+          return restored;
+        },
         // 名前等から summary 側の馬を探す（旧データ・id 欠落時のフォールバック / 指摘 G）。
         findSummaryHorse(horse) {
           if (!horse || !Array.isArray(this.horsesBase)) {
@@ -458,7 +507,10 @@
                 Array.isArray(detail.descendants) &&
                 detail.descendants.length === 15
               ) {
-                return this.hydrateHorseWithDetail(horse, detail.descendants);
+                return this.hydrateHorseWithDetail(
+                  horse,
+                  this.restoreDescendantBadgeFields(detail.descendants)
+                );
               }
               return Promise.reject(
                 new Error("Custom horse detail not found: " + customId)

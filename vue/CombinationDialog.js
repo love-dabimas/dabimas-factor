@@ -244,7 +244,9 @@ Vue.component('combination-dialog', {
           throw error;
         }
 
-        this.showToast(`「${savedHorseRecord.name}」を保存しました`, 'success');
+        // 表示名は「自」バッジ＋タイトル。保存レコードの name は "☆タイトル" なので、
+        // 画面に出ている見た目に合わせて ☆ を落として知らせる。
+        this.showToast(`「${savedHorseRecord.name.replace(/^☆/, '')}」を保存しました`, 'success');
         this.$emit('saved-horse-created', savedHorseRecord);
         this.newTitle = '';
         this.stallionFactors = [];
@@ -414,7 +416,7 @@ Vue.component('combination-dialog', {
       if (config && config.kind) {
         const kindLabel = this.configKindLabel(config.kind);
         const confirmed = window.confirm(
-          `☆${config.title} を削除しますか？ ${kindLabel}の選択肢からも外れます。血統表で使用中の作業枠では、次回選択し直すことができなくなります。`
+          `「${config.title}」を削除しますか？ ${kindLabel}の選択肢からも外れます。血統表で使用中の作業枠では、次回選択し直すことができなくなります。`
         );
         if (!confirmed) return;
       }
@@ -501,7 +503,10 @@ Vue.component('combination-dialog', {
                     <v-btn small value="broodmare" class="save-kind-broodmare">繁殖牝馬</v-btn>
                   </v-btn-toggle>
 
-                  <div v-if="saveKind === 'stallion'" class="combination-factor-inline">
+                  <div
+                    class="combination-factor-inline"
+                    :class="{ 'combination-factor-inline--reserved': saveKind !== 'stallion' }"
+                  >
                     <v-select
                       v-model="stallionFactors"
                       :items="factorOptions"
@@ -572,8 +577,19 @@ Vue.component('combination-dialog', {
                   class="combination-title-input"
                 ></v-text-field>
 
-                <div class="caption mt-1 combination-title-hint">
-                  「☆タイトル」として{{ saveKindLabel }}の選択肢に追加されます。<template v-if="saveKind === 'stallion'">付与した因子ごと保存され、</template>保存後に因子は変更できません。
+                <div class="combination-title-hint-stack mt-1">
+                  <!-- 高さ合わせ用の不可視サイザー。常に一番長い文面（繁殖牝馬の
+                       ラベル＋因子の一文）を入れておき、種牡馬／繁殖牝馬のどちらでも
+                       この高さになるようにする。 -->
+                  <div
+                    class="caption combination-title-hint combination-title-hint--sizer"
+                    aria-hidden="true"
+                  >
+                    「自」バッジ付きで繁殖牝馬の選択肢に追加されます。付与した因子ごと保存され、保存後に因子は変更できません。
+                  </div>
+                  <div class="caption combination-title-hint">
+                    「自」バッジ付きで{{ saveKindLabel }}の選択肢に追加されます。<template v-if="saveKind === 'stallion'">付与した因子ごと保存され、</template>保存後に因子は変更できません。
+                  </div>
                 </div>
 
                 <v-btn
@@ -615,7 +631,11 @@ Vue.component('combination-dialog', {
                   >
                     <div class="combination-list-item-content">
                       <div class="combination-list-item-title">
-                        <v-chip x-small class="mr-1">
+                        <v-chip
+                          x-small
+                          class="mr-1 combination-list-kind"
+                          :class="'combination-list-kind--' + (config.kind || 'other')"
+                        >
                           {{ configKindLabel(config.kind) }}
                         </v-chip>
                         {{ config.title }}

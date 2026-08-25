@@ -125,9 +125,42 @@
   font-size: 16px !important;
 }
 
-/* 説明文（ヒント）と保存ボタンの間隔は詰めめに */
-.combination-title-hint {
-  line-height: 1.35;
+/* 説明文（ヒント）と保存ボタンの間隔は詰めめに。
+   .caption（0.75rem）のままだと、PC（min-width:960px）で html の
+   font-size が 25px になるため 18.75px まで肥大し、説明文だけで
+   156px を占めて「保存する」ボタンがダイアログ内スクロールの
+   外へ押し出されてしまう。すぐ上の警告文（13px）に合わせて固定する。
+   .v-application .caption 側も !important 付きで、しかも index.html では
+   vuetify_compact.min.css がこのファイルより後に読まれる。詳細度を同じに
+   すると後勝ちで負けるため、.combination-input-area を挟んで一段上げる。 */
+.v-application .combination-input-area .combination-title-hint {
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+}
+
+/* 種牡馬／繁殖牝馬でダイアログの高さが変わらないようにする。
+   繁殖牝馬のときは「付与する因子」セレクトが不要だが、消すと
+   その分だけダイアログが縮んで、トグルを押すたびに高さが跳ねる。
+   DOM には残したまま visibility で隠し、場所だけ確保する。 */
+.combination-factor-inline.combination-factor-inline--reserved {
+  visibility: hidden;
+}
+
+/* 説明文も種牡馬のときだけ「付与した因子ごと保存され、」の一文が増えて
+   1行分高くなる。常に長いほうの文面を不可視のサイザーとして重ね、
+   グリッドの同一セルに置くことで、どちらのモードでも高さを揃える。
+   （固定の min-height と違い、ダイアログ幅が変わって折り返し行数が
+   変わっても自動で追従する） */
+.combination-title-hint-stack {
+  display: grid;
+}
+
+.combination-title-hint-stack > * {
+  grid-area: 1 / 1;
+}
+
+.combination-title-hint-stack .combination-title-hint--sizer {
+  visibility: hidden;
 }
 
 /* 種牡馬/繁殖牝馬トグルと因子セレクトを横並びにする行 */
@@ -265,6 +298,23 @@
   margin-bottom: 2px;
   font-size: 14px;
   line-height: 1.3;
+}
+
+/* 保存済み配合リストの種別バッジ。左の種牡馬／繁殖牝馬トグルと同じ
+   父（青）・母（赤）にして、どちらの配合か一目で分かるようにする。 */
+.combination-list-kind.v-chip {
+  color: #ffffff !important;
+  font-weight: 700;
+}
+
+.combination-list-kind--stallion.v-chip {
+  background-color: #3e499c !important;
+  border-color: #3e499c !important;
+}
+
+.combination-list-kind--broodmare.v-chip {
+  background-color: #b34e5f !important;
+  border-color: #b34e5f !important;
 }
 
 /* 保存済み配合リストの因子バッジ（因子付与ダイアログのチップと同じ配色を流用） */

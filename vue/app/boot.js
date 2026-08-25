@@ -133,7 +133,11 @@
     });
   }
 
-  registerServiceWorker();
+  // 保存データの復元をService Worker / CacheStorageより優先する。
+  // ブラウザのStorage backend自体が不調な場合も、まずIndexedDB側の結果を
+  // 確定させてからService Workerを開始すれば、独立した失敗を切り分けやすい。
+  // app-lifecycle.js が復元完了後に呼べるよう公開する。
+  window.Dabimas.boot.registerServiceWorker = registerServiceWorker;
 
   var ua = navigator.userAgent.toLowerCase();
   var isiOS = ua.indexOf("iphone") > -1 || ua.indexOf("ipad") > -1;

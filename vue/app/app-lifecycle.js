@@ -19,6 +19,8 @@
  *   外部ファイルからは見えないため、boot スクリプト側に
  *   window.Dabimas.boot.scheduleInitialLoaderHide を公開してもらい、
  *   ここでは window.Dabimas.boot.scheduleInitialLoaderHide() として呼ぶ。
+ * - Service Worker 登録も boot.js の評価時には開始せず、IndexedDB を使う
+ *   保存データ復元が完了した後に window.Dabimas.boot 経由で開始する。
  *
  * 分けている理由:
  * - index.html の new Vue({...}) に全部書くと変更箇所が広がるため、
@@ -80,6 +82,7 @@
               this.windowSize = this.getStableViewportHeight();
               this.$nextTick(() => {
                 this.scheduleInitialMobileViewportLayout();
+                this.scheduleInitialDesktopViewportLayout();
               });
             });
           // 血統表の復元（保存データの反映）が終わるまで起動ローダーを隠さない。
@@ -87,9 +90,15 @@
           // 一瞬見えてしまうことがあった。
           Promise.resolve(dataReadyPromise).finally(() => {
             window.Dabimas.boot.scheduleInitialLoaderHide();
+            if (
+              typeof window.Dabimas.boot.registerServiceWorker === "function"
+            ) {
+              window.Dabimas.boot.registerServiceWorker();
+            }
           });
           this.$nextTick(() => {
             this.scheduleInitialMobileViewportLayout();
+            this.scheduleInitialDesktopViewportLayout();
           });
           this.onOrientationChangeHandler = () => {
             if (this.$vuetify.breakpoint.smAndDown) {
@@ -99,10 +108,16 @@
           };
           window.addEventListener("orientationchange", this.onOrientationChangeHandler);
           this.onViewportGeometryChangeHandler = () => {
+            this.clearMobileViewportGeometryTimer();
+            // PC表示でも全画面表示（F11）の切り替えなどで縦の表示領域が変わる。
+            // 行高を追従させないと画面下に余白が残るため、こちらも作り直す。
             if (!this.$vuetify.breakpoint.smAndDown) {
+              this.mobileViewportGeometryTimerId = setTimeout(() => {
+                this.mobileViewportGeometryTimerId = null;
+                this.applyDesktopViewportLayout();
+              }, 48);
               return;
             }
-            this.clearMobileViewportGeometryTimer();
             this.mobileViewportGeometryTimerId = setTimeout(() => {
               this.mobileViewportGeometryTimerId = null;
               this.refreshMobileViewportLock(false);

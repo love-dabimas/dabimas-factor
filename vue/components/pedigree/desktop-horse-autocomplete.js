@@ -53,7 +53,7 @@
       <v-autocomplete
         :value="selected[index]"
         :items="lists"
-        :item-text="getHorseBaseText"
+        :item-text="getHorseNameText"
         :filter="filterHorse"
         solo
         dense
@@ -66,11 +66,17 @@
           <template >
             <v-list-item-content>
               <v-list-item-title>
-                <v-chip
-                  v-if="data.item.source === 'edit'"
-                  x-small
-                  class="edit-stallion-chip"
-                >E</v-chip>
+                <span
+                  v-if="getHorseBadges(data.item).length"
+                  class="exp-horse-badges"
+                >
+                  <span
+                    v-for="badge in getHorseBadges(data.item)"
+                    :key="badge.key"
+                    :class="['exp-horse-badge', badge.className]"
+                    :title="badge.title"
+                  >{{ badge.text }}</span>
+                </span>
                 <span v-html="getHorse(data.item)"></span>
               </v-list-item-title>
             </v-list-item-content>
@@ -82,16 +88,15 @@
       filterHorse(horse, queryText, itemText) {
         return window.Dabimas.logic.horses.filterHorse(horse, queryText, itemText);
       },
-      getHorseBaseText(horse) {
-        return window.Dabimas.logic.horses.getHorseBaseText(horse);
+      getHorseBadges(horse) {
+        return window.Dabimas.logic.horses.getHorseBadges(horse);
+      },
+      getHorseNameText(horse) {
+        return window.Dabimas.logic.horses.getHorseNameText(horse);
       },
       getHorse(horse) {
         if (!horse?.disabled) {
-          // 候補リストは行頭に E バッジを出しているので、名前側の [E] は省く。
-          // 選択後の表示（item-text）は素の getHorseBaseText なので [E] が残る。
-          const text = window.Dabimas.logic.horses.getHorseBaseText(horse, {
-            hideEditTag: true,
-          });
+          const text = this.getHorseNameText(horse);
           return text + this.getFactor(horse.factors);
         }
       },

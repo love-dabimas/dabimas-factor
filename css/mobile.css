@@ -361,6 +361,19 @@
   align-items: stretch;
 }
 
+.exp-mobile-layout .exp-horse-badges {
+  gap: 1px;
+  padding-left: 2px;
+}
+
+.exp-mobile-layout .exp-horse-badge {
+  height: calc(var(--exp-mobile-row-height) * 0.80);
+  min-width: calc(var(--exp-mobile-row-height) * 0.80);
+  padding: 0 1px;
+  border-radius: 2px;
+  font-size: clamp(7px, calc(var(--exp-mobile-row-height) * 0.66), 11px);
+}
+
 /* 子系統モード（dispCategory%2!==0）のセル内は Vuetify の v-text-field
    （系統名 readonly / メモ入力）になる。これは理論モードのトリガーと違い
    行高 --exp-mobile-row-height まで縮まず 1px/行ほど高くなるため、16行が
@@ -516,6 +529,8 @@
 }
 
 .exp-mobile-current-selection-value {
+  display: flex;
+  align-items: center;
   font-size: 13px;
   font-weight: 700;
   color: #1d2a33;

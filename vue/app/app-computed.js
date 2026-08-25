@@ -137,8 +137,21 @@
         dispCategory: function(value) {
           this.$nextTick(() => {
             this.applyMobileViewportLayout();
+            // 子系統表示ではヘッダが1段高くなる。PC表示の行高はヘッダ下の
+            // 残り高さから決めているので、ここでも計算し直す。
+            this.applyDesktopViewportLayout();
           });
           this.dispButtonName = value%2 === 0 ? '子系統' : '因　子';
+        },
+        // ホーム／設定画面から血統表へ戻ってきた直後は、それまで表示されて
+        // いなかった血統表の行高がここで初めて測れるようになる。
+        currentScreen: function (value) {
+          if (value !== 'category') {
+            return;
+          }
+          this.$nextTick(() => {
+            this.applyDesktopViewportLayout();
+          });
         },
   };
 })(window);
