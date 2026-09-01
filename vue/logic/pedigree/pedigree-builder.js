@@ -22,6 +22,10 @@
   window.Dabimas.logic = window.Dabimas.logic || {};
   window.Dabimas.logic.pedigree = window.Dabimas.logic.pedigree || {};
 
+  const DESCENDANT_SLOTS = [
+    1, 2, 4, 8, 9, 5, 10, 11, 3, 6, 12, 13, 7, 14, 15,
+  ];
+
   // crypto.randomUUID() は secure context（HTTPS / localhost）でしか使えない。
   // LAN IPへの素のHTTPアクセス（実機テスト等）では crypto.randomUUID が
   // 存在せず即例外になるため、getRandomValues（secure context不要）ベースの
@@ -915,6 +919,7 @@
         }
 
   window.Dabimas.logic.pedigree.generateUuid = generateUuid;
+  window.Dabimas.logic.pedigree.DESCENDANT_SLOTS = DESCENDANT_SLOTS;
   window.Dabimas.logic.pedigree.getValueByKey = getValueByKey;
   window.Dabimas.logic.pedigree.setDataForPedigree = setDataForPedigree;
   window.Dabimas.logic.pedigree.isEven = isEven;

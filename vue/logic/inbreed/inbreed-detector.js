@@ -50,16 +50,17 @@
             }
             return nodeTable.parentsOf(horse.nodeId);
           };
-          const isFullSiblingByMaster = (a, b) => {
+          const isFullSiblingByMasterNodeIds = (nodeIdA, nodeIdB) => {
             if (
-              typeof a?.nodeId !== "string" ||
-              typeof b?.nodeId !== "string" ||
-              a.nodeId === b.nodeId
+              !nodeTable ||
+              typeof nodeIdA !== "string" ||
+              typeof nodeIdB !== "string" ||
+              nodeIdA === nodeIdB
             ) {
               return false;
             }
-            const parentsA = parentsOf(a);
-            const parentsB = parentsOf(b);
+            const parentsA = nodeTable.parentsOf(nodeIdA);
+            const parentsB = nodeTable.parentsOf(nodeIdB);
             if (
               !parentsA?.father ||
               !parentsA?.mother ||
@@ -73,6 +74,8 @@
               parentsA.mother === parentsB.mother
             );
           };
+          const isFullSiblingByMaster = (a, b) =>
+            isFullSiblingByMasterNodeIds(a?.nodeId, b?.nodeId);
           const isFullSiblingByOverride = (a, b) =>
             (Array.isArray(a?.fullBrothers) &&
               a.fullBrothers.includes(b?.name)) ||
@@ -104,6 +107,16 @@
           const MARE_GENERATIONS = [
             2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
           ];
+          const SIRE_PATHS = [
+            "F", "FF", "FFF", "FFFF", "FFMF", "FMF", "FMFF", "FMMF",
+            "MF", "MFF", "MFFF", "MFMF", "MMF", "MMFF", "MMMF",
+          ];
+          const MARE_PATHS = [
+            "M", "FM", "MM", "FFM", "FMM", "MFM", "MMM", "FFFM",
+            "FFMM", "FMFM", "FMMM", "MFFM", "MFMM", "MMFM", "MMMM",
+          ];
+          const DESCENDANT_SLOTS =
+            window.Dabimas.logic.pedigree.DESCENDANT_SLOTS;
           const BLOOD_VOLUME = {
             1: 50000,
             2: 25000,
@@ -129,6 +142,7 @@
                 generation: MARE_GENERATIONS[slot],
                 index: null,
                 mareSlot: slot,
+                path: MARE_PATHS[slot],
               });
             });
             return occurrences;
@@ -741,10 +755,10 @@
 
           // 認定された同一馬・全兄妹クロスを連結し、同じグループの全出現を集める。
           const crossGroups = [];
-          const addPairToCrossGroups = (pair) => {
+          const addPairToCrossGroups = (pair, areRelated) => {
             const matchingGroups = crossGroups.filter((group) =>
               group.some((member) =>
-                pair.some((node) => isCrossRelated(member, node))
+                pair.some((node) => areRelated(member, node))
               )
             );
             const merged = pair.slice();
@@ -754,12 +768,6 @@
             });
             crossGroups.push(merged);
           };
-          recognizedCrosses
-            .filter((cross) => cross.type === 'sameName' || cross.type === 'sibling')
-            .forEach((cross) => {
-              const pair = [cross.stallionNode, cross.broodmareNode].filter(Boolean);
-              addPairToCrossGroups(pair);
-            });
 
           const stallionMares = buildMareOccurrences(
             selected[0],
@@ -769,31 +777,112 @@
             selected[16],
             "broodmare"
           );
-          const stallionOccurrences = [...stallionsArray, ...stallionMares];
-          const broodmareOccurrences = [...broodmaresArray, ...broodmareMares];
           const isMareOccurrence = (occurrence) =>
             occurrence && occurrence.index === null;
-          const canCompare = (a, b) =>
-            (!isMareOccurrence(a) || typeof a.nodeId === "string") &&
-            (!isMareOccurrence(b) || typeof b.nodeId === "string");
-
-          stallionOccurrences.forEach((stallion) => {
-            broodmareOccurrences.forEach((broodmare) => {
+          const isMasterCrossRelated = (a, b) =>
+            isExactSameNode(a, b) || isFullSiblingByMaster(a, b);
+          const buildSideOccurrences = (sideOffset, side, mareOccurrences) => {
+            const occurrences = [];
+            const root = selected[sideOffset];
+            if (
+              root?.name &&
+              !isInbreedExcludedHorse(root) &&
+              !isBroodmarePlaceholderHorse(root)
+            ) {
+              occurrences.push({
+                ...root,
+                side,
+                path: "",
+                generation: 1,
+              });
+            }
+            SIRE_PATHS.forEach((path, pathIndex) => {
+              const horse = selected[
+                sideOffset + DESCENDANT_SLOTS[pathIndex]
+              ];
               if (
-                !isMareOccurrence(stallion) &&
-                !isMareOccurrence(broodmare)
+                !horse?.name ||
+                isInbreedExcludedHorse(horse) ||
+                isBroodmarePlaceholderHorse(horse)
               ) {
                 return;
               }
-              if (
-                canCompare(stallion, broodmare) &&
-                (isExactSameNode(stallion, broodmare) ||
-                  isFullSiblingByMaster(stallion, broodmare))
-              ) {
-                addPairToCrossGroups([stallion, broodmare]);
-              }
+              occurrences.push({
+                ...horse,
+                side,
+                path,
+                generation: generationMap[horse.index],
+              });
             });
-          });
+            occurrences.push(...mareOccurrences);
+
+            const byPath = new Map(
+              occurrences.map((occurrence) => [occurrence.path, occurrence])
+            );
+            occurrences.forEach((occurrence) => {
+              occurrence.branchParentNodeId = occurrence.path
+                ? byPath.get(occurrence.path.slice(0, -1))?.nodeId ?? null
+                : null;
+            });
+            return occurrences;
+          };
+          const isSameBranch = (a, b) => {
+            const parentA = a?.branchParentNodeId;
+            const parentB = b?.branchParentNodeId;
+            if (!parentA || !parentB) {
+              return false;
+            }
+            return (
+              parentA === parentB ||
+              isFullSiblingByMasterNodeIds(parentA, parentB)
+            );
+          };
+
+          let stallionOccurrences;
+          let broodmareOccurrences;
+          let groupRelation;
+          if (nodeTable) {
+            stallionOccurrences = buildSideOccurrences(
+              0,
+              "stallion",
+              stallionMares
+            );
+            broodmareOccurrences = buildSideOccurrences(
+              16,
+              "broodmare",
+              broodmareMares
+            );
+            groupRelation = isMasterCrossRelated;
+            stallionOccurrences.forEach((stallion) => {
+              broodmareOccurrences.forEach((broodmare) => {
+                if (
+                  isMasterCrossRelated(stallion, broodmare) &&
+                  !isSameBranch(stallion, broodmare)
+                ) {
+                  addPairToCrossGroups(
+                    [stallion, broodmare],
+                    isMasterCrossRelated
+                  );
+                }
+              });
+            });
+          } else {
+            stallionOccurrences = [...stallionsArray, ...stallionMares];
+            broodmareOccurrences = [...broodmaresArray, ...broodmareMares];
+            groupRelation = isCrossRelated;
+            recognizedCrosses
+              .filter(
+                (cross) =>
+                  cross.type === "sameName" || cross.type === "sibling"
+              )
+              .forEach((cross) => {
+                const pair = [
+                  cross.stallionNode,
+                  cross.broodmareNode,
+                ].filter(Boolean);
+                addPairToCrossGroups(pair, isCrossRelated);
+              });
+          }
 
           const allOccurrences = [
             ...stallionOccurrences,
@@ -812,7 +901,7 @@
                   !group.some(
                     (member) => occurrenceKey(member) === occurrenceKey(horse)
                   ) &&
-                  group.some((member) => isCrossRelated(member, horse))
+                  group.some((member) => groupRelation(member, horse))
                 ) {
                   group.push(horse);
                   added = true;
@@ -847,14 +936,25 @@
                   unique.push(horse);
                 }
               });
-            const occurrences = unique.map((horse) => ({
-              nodeId: typeof horse.nodeId === "string" ? horse.nodeId : null,
-              side: horse.side || (horse.index < 16 ? "stallion" : "broodmare"),
-              generation: isMareOccurrence(horse)
-                ? horse.generation
-                : generationMap[horse.index],
-              index: horse.index,
-            }));
+            const occurrences = unique.map((horse) => {
+              const occurrence = {
+                nodeId:
+                  typeof horse.nodeId === "string" ? horse.nodeId : null,
+                side:
+                  horse.side ||
+                  (horse.index < 16 ? "stallion" : "broodmare"),
+                generation: isMareOccurrence(horse)
+                  ? horse.generation
+                  : generationMap[horse.index],
+                index: horse.index,
+              };
+              if (nodeTable) {
+                occurrence.path = horse.path;
+                occurrence.branchParentNodeId =
+                  horse.branchParentNodeId ?? null;
+              }
+              return occurrence;
+            });
             const generations = occurrences.map((item) => item.generation);
             const bloodVolume = generations.reduce(
               (sum, generation) => sum + (BLOOD_VOLUME[generation] || 0),

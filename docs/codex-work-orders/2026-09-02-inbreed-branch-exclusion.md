@@ -228,24 +228,45 @@ git status --short
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/logic/inbreed/inbreed-detector.js`: 片側31ノードをpath付き出現へ変換し、枝親の完全同一・master全兄妹ペアを除外したうえで、両側31×31の直接突き合わせから `crosses` を構築するようにした。nodeTable不在時は段階4の既存経路へ完全縮退する。
+- `vue/logic/pedigree/pedigree-builder.js`: 15祖先セルの共通対応表 `DESCENDANT_SLOTS` を `window.Dabimas.logic.pedigree` へ公開した。
+- `vue/app/methods/bootstrap.js`: 同ファイル内にあった `DESCENDANT_SLOTS` の複製を廃止し、血統ロジックが公開する共通対応表を参照するようにした。
+- `docs/codex-work-orders/2026-09-02-inbreed-branch-exclusion.md`: 本完了報告を記入した（実装対象外の報告ファイル）。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」>
+- `pedigree-builder.js` は `inbreed-detector.js` と `bootstrap.js` のどちらよりも先に読み込まれるため、`DESCENDANT_SLOTS` の唯一の定義元にした。これにより読み込み順を変更せず両方から参照できる。
+- nodeTable不在時の完全一致を守るため、path・枝親フィールドを持つ31ノード直接判定は nodeTable がある場合だけ使い、不在時は段階4の `recognizedCrosses` 起点の処理をそのまま残した。返却する occurrence の追加フィールドも nodeTable がある場合だけ付与する。
+- §11で候補ペアを除外した後にクロス群が成立した場合は、仕様書 §12.1どおり同一・master全兄妹の全出現を再度取り込む。このため、別枝のペアで採用されたLisadell群には、同じ群の除外対象位置も血量用の出現として含まれる。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 基準1: `verify-storage-boot-order.cjs`、`verify-horse-badges.cjs`、`verify-horse-candidate-lists.cjs` → すべて `OK`。
+- 基準2: `verify-index-exp .\index.html` → `[verify] OK`。
+- 基準3: `python -m pytest tests/ -q` → `52 passed`。
+- 基準4: 一時 `tmp/verify-inbreed-branch-exclusion.cjs` で、nodeId・mareNodeIdsを持つ実データ3盤面を固定点 `5d8b822` と比較し、nodeTableなしの戻り値全体が完全一致した。
+- 基準5: 同スクリプトで実データ25盤面を固定点と比較し、nodeTableありでも `sameNameGroups` / `siblingGroups` / `inbreedColorIndexes` が全件完全一致した。
+- 基準6・7: 長さ0〜4のF/M二分木から独立生成した31 pathと実際の両側occurrenceが集合一致し、全30非root pathの `branchParentNodeId` が1文字短いpathのnodeId、rootが `null` になることを確認した。
+- 基準8: ヴァーミリアン通常版×サドラーズギャルを実summary/detailから展開し、サドラーズギャルの採用・血量62500、指定6祖先ペアの除外、別枝のノーザンダンサーとLisadellの採用を確認した。
+- 基準9・10: 固定seed `0x20260902` の実データ4000組を固定点と比較した。詳細は次節。
+- 基準11: 実装差分は指定された判定ファイルと `DESCENDANT_SLOTS` 一元化の2ファイル、本完了報告のみ。`index.html`、表示用3集合、`inbreed-counts.js`、`compatibility.js` は変更していない。
+- 追加確認: 変更3 JSの `node --check`、専用検証スクリプト、`git diff --check` はすべて成功した。
 
 ### クロス群減少の実測（基準9・10）
 
-<サンプル数・crosses.length の平均の前後・dangerous 発生率の前後>
+種牡馬2415頭×特殊牝馬499頭から、固定seed `0x20260902` で重複なし4000組を抽出した。
+
+- `crosses.length` 平均: **1.13625 → 0.7825**。
+- クロス群が1件以上減少した盤面: **809 / 4000 = 20.225%**。
+- 減少数分布: `-1:3, 0:3188, 1:543, 2:62, 3:159, 4:16, 5:4, 6:1, 7:16, 8:5, 9:1, 11:1, 12:1`（`-1` は旧祖先除外から直接構築へ切り離したことで1群増えた盤面）。
+- `dangerous`: **82 / 4000（2.05%）→ 82 / 4000（2.05%）**で、この標本では発生率の変化なし。
+
+指示値0.81との差は0.0275だが、同じ4000組における段階4の直接グループ化平均も指示書の1.472に対して1.4445と同じく0.0275低い。§11適用後の差がそのまま標本差と一致し、減少盤面率20.225%も指示書の20.3%と整合するため、効かせすぎではないと判断した。
 
 ### 表示との乖離の実例（§5）
 
-<「着色されているのに crosses に無い」クロスが出た盤面を 1 つ以上>
+ヴァーミリアン通常版×サドラーズギャルでは、サドラーズウェルズの男系セル `種FMF`（index 5）と `牝F`（index 17）が `inbreedColorIndexes` に残って着色される一方、枝親が両方ともサドラーズギャルなので `crosses` の独立群からは除外された。これは段階4cで解消予定の、指示書 §5どおりの乖離である。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+表示用3集合は意図的に既存パイプラインのままなので、§11で除外した祖先にも着色が残る。`crosses` 由来の表示へ寄せる段階4cまでは上記の乖離が継続する。

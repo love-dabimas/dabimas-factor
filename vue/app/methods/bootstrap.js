@@ -24,7 +24,7 @@
   // これによりメソッド本体を1文字も変えずに移動できる（逐語移動原則）。
   var factorMap = window.Dabimas.logic.factor.factorMap;
   var MANUAL_INBREED_STORAGE_KEY = "dabimasManualInbreed";
-  var DESCENDANT_SLOTS = [1, 2, 4, 8, 9, 5, 10, 11, 3, 6, 12, 13, 7, 14, 15];
+  var DESCENDANT_SLOTS = window.Dabimas.logic.pedigree.DESCENDANT_SLOTS;
 
   Object.assign(window.Dabimas.app.methods, {
         // インブリード例外ルールを読み込む
