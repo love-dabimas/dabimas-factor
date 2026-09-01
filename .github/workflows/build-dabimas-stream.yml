@@ -11,11 +11,20 @@ on:
         description: "Process first N URLs only (0 = all)"
         required: false
         default: "0"
+      pedigree_dataset_version:
+        description: "Expected pedigree dataset_version (empty = skip validation)"
+        required: false
+        default: ""
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
       - uses: actions/checkout@v5
 
@@ -35,6 +44,9 @@ jobs:
             --output artifacts/dabimasFactor.json \
             --summary-output artifacts/dabimasFactor.summary.json \
             --details-output-dir artifacts/dabimasFactor-details \
+            --pedigree-nodes-output artifacts/pedigreeNodes.json \
+            --r2-endpoint "$R2_ENDPOINT_URL" \
+            --pedigree-dataset-version "${{ github.event.inputs.pedigree_dataset_version }}" \
             --detail-chunk-size 128 \
             --all-output artifacts/all_rows.ndjson \
             --delay "${{ github.event.inputs.delay || '0' }}" \

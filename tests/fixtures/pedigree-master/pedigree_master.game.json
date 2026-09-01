@@ -1,0 +1,21 @@
+{
+  "schema": "dabimas-pedigree-game-nodes",
+  "schema_version": 1,
+  "dataset_version": "2026-01-01T000000Z+raw.testfixture",
+  "generated_at": "2026-01-01T00:00:00Z",
+  "source": {
+    "file": "fixture.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "node_count": 7
+  },
+  "node_count": 7,
+  "nodes": [
+    {"node_id":"0000008661-00","pedigree_id":"0000008661","name":"シンザン","subname":null,"normalized_subname":null,"variant_code":"00","variant_type":"base","is_base_equivalent":true,"pedigree_effect_ids":[],"source_names":["シンザン"],"source_pedigree_names":["シンザン"],"dabimas_master_id":"fixture-1","sub_ability_id":0,"name_kana":"","registration_source":"fixture","mapping_status":"mapped","active":true,"first_seen_at":"2026-01-01T00:00:00Z","last_seen_at":"2026-01-01T00:00:00Z"},
+    {"node_id":"0000008661-10","pedigree_id":"0000008661","name":"シンザン","subname":"神速","normalized_subname":"神速","variant_code":"10","variant_type":"named","is_base_equivalent":false,"pedigree_effect_ids":[2,2,2],"source_names":["シンザン-神速-"],"source_pedigree_names":["シンザン-神速-"],"dabimas_master_id":"fixture-2","sub_ability_id":0,"name_kana":"","registration_source":"fixture","mapping_status":"mapped","active":true,"first_seen_at":"2026-01-01T00:00:00Z","last_seen_at":"2026-01-01T00:00:00Z"},
+    {"node_id":"0000333190-00","pedigree_id":"0000333190","name":"ヒンドスタン","subname":null,"normalized_subname":null,"variant_code":"00","variant_type":"base","is_base_equivalent":true,"pedigree_effect_ids":[4],"source_names":["ヒンドスタン"],"source_pedigree_names":["ヒンドスタン"],"dabimas_master_id":"fixture-3","sub_ability_id":0,"name_kana":"","registration_source":"fixture","mapping_status":"mapped","active":true,"first_seen_at":"2026-01-01T00:00:00Z","last_seen_at":"2026-01-01T00:00:00Z"},
+    {"node_id":"0000000858-00","pedigree_id":"0000000858","name":"ハヤノボリ","subname":null,"normalized_subname":null,"variant_code":"00","variant_type":"base","is_base_equivalent":true,"pedigree_effect_ids":[],"source_names":["ハヤノボリ"],"source_pedigree_names":["ハヤノボリ"],"dabimas_master_id":"fixture-4","sub_ability_id":0,"name_kana":"","registration_source":"fixture","mapping_status":"mapped","active":true,"first_seen_at":"2026-01-01T00:00:00Z","last_seen_at":"2026-01-01T00:00:00Z"},
+    {"node_id":"0000333914-01","pedigree_id":"0000333914","name":"アルサイド","subname":"1958","normalized_subname":"1958","variant_code":"01","variant_type":"year","is_base_equivalent":true,"pedigree_effect_ids":[],"source_names":["アルサイド-1958-"],"source_pedigree_names":["アルサイド-1958-"],"dabimas_master_id":"fixture-5","sub_ability_id":0,"name_kana":"","registration_source":"fixture","mapping_status":"mapped","active":true,"first_seen_at":"2026-01-01T00:00:00Z","last_seen_at":"2026-01-01T00:00:00Z"},
+    {"node_id":"0000333914-02","pedigree_id":"0000333914","name":"アルサイド","subname":"1959","normalized_subname":"1959","variant_code":"02","variant_type":"year","is_base_equivalent":true,"pedigree_effect_ids":[],"source_names":["アルサイド-1959-"],"source_pedigree_names":["アルサイド-1959-"],"dabimas_master_id":"fixture-6","sub_ability_id":0,"name_kana":"","registration_source":"fixture","mapping_status":"mapped","active":true,"first_seen_at":"2026-01-01T00:00:00Z","last_seen_at":"2026-01-01T00:00:00Z"},
+    {"node_id":"game:0000-uuid-0001-00","pedigree_id":"game:0000-uuid-0001","name":"ゲームオリジナル","subname":null,"normalized_subname":null,"variant_code":"00","variant_type":"base","is_base_equivalent":true,"pedigree_effect_ids":[],"source_names":["ゲームオリジナル"],"source_pedigree_names":["ゲームオリジナル"],"dabimas_master_id":"fixture-7","sub_ability_id":0,"name_kana":"","registration_source":"fixture","mapping_status":"mapped","active":true,"first_seen_at":"2026-01-01T00:00:00Z","last_seen_at":"2026-01-01T00:00:00Z"}
+  ]
+}

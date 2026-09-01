@@ -24,13 +24,16 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import importlib.util
 import json
+import os
 import re
+import sys
 import time
 import unicodedata
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -141,6 +144,13 @@ CONVERSION_WARNING_COUNTS = {
     "invalid_rare": 0,
     "missing_ability_icon": 0,
     "unknown_ability_icon": 0,
+    "unresolved_node": 0,
+    "ambiguous_node": 0,
+    "ancestor_mismatch": 0,
+    "sire_line_mismatch": 0,
+    "mare_slot_missing": 0,
+    "representative_fallback_rule2": 0,
+    "representative_fallback_rule3": 0,
 }
 
 # 旧実装で使っていた「特殊アイコン除外」対象。
@@ -769,10 +779,54 @@ def all_row_to_sparse_dict(row: list[str]) -> dict[str, str]:
     return {str(i): row[i] for i in range(1, ROW_SIZE + 1) if row[i] != ""}
 
 
+def attach_pedigree_ids(entry: dict, source: Any) -> set[str]:
+    """entry に血統ID・父系15枠・牝系15枠を追加し、触れた pedigree を返す。"""
+    ancestor_names = [descendant.get("name", "") for descendant in entry["descendants"]]
+    resolution = source.resolve(entry["name"], entry["subName"], ancestor_names)
+    entry["nodeId"] = resolution.node_id
+    entry["pedigreeId"] = resolution.pedigree_id
+    CONVERSION_WARNING_COUNTS["ancestor_mismatch"] += resolution.ancestor_mismatch
+
+    if resolution.node_id is None or resolution.pedigree_id is None:
+        CONVERSION_WARNING_COUNTS["unresolved_node"] += 1
+        if len(resolution.candidates) > 1:
+            CONVERSION_WARNING_COUNTS["ambiguous_node"] += 1
+        entry["mares"] = None
+        for descendant in entry["descendants"]:
+            descendant["nodeId"] = None
+            descendant["pedigreeId"] = None
+        return set()
+
+    sire_nodes = source.sire_slots(resolution.pedigree_id)
+    mare_nodes = source.mare_slots(resolution.pedigree_id)
+    touched_pedigrees = {resolution.pedigree_id}
+
+    for descendant, node_id in zip(entry["descendants"], sire_nodes):
+        pedigree_id = source.node_pedigree_id(node_id)
+        descendant["nodeId"] = node_id
+        descendant["pedigreeId"] = pedigree_id
+        if pedigree_id is not None:
+            touched_pedigrees.add(pedigree_id)
+            sire_line = source.sire_line(pedigree_id)
+            master_line_name = sire_line.get("name") if sire_line else None
+            zensho_line_name = descendant.get("son")
+            if master_line_name and zensho_line_name and master_line_name != zensho_line_name:
+                CONVERSION_WARNING_COUNTS["sire_line_mismatch"] += 1
+
+    entry["mares"] = mare_nodes
+    for node_id in mare_nodes:
+        pedigree_id = source.node_pedigree_id(node_id)
+        if pedigree_id is None:
+            CONVERSION_WARNING_COUNTS["mare_slot_missing"] += 1
+        else:
+            touched_pedigrees.add(pedigree_id)
+    return touched_pedigrees
+
+
 def entry_to_summary(entry: dict, detail_chunk: int) -> dict:
     """full entry 1 件を summary 1 件へ変換する（descendants は含めない）。"""
     display_name = build_display_name(entry)
-    return {
+    summary = {
         "id": entry["id"],
         "detailChunk": detail_chunk,
         "name": entry["name"],
@@ -791,6 +845,10 @@ def entry_to_summary(entry: dict, detail_chunk: int) -> dict:
         "displayName": display_name,
         "searchText": build_search_text(entry, display_name),
     }
+    if "nodeId" in entry:
+        summary["nodeId"] = entry["nodeId"]
+        summary["pedigreeId"] = entry["pedigreeId"]
+    return summary
 
 
 def write_summary(path: Path, entries: list[dict], chunk_size: int) -> None:
@@ -825,15 +883,81 @@ def write_details(dir_path: Path, entries: list[dict], chunk_size: int) -> int:
     for chunk_index in range(num_chunks):
         start = chunk_index * chunk_size
         chunk_entries = entries[start:start + chunk_size]
-        horse_details = [
-            {"id": entry["id"], "descendants": entry["descendants"]} for entry in chunk_entries
-        ]
+        horse_details = []
+        for entry in chunk_entries:
+            detail = {"id": entry["id"], "descendants": entry["descendants"]}
+            if "mares" in entry:
+                detail["mares"] = entry["mares"]
+            horse_details.append(detail)
         obj = {"version": 1, "chunkIndex": chunk_index, "horseDetails": horse_details}
         out_path = dir_path / detail_chunk_filename(chunk_index)
         with out_path.open("w", encoding="utf-8", newline="\n") as fp:
             json.dump(obj, fp, ensure_ascii=False, separators=(",", ":"))
             fp.write("\n")
     return num_chunks
+
+
+def _load_sibling_module(module_name: str) -> Any:
+    """scripts 配下の兄弟モジュールを CLI・importlib テストの両方で読む。"""
+    existing = sys.modules.get(module_name)
+    if existing is not None:
+        return existing
+    module_path = Path(__file__).resolve().parent / f"{module_name}.py"
+    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"モジュールを読み込めません: {module_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_pedigree_source(args: argparse.Namespace) -> Any | None:
+    """CLI 指定に応じてローカルまたは R2 の血統マスターを索引化する。"""
+    local_flags = (
+        args.pedigree_master_file is not None,
+        args.pedigree_game_nodes_file is not None,
+    )
+    if any(local_flags) and not all(local_flags):
+        raise RuntimeError(
+            "--pedigree-master-file と --pedigree-game-nodes-file は両方指定してください"
+        )
+    r2_enabled = args.r2_endpoint is not None or bool(os.environ.get("R2_ENDPOINT_URL"))
+    if not all(local_flags) and not r2_enabled:
+        return None
+
+    fetch_module = _load_sibling_module("pedigree_master_fetch")
+    expected_version = args.pedigree_dataset_version or None
+    if all(local_flags):
+        master = json.loads(Path(args.pedigree_master_file).read_text(encoding="utf-8"))
+        game = json.loads(Path(args.pedigree_game_nodes_file).read_text(encoding="utf-8"))
+        fetch_module.validate_bundle(master, game, expected_version)
+    else:
+        bundle = fetch_module.load_pedigree_master(
+            endpoint=args.r2_endpoint,
+            bucket=args.r2_bucket,
+            master_key=args.pedigree_master_key,
+            game_nodes_key=args.pedigree_game_nodes_key,
+            cache_dir=args.pedigree_cache_dir,
+            expected_dataset_version=expected_version,
+        )
+        master = bundle.master
+        game = bundle.game
+    source_module = _load_sibling_module("pedigree_master_source")
+    return source_module.PedigreeMasterSource(master, game)
+
+
+def write_pedigree_nodes(path: Path, source: Any, pedigree_ids: set[str]) -> None:
+    """血統ノード辞書を既存 JSON 出力と同じ圧縮書式で書く。"""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as fp:
+        json.dump(
+            source.build_pedigree_nodes(pedigree_ids),
+            fp,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        fp.write("\n")
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -876,16 +1000,40 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--timeout", type=float, default=30.0, help="HTTP タイムアウト秒。")
     parser.add_argument("--retries", type=int, default=3, help="HTTP リトライ回数。")
     parser.add_argument("--progress", type=int, default=100, help="進捗表示間隔。")
+    parser.add_argument("--r2-endpoint", default=None, help="R2 S3 API エンドポイント。")
+    parser.add_argument("--r2-bucket", default=None, help="R2 バケット名。")
+    parser.add_argument("--pedigree-master-key", default="pedigree_master.json")
+    parser.add_argument("--pedigree-game-nodes-key", default="pedigree_master.game.json")
+    parser.add_argument("--pedigree-cache-dir", default=".cache/pedigree")
+    parser.add_argument("--pedigree-dataset-version", default=None)
+    parser.add_argument("--pedigree-master-file", default=None)
+    parser.add_argument("--pedigree-game-nodes-file", default=None)
+    parser.add_argument("--pedigree-nodes-output", default=None)
     parser.add_argument(
         "--fail-on-error",
         action="store_true",
         help=(
             "取得/解析エラー・未知系統・不正レア度・非凡アイコン警告が"
+            "ある、または血統IDの未解決・曖昧・祖先不一致が"
             "1件でもあれば終了コード1にする。"
         ),
     )
     args = parser.parse_args(argv)
     reset_conversion_warning_counts()
+
+    try:
+        pedigree_source = _load_pedigree_source(args)
+    except Exception as exc:
+        print(f"[error] 血統マスターを読み込めません: {exc}")
+        return 1
+    if pedigree_source is not None:
+        representative_counts = pedigree_source.representative_rule_counts()
+        CONVERSION_WARNING_COUNTS["representative_fallback_rule2"] = (
+            representative_counts[2]
+        )
+        CONVERSION_WARNING_COUNTS["representative_fallback_rule3"] = (
+            representative_counts[3]
+        )
 
     output_path = Path(args.output)
     summary_output_path = Path(args.summary_output) if args.summary_output else None
@@ -893,6 +1041,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     chunk_size = max(1, args.detail_chunk_size)
     all_output_path = Path(args.all_output) if args.all_output else None
     urls_file = Path(args.urls_file) if args.urls_file else None
+    pedigree_nodes_output_path = (
+        Path(args.pedigree_nodes_output) if args.pedigree_nodes_output else None
+    )
 
     # 出力前に親ディレクトリを作成する。
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -902,6 +1053,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         details_output_dir.mkdir(parents=True, exist_ok=True)
     if all_output_path is not None:
         all_output_path.parent.mkdir(parents=True, exist_ok=True)
+    if pedigree_nodes_output_path is not None:
+        pedigree_nodes_output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # URL 取得元の優先順位:
     # 1) --urls-file（明示指定）
@@ -927,6 +1080,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         print(f"urls-file: {urls_file}")
     if all_output_path:
         print(f"all-output: {all_output_path}")
+    if pedigree_nodes_output_path and pedigree_source is not None:
+        print(f"pedigree-nodes-output: {pedigree_nodes_output_path}")
 
     written = 0
     skipped = 0
@@ -937,6 +1092,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     # （full JSON は従来どおりストリーム書き込み。entry 約 2,800 件はメモリ上問題ない）
     need_split_output = summary_output_path is not None or details_output_dir is not None
     entries: list[dict] = []
+    touched_pedigree_ids: set[str] = set()
 
     all_fp = all_output_path.open("w", encoding="utf-8", newline="\n") if all_output_path else None
 
@@ -1000,7 +1156,18 @@ def main(argv: Optional[list[str]] = None) -> int:
                         stallion_last_ability = current_ability
 
                     entry = all_row_to_dabifac_entry(row)
-                    serialized = json.dumps(entry, ensure_ascii=False, separators=(",", ":"))
+                    if pedigree_source is not None:
+                        touched_pedigree_ids.update(
+                            attach_pedigree_ids(entry, pedigree_source)
+                        )
+                    full_entry = (
+                        {key: value for key, value in entry.items() if key != "mares"}
+                        if "mares" in entry
+                        else entry
+                    )
+                    serialized = json.dumps(
+                        full_entry, ensure_ascii=False, separators=(",", ":")
+                    )
                     if not first:
                         out.write(",")
                     out.write(serialized)
@@ -1045,15 +1212,39 @@ def main(argv: Optional[list[str]] = None) -> int:
             num_chunks = write_details(details_output_dir, entries, chunk_size)
             print(f"details written: {details_output_dir} ({num_chunks} chunks)")
 
+    if pedigree_nodes_output_path is not None and pedigree_source is not None:
+        write_pedigree_nodes(
+            pedigree_nodes_output_path,
+            pedigree_source,
+            touched_pedigree_ids,
+        )
+        print(
+            f"pedigree nodes written: {pedigree_nodes_output_path} "
+            f"({len(touched_pedigree_ids)} pedigrees)"
+        )
+
     unknown_sire_lines = CONVERSION_WARNING_COUNTS["unknown_sire_line"]
     invalid_rares = CONVERSION_WARNING_COUNTS["invalid_rare"]
     missing_ability_icons = CONVERSION_WARNING_COUNTS["missing_ability_icon"]
     unknown_ability_icons = CONVERSION_WARNING_COUNTS["unknown_ability_icon"]
+    unresolved_nodes = CONVERSION_WARNING_COUNTS["unresolved_node"]
+    ambiguous_nodes = CONVERSION_WARNING_COUNTS["ambiguous_node"]
+    ancestor_mismatches = CONVERSION_WARNING_COUNTS["ancestor_mismatch"]
+    sire_line_mismatches = CONVERSION_WARNING_COUNTS["sire_line_mismatch"]
+    mare_slots_missing = CONVERSION_WARNING_COUNTS["mare_slot_missing"]
+    representative_rule2 = CONVERSION_WARNING_COUNTS["representative_fallback_rule2"]
+    representative_rule3 = CONVERSION_WARNING_COUNTS["representative_fallback_rule3"]
     print(
         f"done: written={written}, skipped={skipped}, errors={errors}, "
         f"unknown_sire_lines={unknown_sire_lines}, invalid_rares={invalid_rares}, "
         f"missing_ability_icons={missing_ability_icons}, "
-        f"unknown_ability_icons={unknown_ability_icons}"
+        f"unknown_ability_icons={unknown_ability_icons}, "
+        f"unresolved_node={unresolved_nodes}, ambiguous_node={ambiguous_nodes}, "
+        f"ancestor_mismatch={ancestor_mismatches}, "
+        f"sire_line_mismatch={sire_line_mismatches}, "
+        f"mare_slot_missing={mare_slots_missing}, "
+        f"representative_fallback_rule2={representative_rule2}, "
+        f"representative_fallback_rule3={representative_rule3}"
     )
     if args.fail_on_error and (
         errors > 0
@@ -1061,6 +1252,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         or invalid_rares > 0
         or missing_ability_icons > 0
         or unknown_ability_icons > 0
+        or unresolved_nodes > 0
+        or ambiguous_nodes > 0
+        or ancestor_mismatches > 0
     ):
         return 1
     return 0
