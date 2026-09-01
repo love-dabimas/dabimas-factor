@@ -158,9 +158,14 @@ const horses = summaryJson.horseLists;
 const stallions = horses.filter((horse) => horse.sex === "0");
 const broodmares = horses.filter((horse) => horse.sex === "1");
 assert.equal(summaryJson.version, 1);
-assert.equal(horses.length, 2873);
-assert.equal(stallions.length, 2375);
-assert.equal(broodmares.length, 498);
+// 件数は json/dabimasFactor.summary.json を再生成するたびに変わる。
+// データの取りこぼしを検出するための固定値なので、更新するときは
+// 増減の内訳を確認してから直すこと。
+// 2026-09-01: 血統マスター統合ビルド（dataset_version 2026-09-01T052756Z+raw.f7018232c481）
+//             で全書更新分 +52 / -11 を取り込み、2873 -> 2914 になった。
+assert.equal(horses.length, 2914);
+assert.equal(stallions.length, 2415);
+assert.equal(broodmares.length, 499);
 
 const fiveStarAbilityCounts = { none: 0, normal: 0, double: 0, focused: 0 };
 stallions
@@ -170,10 +175,10 @@ stallions
     fiveStarAbilityCounts[horse.abilityType] += 1;
   });
 assert.deepEqual(fiveStarAbilityCounts, {
-  none: 572,
-  normal: 1025,
-  double: 10,
-  focused: 264,
+  none: 586,
+  normal: 1046,
+  double: 13,
+  focused: 266,
 });
 assert.equal(
   horses.find((horse) => horse.id === "s3537931452").abilityType,
@@ -198,7 +203,7 @@ assert.equal(
 assert.equal(broodmares.every((horse) => horse.abilityType === null), true);
 
 const inmeisai = horses.filter((horse) => horse.categoryIcon === "14");
-assert.equal(inmeisai.length, 60);
+assert.equal(inmeisai.length, 64);
 assert.equal(
   inmeisai.every((horse) => horse.abilityType === "none" && horse.nature === ""),
   true

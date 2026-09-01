@@ -121,6 +121,11 @@
                 return;
               }
               for (const candidateSlot of [slot, slot - 1]) {
+                // slot 0 はその側のルートセル。祖先の nodeId で本人を
+                // 上書きしないよう候補から外す。
+                if (candidateSlot < 1) {
+                  continue;
+                }
                 const cell = this.selected[side + candidateSlot];
                 if (cell && cell.name === descendant.name) {
                   cell.nodeId = descendant.nodeId ?? null;
