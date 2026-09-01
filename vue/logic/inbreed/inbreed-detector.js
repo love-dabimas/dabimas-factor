@@ -101,12 +101,37 @@
             1, 2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
             1, 2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
           ];
+          const MARE_GENERATIONS = [
+            2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
+          ];
           const BLOOD_VOLUME = {
             1: 50000,
             2: 25000,
             3: 12500,
             4: 6250,
             5: 3125,
+          };
+          const buildMareOccurrences = (rootCell, side) => {
+            if (!nodeTable) {
+              return [];
+            }
+            const ids = Array.isArray(rootCell?.mareNodeIds)
+              ? rootCell.mareNodeIds
+              : [];
+            const occurrences = [];
+            ids.forEach((nodeId, slot) => {
+              if (typeof nodeId !== "string") {
+                return;
+              }
+              occurrences.push({
+                nodeId,
+                side,
+                generation: MARE_GENERATIONS[slot],
+                index: null,
+                mareSlot: slot,
+              });
+            });
+            return occurrences;
           };
 
           // 選択済み32枠を牡馬（0-15）・牝馬（16-31）に分割
@@ -716,31 +741,77 @@
 
           // 認定された同一馬・全兄妹クロスを連結し、同じグループの全出現を集める。
           const crossGroups = [];
+          const addPairToCrossGroups = (pair) => {
+            const matchingGroups = crossGroups.filter((group) =>
+              group.some((member) =>
+                pair.some((node) => isCrossRelated(member, node))
+              )
+            );
+            const merged = pair.slice();
+            matchingGroups.forEach((group) => merged.push(...group));
+            matchingGroups.forEach((group) => {
+              crossGroups.splice(crossGroups.indexOf(group), 1);
+            });
+            crossGroups.push(merged);
+          };
           recognizedCrosses
             .filter((cross) => cross.type === 'sameName' || cross.type === 'sibling')
             .forEach((cross) => {
               const pair = [cross.stallionNode, cross.broodmareNode].filter(Boolean);
-              const matchingGroups = crossGroups.filter((group) =>
-                group.some((member) =>
-                  pair.some((node) => isCrossRelated(member, node))
-                )
-              );
-              const merged = pair.slice();
-              matchingGroups.forEach((group) => merged.push(...group));
-              matchingGroups.forEach((group) => {
-                crossGroups.splice(crossGroups.indexOf(group), 1);
-              });
-              crossGroups.push(merged);
+              addPairToCrossGroups(pair);
             });
 
-          const allOccurrences = [...stallionsArray, ...broodmaresArray];
+          const stallionMares = buildMareOccurrences(
+            selected[0],
+            "stallion"
+          );
+          const broodmareMares = buildMareOccurrences(
+            selected[16],
+            "broodmare"
+          );
+          const stallionOccurrences = [...stallionsArray, ...stallionMares];
+          const broodmareOccurrences = [...broodmaresArray, ...broodmareMares];
+          const isMareOccurrence = (occurrence) =>
+            occurrence && occurrence.index === null;
+          const canCompare = (a, b) =>
+            (!isMareOccurrence(a) || typeof a.nodeId === "string") &&
+            (!isMareOccurrence(b) || typeof b.nodeId === "string");
+
+          stallionOccurrences.forEach((stallion) => {
+            broodmareOccurrences.forEach((broodmare) => {
+              if (
+                !isMareOccurrence(stallion) &&
+                !isMareOccurrence(broodmare)
+              ) {
+                return;
+              }
+              if (
+                canCompare(stallion, broodmare) &&
+                (isExactSameNode(stallion, broodmare) ||
+                  isFullSiblingByMaster(stallion, broodmare))
+              ) {
+                addPairToCrossGroups([stallion, broodmare]);
+              }
+            });
+          });
+
+          const allOccurrences = [
+            ...stallionOccurrences,
+            ...broodmareOccurrences,
+          ];
+          const occurrenceKey = (occurrence) =>
+            isMareOccurrence(occurrence)
+              ? occurrence.side + ":mare:" + occurrence.mareSlot
+              : "cell:" + occurrence.index;
           crossGroups.forEach((group) => {
             let added;
             do {
               added = false;
               allOccurrences.forEach((horse) => {
                 if (
-                  !group.some((member) => member.index === horse.index) &&
+                  !group.some(
+                    (member) => occurrenceKey(member) === occurrenceKey(horse)
+                  ) &&
                   group.some((member) => isCrossRelated(member, horse))
                 ) {
                   group.push(horse);
@@ -752,20 +823,36 @@
 
           const crosses = crossGroups.map((group) => {
             const unique = [];
-            const seenIndexes = new Set();
+            const seenOccurrences = new Set();
             group
               .slice()
-              .sort((a, b) => a.index - b.index)
+              .sort((a, b) => {
+                const sideA = a.side || (a.index < 16 ? "stallion" : "broodmare");
+                const sideB = b.side || (b.index < 16 ? "stallion" : "broodmare");
+                if (sideA !== sideB) {
+                  return sideA === "stallion" ? -1 : 1;
+                }
+                const positionA = isMareOccurrence(a)
+                  ? 100 + a.mareSlot
+                  : a.index;
+                const positionB = isMareOccurrence(b)
+                  ? 100 + b.mareSlot
+                  : b.index;
+                return positionA - positionB;
+              })
               .forEach((horse) => {
-                if (!seenIndexes.has(horse.index)) {
-                  seenIndexes.add(horse.index);
+                const key = occurrenceKey(horse);
+                if (!seenOccurrences.has(key)) {
+                  seenOccurrences.add(key);
                   unique.push(horse);
                 }
               });
             const occurrences = unique.map((horse) => ({
               nodeId: typeof horse.nodeId === "string" ? horse.nodeId : null,
-              side: horse.index < 16 ? "stallion" : "broodmare",
-              generation: generationMap[horse.index],
+              side: horse.side || (horse.index < 16 ? "stallion" : "broodmare"),
+              generation: isMareOccurrence(horse)
+                ? horse.generation
+                : generationMap[horse.index],
               index: horse.index,
             }));
             const generations = occurrences.map((item) => item.generation);
@@ -782,7 +869,9 @@
               occurrences,
               bloodVolume,
               generations,
-              hasMareOccurrence: false,
+              hasMareOccurrence: occurrences.some(
+                (occurrence) => occurrence.index === null
+              ),
             };
           });
           const dangerous = crosses.some((cross) => cross.bloodVolume >= 50000);
@@ -1031,8 +1120,16 @@
           // });
 
           // インブリード発生数と各種判定結果をまとめて返す
+          const colored = new Set(inbreedColorIndexes);
+          const hiddenCrossCount = crosses.filter(
+            (cross) =>
+              !cross.occurrences.some(
+                (occurrence) =>
+                  occurrence.index !== null && colored.has(occurrence.index)
+              )
+          ).length;
           return {
-            count: inbreedColorIndexes.length,
+            count: inbreedColorIndexes.length + hiddenCrossCount,
             sameNameGroups: sameNameGroupsFinalFiltered,
             siblingGroups: siblingGroupsFinalGrouped,
             sameNameSpecialChecks: specialCheckIndexes,

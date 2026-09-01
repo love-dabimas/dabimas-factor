@@ -234,10 +234,7 @@
           this.refreshCandidateLists(selectedHorses, selectedBroodmare);
         },
         loadSavedHorseSummaries() {
-          return this.ensureCustomHorseDb()
-            .then((db) =>
-              window.Dabimas.logic.storage.combinationStorage.loadCustomHorses(db)
-            )
+          return this.loadCustomHorseDetails()
             .then((records) => {
               const savedRecords = (records || [])
                 .filter(
@@ -526,7 +523,7 @@
                 return this.hydrateHorseWithDetail(
                   horse,
                   this.restoreDescendantBadgeFields(detail.descendants),
-                  null
+                  detail.mares
                 );
               }
               return Promise.reject(
@@ -673,25 +670,153 @@
               })
           );
         },
+        // mares を持たない旧形式の自家製馬を、保存元 config の盤面から補完する。
+        backfillCustomHorse(record, configs, db) {
+          if (!record || record.mares != null) {
+            return Promise.resolve(record);
+          }
+          const config = (configs || []).find(
+            (item) => item && item.customHorseId === record.id
+          );
+          if (!config || !config.configData?.dabimasFactor) {
+            record.mares = null;
+            return Promise.resolve(record);
+          }
+
+          let cells;
+          try {
+            cells = JSON.parse(config.configData.dabimasFactor);
+          } catch (error) {
+            record.mares = null;
+            console.warn("custom horse mare backfill failed", error);
+            return Promise.resolve(record);
+          }
+          const sire = cells?.[0];
+          const broodmare = cells?.[16];
+          if (
+            !sire ||
+            !broodmare ||
+            sire.source === "custom" ||
+            sire.customHorseId
+          ) {
+            record.mares = null;
+            return Promise.resolve(record);
+          }
+
+          return Promise.all([
+            this.ensureHorseDetail(sire),
+            this.ensureHorseDetail(broodmare),
+          ])
+            .then(([sireDetail, broodmareDetail]) => {
+              if (
+                !Array.isArray(sireDetail?.mares) ||
+                !Array.isArray(broodmareDetail?.mares)
+              ) {
+                throw new Error("custom horse source mares are unavailable");
+              }
+              const horseLogic = window.Dabimas.logic.horses;
+              const sireSummary = this.findSummaryHorse(sire);
+              const broodmareSummary = this.findSummaryHorse(broodmare);
+              if (!sireSummary || !broodmareSummary) {
+                throw new Error("custom horse source summaries are unavailable");
+              }
+              const hydratedSire = {
+                ...sireDetail,
+                nodeId: sireSummary.nodeId ?? null,
+                pedigreeId: sireSummary.pedigreeId ?? null,
+              };
+              const hydratedBroodmare = {
+                ...broodmareDetail,
+                nodeId: broodmareSummary.nodeId ?? null,
+                pedigreeId: broodmareSummary.pedigreeId ?? null,
+              };
+              const pedigreeLogic = window.Dabimas.logic.pedigree;
+              const rebuiltCells = [
+                ...pedigreeLogic.setDataForPedigree(
+                  "0",
+                  0,
+                  hydratedSire,
+                  []
+                ),
+                ...pedigreeLogic.setDataForPedigree(
+                  "1",
+                  0,
+                  hydratedBroodmare,
+                  []
+                ),
+              ];
+              record.mares = horseLogic.MARE_SOURCE_IDS.map(
+                ([side, mareIndex]) => {
+                  if (mareIndex === null) {
+                    return hydratedBroodmare.nodeId;
+                  }
+                  const source = side === "sire" ? sireDetail : broodmareDetail;
+                  return source.mares[mareIndex] ?? null;
+                }
+              );
+              horseLogic.DESCENDANT_CELL_IDS.forEach((cellId, index) => {
+                if (!record.descendants?.[index]) {
+                  return;
+                }
+                record.descendants[index].nodeId =
+                  rebuiltCells[cellId]?.nodeId ?? null;
+                record.descendants[index].pedigreeId =
+                  rebuiltCells[cellId]?.pedigreeId ?? null;
+              });
+              return window.Dabimas.logic.storage.combinationStorage
+                .saveCustomHorse(db, record)
+                .then(() => record);
+            })
+            .catch((error) => {
+              record.mares = null;
+              console.warn("custom horse mare backfill failed", error);
+              return record;
+            });
+        },
         // customHorses store を全件読み込んで customHorseDetails に載せる（候補再利用用）。
         loadCustomHorseDetails() {
           return this.ensureCustomHorseDb()
-            .then(
-              (db) =>
-                new Promise((resolve, reject) => {
-                  const tx = db.transaction(["customHorses"], "readonly");
-                  const store = tx.objectStore("customHorses");
-                  const request = store.getAll();
-                  request.onsuccess = () => {
-                    (request.result || []).forEach((record) => {
-                      this.$set(this.customHorseDetails, record.id, record);
+            .then((db) => {
+              const storage =
+                window.Dabimas.logic.storage.combinationStorage;
+              return storage.loadCustomHorses(db).then((records) => {
+                const customRecords = records || [];
+                customRecords.forEach((record) => {
+                  this.$set(this.customHorseDetails, record.id, record);
+                });
+
+                // 旧レコード補完は候補一覧の復元を待たせず、読み込み後に並行で行う。
+                storage
+                  .loadConfigs(db)
+                  .then((configs) => {
+                    const targets = customRecords.filter(
+                      (record) => record && record.mares == null
+                    );
+                    return Promise.all(
+                      targets.map((record) =>
+                        this.backfillCustomHorse(record, configs, db)
+                      )
+                    ).then(() => {
+                      const failedCount = targets.filter(
+                        (record) => record.mares == null
+                      ).length;
+                      if (failedCount > 0) {
+                        console.warn(
+                          "custom horse mare backfill failures: " + failedCount
+                        );
+                      }
                     });
-                    resolve(request.result || []);
-                  };
-                  request.onerror = () => reject(request.error);
-                })
-            )
-            .catch(() => []);
+                  })
+                  .catch((error) => {
+                    console.warn("custom horse mare backfill failed", error);
+                  });
+                return customRecords;
+              });
+            })
+            .catch((error) => {
+              console.warn("custom horse detail load failed", error);
+              return [];
+            });
         },
         // ===== localStorage 軽量化 =====
         // descendants / searchText / displayName を落とした保存用 snapshot を作る。

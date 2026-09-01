@@ -4,6 +4,11 @@
   window.Dabimas.logic.horses = window.Dabimas.logic.horses || {};
 
   var DESCENDANT_CELL_IDS = [0, 1, 2, 4, 5, 3, 6, 7, 17, 18, 20, 21, 19, 22, 23];
+  var MARE_SOURCE_IDS = [
+    ["dam", null], ["sire", 0], ["dam", 0], ["sire", 1], ["sire", 2],
+    ["dam", 1], ["dam", 2], ["sire", 3], ["sire", 4], ["sire", 5],
+    ["sire", 6], ["dam", 3], ["dam", 4], ["dam", 5], ["dam", 6],
+  ];
 
   // 1文字バッジ（天性・非凡・因名祭・エディット種牡馬・自家製）の判定に使う
   // フィールド。vue/logic/horses/horse-search.js の getHorseBadges が見る値で、
@@ -63,6 +68,8 @@
       return Object.assign(pickBadgeFields(cell), {
         name: cell.name,
         subName: cell.subName || "",
+        nodeId: cell.nodeId ?? null,
+        pedigreeId: cell.pedigreeId ?? null,
         parentLine: cell.parentLine || "",
         factors: Array.isArray(cell.factors)
           ? cell.factors.slice()
@@ -72,6 +79,18 @@
     });
 
     var sire = cells[0];
+    var mares = MARE_SOURCE_IDS.map(function (source) {
+      var side = source[0];
+      var mareIndex = source[1];
+      if (mareIndex === null) {
+        return cells[16]?.nodeId ?? null;
+      }
+      var root = cells[side === "sire" ? 0 : 16];
+      var mareNodeIds = Array.isArray(root?.mareNodeIds)
+        ? root.mareNodeIds
+        : [];
+      return mareNodeIds[mareIndex] ?? null;
+    });
     return {
       id: "ch_" + window.Dabimas.logic.pedigree.generateUuid(),
       kind: kind,
@@ -85,8 +104,11 @@
       factors: ownFactors,
       factorLocked: true,
       descendants: descendants,
+      mares: mares,
     };
   }
 
   window.Dabimas.logic.horses.buildSavedHorseRecord = buildSavedHorseRecord;
+  window.Dabimas.logic.horses.DESCENDANT_CELL_IDS = DESCENDANT_CELL_IDS;
+  window.Dabimas.logic.horses.MARE_SOURCE_IDS = MARE_SOURCE_IDS;
 })(window);

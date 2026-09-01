@@ -282,24 +282,52 @@ git status --short
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/logic/inbreed/inbreed-detector.js`: 両側15枠の牝馬擬似出現を nodeId でクロス群へ合流し、牝馬を含む新規グループ、血量、`hasMareOccurrence`、非表示クロスを含む `count` を実装した。表示用3集合には牝馬を入れていない。
+- `vue/logic/horses/saved-horse-builder.js`: `MARE_SOURCE_IDS` と既存 `DESCENDANT_CELL_IDS` を公開し、自家製馬へ `mares[15]` および descendants の `nodeId` / `pedigreeId` を保存するようにした。
+- `vue/app/methods/horse-loading.js`: 自家製馬 detail の `mares` を水和し、旧形式レコードを保存元config・現行summary/detailから非同期補完・再保存する `backfillCustomHorse()` を追加した。
+- `docs/codex-work-orders/2026-09-02-inbreed-mares.md`: 本完了報告を記入した（実装対象3ファイルには含めない）。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」>
+- `nodeTable` が無い場合は牝馬擬似出現自体を作らない。牝馬は名前を持たずmaster全兄妹も引けないためで、基準4の段階3完全縮退も保証できる。
+- 新規クロスの種は少なくとも片方が牝馬出現のペアに限定した。男系×男系は既存の祖先・例外除外後の認定結果を維持し、段階4bの枝除外と混ぜないためである。
+- `loadSavedHorseSummaries()` は既存の `loadCustomHorseDetails()` を通す形へ統一し、旧形式補完は候補一覧の復元を待たせないバックグラウンド処理にした。失敗レコード数は `console.warn` へ出す。
+- 段階2以前のconfigには `nodeId` / `pedigreeId` / `mareNodeIds` が無いため、保存元2頭の現行summary/detailを取得し、既存の `setDataForPedigree()` で32セルを再構成してからIDを補完する。セル対応表を別に複製せず、現行の血統展開規則を単一の根拠にした。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 基準1: `verify-storage-boot-order.cjs`、`verify-horse-badges.cjs`、`verify-horse-candidate-lists.cjs` → すべて `OK`。
+- 基準2: `verify-index-exp .\index.html` → `[verify] OK`。
+- 基準3: `python -m pytest tests/ -q` → `52 passed`。
+- 基準4・5: 一時 `tmp/verify-inbreed-mares.cjs` で nodeId / mareNodeIds を持つ盤面の nodeTable 省略時、および `mareNodeIds: null` の盤面を固定点 `4ab667a` の段階3実装と比較し、既存6キーの完全一致を確認した。
+- 基準6: TC-M01=`15625`、TC-M02の牝馬のみクロスで `count=1`・着色なし、TC-M04の保存→ルート再配置、TC-M05の男系兄弟取り込み・非着色、TC-M06の入れ子伝播を確認した。TC-M07はレコードだけでなくconfigからも全IDを除いた段階2以前の形で、現行summary/detailからの再構成による補完、再実行時の冪等性、configなし縮退を確認した。
+- 基準7: `SIRE_PATHS` を親側へ翻訳した15セルが、公開した `DESCENDANT_CELL_IDS` と全件一致した。
+- 基準8: 一時 `tmp/measure-inbreed-mares.cjs` で固定seedのランダム4000組を測定した。詳細は次節。
+- 基準9: 同スクリプトで `ダッシャーゴーゴー × シル` をsummary/detailから32セルへ展開して比較した。詳細は次節。
+- 基準10: 実装差分は指定3ファイル、これに本完了報告1ファイルを加えた。split baselineは更新していない。
+- 追加確認: 変更3 JS の `node --check`、`node tmp/verify-inbreed-mares.cjs`、`git diff --check` はすべて成功した。
 
 ### クロス群増加の実測（基準8）
 
-<サンプル数・平均クロス群の前後・増分の分布・1 件以上増えた割合>
+種牡馬2415頭×特殊牝馬499頭から、固定seed `0x20260902` で重複なし4000組を抽出した。
+
+- masterの完全同一・全兄妹を直接グループ化した値: **1.0465 → 1.4445**（指示値1.07→1.47前後と整合）。
+- 現行 `judgeInbreed().crosses` の値: **0.73825 → 1.13625**。両方が直接値より約0.31低いのは、段階3から維持している既存の祖先・例外除外後の `recognizedCrosses` を男系グループの種にするため。牝馬追加による増分はどちらも **+0.398** で一致した。
+- 増分分布: `+0:3095, +1:585, +2:99, +3:164, +4:29, +5:4, +6:0, +7:16, +8:5, +9:2, +10:0, +11:1`。
+- 1件以上増加: **905 / 4000 = 22.625%**（指示値23%前後と整合）。
 
 ### ベースライン盤面の変化（基準9）
 
-<ダッシャーゴーゴー × シル で count / sameNameGroups / siblingGroups / inbreedColorIndexes がどうなったか>
+`ダッシャーゴーゴー × シル` は牝馬15枠の投入前後で変化なし。
+
+- `count`: `2 → 2`
+- `sameNameGroups`: `[[バックパサー, バックパサー]]` のまま
+- `siblingGroups`: `[]` のまま
+- `inbreedColorIndexes`: `[13, 17]` のまま
+- `crosses.length`: `1 → 1`
+
+ブラウザsnapshotの更新は不要で、`tests/fixtures/split-baseline/` に差分なし。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+指示書の平均1.07→1.47はmaster関係を直接グループ化した値とは整合するが、段階3の実際の `crosses` は既存祖先除外後の認定ペアを種にするため0.738→1.136となる。増分と増加率は一致しており牝馬投入漏れではない。男系側の約0.31差を解消するには既存の祖先除外との関係を変える必要があり、クロスを減らす規則を扱う段階4bの検討事項として本作業では変更していない。
