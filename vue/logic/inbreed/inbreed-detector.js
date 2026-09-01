@@ -28,8 +28,15 @@
     inbreedExceptions,
     nodeTable
   ) {
+          // nodeTable が無いときは nodeId 判定へ進まない。
+          // nodeId は summary/details 由来なので pedigreeNodes.json の取得に
+          // 失敗しても各セルには残っており、ここで nodeId を見てしまうと
+          // 「variant 違いなので同一馬ではない」とだけ判定され、全兄妹判定
+          // （nodeTable が要る）も効かないため、現行より検出が減る。
+          // 縮退時は現行どおり名前一致で拾う（設計 §6.7）。
           const isExactSameNode = (a, b) => {
             if (
+              nodeTable &&
               typeof a?.nodeId === "string" &&
               typeof b?.nodeId === "string"
             ) {
