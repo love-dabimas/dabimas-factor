@@ -81,6 +81,9 @@
         normalizeHorseSummary(horse) {
           return {
             id: horse.id,
+            nodeId: typeof horse.nodeId === "string" ? horse.nodeId : null,
+            pedigreeId:
+              typeof horse.pedigreeId === "string" ? horse.pedigreeId : null,
             detailChunk:
               typeof horse.detailChunk === "number" ? horse.detailChunk : 0,
             name: horse.name || "",
@@ -137,6 +140,8 @@
               (index) => String((record.factors || [])[index] || "")
             ),
             factorLocked: true,
+            nodeId: null,
+            pedigreeId: null,
           };
         },
         createEditStallionSummary(record, baseHorse) {
@@ -160,6 +165,8 @@
             factors: [0, 1, 2].map(
               (index) => String((record.factors || [])[index] || "")
             ),
+            nodeId: null,
+            pedigreeId: null,
           });
         },
         insertEditStallions(baseList, records = this.editStallions) {
@@ -353,8 +360,12 @@
           return promise;
         },
         // freeze 済み summary を mutate せず、descendants を載せた新オブジェクトを返す（指摘 G）。
-        hydrateHorseWithDetail(horse, descendants) {
-          return { ...horse, descendants };
+        hydrateHorseWithDetail(horse, descendants, mares = null) {
+          return {
+            ...horse,
+            descendants,
+            mares: Array.isArray(mares) ? mares : null,
+          };
         },
         // 保存済み配合の descendants[0] にバッジ用フィールド（天性・非凡・因名祭）を補う。
         // vue/logic/horses/saved-horse-builder.js がこれらを保存するようになる前の
@@ -473,7 +484,8 @@
                     if (retryDetail && Array.isArray(retryDetail.descendants)) {
                       return this.hydrateHorseWithDetail(
                         horse,
-                        retryDetail.descendants
+                        retryDetail.descendants,
+                        retryDetail.mares
                       );
                     }
                     return Promise.reject(
@@ -491,7 +503,11 @@
               (detailMap) => {
                 const detail = detailMap.get(lookupId);
                 if (detail && Array.isArray(detail.descendants)) {
-                  return this.hydrateHorseWithDetail(horse, detail.descendants);
+                  return this.hydrateHorseWithDetail(
+                    horse,
+                    detail.descendants,
+                    detail.mares
+                  );
                 }
                 return retryFromSummary();
               },
@@ -509,7 +525,8 @@
               ) {
                 return this.hydrateHorseWithDetail(
                   horse,
-                  this.restoreDescendantBadgeFields(detail.descendants)
+                  this.restoreDescendantBadgeFields(detail.descendants),
+                  null
                 );
               }
               return Promise.reject(
@@ -535,7 +552,11 @@
           return this.fetchHorseDetailChunk(chunkIndex).then((detailMap) => {
             const detail = detailMap.get(lookupId);
             if (detail && Array.isArray(detail.descendants)) {
-              return this.hydrateHorseWithDetail(horse, detail.descendants);
+              return this.hydrateHorseWithDetail(
+                horse,
+                detail.descendants,
+                detail.mares
+              );
             }
             // id が chunk に無い → 名前等で 1 回だけ再解決を試す（指摘 G）
             const matched = this.findSummaryHorse(horse);
@@ -551,7 +572,8 @@
                   if (retryDetail && Array.isArray(retryDetail.descendants)) {
                     return this.hydrateHorseWithDetail(
                       horse,
-                      retryDetail.descendants
+                      retryDetail.descendants,
+                      retryDetail.mares
                     );
                   }
                   return Promise.reject(
@@ -677,7 +699,7 @@
           if (!horse) {
             return horse;
           }
-          const { descendants, searchText, displayName, ...rest } = horse;
+          const { descendants, searchText, displayName, mares, ...rest } = horse;
           return rest;
         },
         serializeSelectedForStorage(selected) {
@@ -716,7 +738,25 @@
         // summary fetch と並行に読み込みを開始しつつ、復元処理（c4 内の dispInbreed が
         // 例外ルールを使う）だけはこの Promise の解決を待ってから行う。
         dbinitializer(readyPromise) {
-          const waitReady = () => Promise.resolve(readyPromise);
+          const nodeTablePromise = fetch("./json/pedigreeNodes.json")
+            .then((response) => {
+              if (!response.ok) {
+                throw new Error(
+                  "pedigree nodes fetch failed: " + response.status
+                );
+              }
+              return response.json();
+            })
+            .then((json) => {
+              window.Dabimas.pedigreeNodes =
+                window.Dabimas.logic.pedigree.buildNodeTable(json);
+            })
+            .catch((error) => {
+              console.warn("pedigree nodes load failed", error);
+              window.Dabimas.pedigreeNodes = null;
+            });
+          const waitReady = () =>
+            Promise.all([Promise.resolve(readyPromise), nodeTablePromise]);
           const savedHorsePromise = this.loadSavedHorseSummaries();
           const editStallionPromise = this.loadEditStallions();
           // グローバル設定は復元チェーンを待たせず、マスターと並行で読み込む。

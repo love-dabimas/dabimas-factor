@@ -94,6 +94,9 @@
               bros = getValueByKey(brosData, horseData.name);
               retDataForPedigree[0] = {
                 ...horseData,
+                mareNodeIds: Array.isArray(horseData.mares)
+                  ? horseData.mares.slice()
+                  : null,
                 selectedHorse: horseData.name,
                 uuid: myId,
                 selfSelected: true,

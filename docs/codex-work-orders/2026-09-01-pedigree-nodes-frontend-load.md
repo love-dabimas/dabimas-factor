@@ -318,16 +318,29 @@ git diff --stat tests/fixtures/split-baseline/
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/logic/pedigree/pedigree-node-table.js`（新規）: 圧縮 JSON のフィールド定義から索引を構築し、凍結したノード参照テーブルを公開した。
+- `index.html`: ノードテーブルを `pedigree-builder.js` より先に読み込む script を追加した。
+- `vue/app/methods/horse-loading.js`: ノード JSON の並列読み込みと 404 縮退、summary の ID 正規化、detail の `mares` 引き回し、保存時の `mares` 除外を実装した。
+- `vue/app/methods/bootstrap.js`: 古い保存盤面へルート・祖先・牝系 ID を加算的に補完する `backfillPedigreeIds()` を追加した。
+- `vue/logic/pedigree/pedigree-builder.js`: ルートセルへ複製した `mareNodeIds` を載せた。
+- `service-worker.js`: キャッシュ名を `dabimas-factor-v20260901-01` へ更新し、ノード JSON と新規 JS をキャッシュ対象へ追加した。
+- `docs/codex-work-orders/2026-09-01-pedigree-nodes-frontend-load.md`: 本完了報告を記入した（実装対象 6 ファイルには含めない）。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」>
+なし。ブラウザ相当の受け入れ確認 5・6・7・9・10 は、指示書で許可された一時 `tmp/verify-pedigree-frontend.cjs` を使って Node VM 上で実施し、コミット対象から除外した。`index.exp.html` が存在しないため、AGENTS.md 指定の補助コマンドには実在する `index.html` を第 2 引数で明示した。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 基準 1: `powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-index-exp .\index.html` → `[verify] OK`。
+- 基準 2: `node scripts/verify-storage-boot-order.cjs` → `storage boot order regression: OK`。
+- 基準 3: `node scripts/verify-horse-candidate-lists.cjs` → `horse candidate list regression: OK`。`node scripts/verify-horse-badges.cjs` は下記の既存固定件数不整合により失敗した。
+- 基準 4: `python -m pytest tests/ -q` → `52 passed`。
+- 基準 5・6・7・10: `node tmp/verify-pedigree-frontend.cjs` → `pedigree frontend verifier: OK`。実データの `getNode("0000008661-10")`、32 セルへの ID 引き回し、15 件の `mareNodeIds`、手動因子の保持、通常・再解決・エディット・自家製の各 detail 経路、ノード JSON の待機と 404 時の `null` 縮退を確認した。
+- 基準 8: `git diff --exit-code -- tests/fixtures/split-baseline/` → 差分なし。
+- 基準 9: 現行 summary から `pedigreeId` が `game:` で始まる馬を抽出し、`アイアムアカペラオー` の完全な UUID 形式 ID が `nodeId` と `pedigreeId` の双方で切断されず保持されることを Node で確認した。
+- 基準 11: 実装差分は指定 6 ファイル、これに本完了報告 1 ファイルを加えた。作業開始前から存在する `css/style.css`、`docs/pedigree-master-integration-design.md`、`getSize.html` の変更は触れていない。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+- `scripts/verify-horse-badges.cjs` が前段階以前の固定件数（全 2873、種牡馬 2375、繁殖牝馬 498）を期待している一方、段階1で生成済みの現行 summary は指示書どおり全 2914、種牡馬 2415、繁殖牝馬 499 のため、最初の件数 assertion で失敗する。今回の変更によるデータ差分ではなく、指示書の「気づいた別問題は直さない」に従ってテスト側は変更していない。

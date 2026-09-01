@@ -24,6 +24,7 @@
   // これによりメソッド本体を1文字も変えずに移動できる（逐語移動原則）。
   var factorMap = window.Dabimas.logic.factor.factorMap;
   var MANUAL_INBREED_STORAGE_KEY = "dabimasManualInbreed";
+  var DESCENDANT_SLOTS = [1, 2, 4, 8, 9, 5, 10, 11, 3, 6, 12, 13, 7, 14, 15];
 
   Object.assign(window.Dabimas.app.methods, {
         // インブリード例外ルールを読み込む
@@ -87,6 +88,49 @@
           }
           await this.refreshLocalDataFromStorage();
         },
+        // 旧形式の保存盤面へ、現在の summary/detail にある血統IDだけを加算する。
+        // セル自体は作り直さず、手動因子などユーザー編集済みの値を保持する。
+        backfillPedigreeIds: async function () {
+          for (const side of [0, 16]) {
+            const root = this.selected[side];
+            if (!root || !root.id) {
+              continue;
+            }
+            const summary = this.findSummaryHorse(root);
+            let detail;
+            try {
+              detail = await this.ensureHorseDetail(root);
+            } catch (error) {
+              console.warn("pedigree id backfill skipped", error);
+              continue;
+            }
+
+            if (summary) {
+              root.nodeId = summary.nodeId ?? null;
+              root.pedigreeId = summary.pedigreeId ?? null;
+            }
+            if (!detail) {
+              continue;
+            }
+            root.mareNodeIds = Array.isArray(detail.mares)
+              ? detail.mares.slice()
+              : null;
+            (detail.descendants || []).forEach((descendant, index) => {
+              const slot = DESCENDANT_SLOTS[index];
+              if (slot === undefined) {
+                return;
+              }
+              for (const candidateSlot of [slot, slot - 1]) {
+                const cell = this.selected[side + candidateSlot];
+                if (cell && cell.name === descendant.name) {
+                  cell.nodeId = descendant.nodeId ?? null;
+                  cell.pedigreeId = descendant.pedigreeId ?? null;
+                  break;
+                }
+              }
+            });
+          }
+        },
         // 復元処理
         restoreInputData: async function () {
           const parseArray = JSON.parse(localStorage.getItem("dabimasFactor"));
@@ -98,6 +142,8 @@
           ]);
           this.selected = JSON.parse(localStorage.getItem("dabimasFactor"));
           this.category = JSON.parse(localStorage.getItem("dabimasFactorCategory"));
+
+          await this.backfillPedigreeIds();
 
           // 【最適化】mapではなくforEachを使用（戻り値を使わないため）
           // 因子・親系統を詰める

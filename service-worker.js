@@ -1,5 +1,5 @@
 // cache name, cache files
-var CACHE_NAME = 'dabimas-factor-v20260825-03';
+var CACHE_NAME = 'dabimas-factor-v20260901-01';
 var BASE_PATH = self.location.pathname.replace(/\/service-worker\.js$/, '/');
 var APP_SHELL_URL = BASE_PATH + 'index.html';
 // プリキャッシュは「実行時に実際に使われるもの」だけに絞る。
@@ -15,6 +15,7 @@ var urlsToCache = [
   APP_SHELL_URL,
   // 初期表示用の軽量 summary を install cache する（案 B）。
   BASE_PATH + 'json/dabimasFactor.summary.json',
+  BASE_PATH + 'json/pedigreeNodes.json',
   // detail chunk（json/dabimasFactor-details/*.json）は install では addAll しない。
   // 1 ファイルの 404 で install 全体が失敗する（指摘 C）ため、fetch ハンドラの
   // network-first 経路で runtime cache される。アプリ側 prefetch で順次温める。
@@ -50,6 +51,7 @@ var urlsToCache = [
   BASE_PATH + 'vue/logic/storage/local-storage.js',
   BASE_PATH + 'vue/logic/theory/compatibility.js',
   BASE_PATH + 'vue/logic/theory/affinity.js',
+  BASE_PATH + 'vue/logic/pedigree/pedigree-node-table.js',
   BASE_PATH + 'vue/logic/nicks/nicks-boot.js',
   BASE_PATH + 'vue/logic/nicks/nicksCalculator.js',
   BASE_PATH + 'vue/logic/pedigree/pedigree-builder.js',
