@@ -1,11 +1,13 @@
 # 血統マスタ統合 設計書
 
-- 文書版: v1.0
+- 文書版: v1.4
 - 作成日: 2026-08-19
+- 更新日: 2026-09-01（R2 配置版 `2026-09-01T042317Z+raw.848bcf26f2fa` で全検証項目が
+  通過。奇跡グループの判定キーを `kiseki_group_id` へ訂正）
 - 対象ブランチ: `feature/dabifaku-unified`
-- 目的: ゲーム内血統マスタ (`pedigree_master.json`) を取り込み、インブリード判定・
-  配合理論判定・インブリード因子数カウントを `node_id` ベースへ移行し、
-  血統表に **5代目までの牝馬** を含める
+- 目的: ゲーム内血統マスタ（`pedigree_master.json` + `pedigree_master.game.json`）を
+  取り込み、インブリード判定・配合理論判定・インブリード因子数カウントを
+  `node_id` ベースへ移行し、血統表に **5代目までの牝馬** を含める
 - 関連仕様: `dabimas_pedigree_editor_algorithm_spec.md`（以下「アルゴリズム仕様書」）
 
 ---
@@ -22,8 +24,9 @@
 
 ### 1.2 非ゴール
 
-- ゲーム UI 文言の完全一致（アルゴリズム仕様書 Phase 3）。`breeding_theories.priority` と
-  Word マスタが未入手のため対象外
+- `getCrossCommentType()` が返すクロスコメントの日本語文言まで含むゲーム UI 完全一致
+  （アルゴリズム仕様書 Phase 3）。Word マスタが未入手のため対象外。
+  **配合理論の単一表示優先順位は §7.2.4 で確定済み**
 - UserPedigree 対応（同 Phase 4）
 - 利根川系など特殊配合理論
 
@@ -33,38 +36,115 @@
    一括移行が不要になる
 2. **牝馬15枠は `nodeId` の配列としてルートセルに載せる**（§6.4）。表示行を増やさないため
    既存の32行モデル・保存形式・共有形式をそのまま使える
+3. **ID の役割を分離する**（§4.1）。`pedigree_id` は実馬同一性、`node_id` はゲームノード
+   同一性であり、用途ごとにどちらを使うかを固定する。混用を禁止する
+
+### 1.4 入力ファイル（新スキーマ・2 ファイル）
+
+| ファイル | schema | 件数 | 役割 |
+|---|---|---:|---|
+| `pedigree_master.json` | `dabimas-pedigree-master` | 14772 pedigrees | **実馬レイヤー**。父母・親系統・子系統・奇跡グループ・別名 |
+| `pedigree_master.game.json` | `dabimas-pedigree-game-nodes` | 16009 nodes | **ゲームノードレイヤー**。variant・因子・天性・名前の出所 |
+
+`node_id` は `"<pedigree_id>-<variant_code>"` の**文字列**（例: `"0000008661-10"`）。
+全 16009 件でこの等式が成立することを確認済み。
+旧 v4（整数 `node_id`・単一ファイル）は破棄する。
+
+親子リンクは**実馬レイヤーにしか無い**（`father_pedigree_id` / `mother_pedigree_id`）。
+ゲームノードは父母を持たないため、祖先ツリーの展開は必ず `pedigree_id` で行う。
 
 ---
 
 ## 2. 前提となる実測結果
 
 設計の前提として実データで検証済みの事実。再検証時の基準値でもある。
+すべて R2 配置版（`dataset_version: 2026-09-01T042317Z+raw.848bcf26f2fa`）で計測し、
+**全項目が通過している**。
 
-### 2.1 マスタ突合
-
-| 検証項目 | 結果 |
-|---|---|
-| 全書 2873 頭の master ノード解決 | 2872 頭が一意に確定（未解決 0） |
-| 本馬の親系統 + 子系統の一致 | 2872 / 2872 |
-| 祖先（男系15枠）の因子の一致 | 43080 / 43080 |
-| 祖先（男系15枠）の親系統略号の一致 | 43080 / 43080 |
-| 祖先（男系15枠）の子系統 ID の一致 | 43080 / 43080 |
-| 種牡馬一覧ページから取得したレア度 | 2375 / 2375 一致（不一致 0） |
-| 牝馬一覧ページの id と現行 summary の id | 498 / 499 一致、現行にあって一覧に無い id は 0 |
-
-確定不能の 1 件はホクトボーイ。`pedigree_id` と父母が同一の重複ノードのため、
-どちらを採っても結果は変わらない。
-
-### 2.2 牝馬15枠
+### 2.1 ファイル構造
 
 | 検証項目 | 結果 |
 |---|---|
-| 牝馬15枠が全部埋まる馬 | 2429 / 2873（84.5%）。残りも 8〜14 枠 |
-| 牝馬枠の延べ出現 | 42247 |
-| うち父母 ID を両方持つ（＝全兄妹判定可能） | 39457 = **93.4%** |
-| ユニーク牝馬ノード | 5625 |
+| pedigree 件数 / node 件数 | 14780 / 16187 |
+| `node_id == pedigree_id + "-" + variant_code` | 16187 / 16187 成立 |
+| 全 node の `pedigree_id` が pedigree レイヤーに存在 | 16187 / 16187 |
+| 親参照の dangling | 0 |
+| variant 種別 | base 14541 / named 1327 / year 319 |
+| `is_base_equivalent` | base=true, year=true, named=false（例外なし） |
+| `active` | 全 16187 件が true |
+| 父母を両方持つ pedigree | 11939 / 14780 = 80.8% |
+| 1 pedigree あたりの variant 数 | 1 が 14316、2 以上が 464（最大 14） |
 
-### 2.3 牝馬を入れたときのクロス増分（サンプル 4000 配合）
+### 2.2 マスタ突合（全書 2873 頭）
+
+| 検証項目 | 結果 |
+|---|---|
+| ノード解決（§4.2 の優先順位・年号フォールバック込み） | **2873 / 2873 が一意。未解決 0・確定不能 0** |
+| 15祖先の名前一致 | **43095 / 43095** |
+| 15祖先の因子一致 | **43095 / 43095** |
+| 15祖先の親系統一致 | **43095 / 43095** |
+| 代表 variant の決定（§4.5） | 14780 / 14780（rule1 14541・rule2 169・rule3 70。失敗 0） |
+
+解決がどの段階で当たったかの内訳（§4.2 の優先順位）:
+
+| 当たった段階 | 件数 |
+|---|---:|
+| `name + subname` | 2587 |
+| `source_names` | 277（**繁殖牝馬の表示名**。これが無いと 221/498 しか引けない） |
+| 年号フォールバック（§4.3） | 7 |
+| `aliases` | 2 |
+
+**`source_names` に繁殖牝馬の表示名が入っていることが必須条件である。**
+R2 の中間版（`2026-08-29T232844Z`）ではこれが欠落し、繁殖牝馬 277 頭（55%）が
+解決不能になった。マスタ更新時はこの 277 件が維持されていることを必ず確認する
+（§5.4 の `unresolved_node` で検出できる）。
+
+以前の版で 4 件あった親系統の不一致（すべて `Ariel` の `child_sire_line` が
+父 `Eternal` と食い違っていたもの）は本版で修正され、0 件になった。
+
+### 2.3 奇跡グループの判定キーは `kiseki_group_id`
+
+`PedigreeMiracleBreedingGroup` の実体は、旧ダンプ（471 グループ・メンバー延べ 1707）を
+写像すると大半が「同一実馬の variant 集合」だった。
+
+```
+旧 group 2 = ネアルコ 7 レコード
+  -> すべて pedigree_id "0000334377" の variant（-00 / -10 … -15）
+```
+
+ただし**それが全部ではない**。現行版では 4 グループが**別の実馬同士**をまとめている。
+
+| group | メンバー |
+|---:|---|
+| 279 | グリーングラス + グランディ |
+| 292 | サイテーション + Fair Copy |
+| 302 | Charlottesville + ジャイプール |
+| 317 | エスケンデレヤ + キタサンブラック |
+
+したがって **「同じ奇跡グループか」＝「`kiseki_group_id` が同じか（両方非 null）」**
+として実装する。`pedigree_id` の一致で代用してはならない。上の 4 グループを取りこぼす。
+
+| 検証項目 | 結果 |
+|---|---:|
+| `kiseki_group_id` を持つ pedigree | 475 |
+| ユニークな group id | 471 |
+| メンバー数の分布 | 1 頭が 467 グループ、2 頭が 4 グループ |
+| variant を複数持つ pedigree | 464 |
+
+旧ダンプ `kiseki_groups.game.json` との突合は**検証項目から外す**。
+旧ダンプの `game_pedigree_id` は現行の `dabimas_master_id` と ID 空間が異なり
+75 件が引けないが、現行ファイルは `kiseki_group_id` を自前で持ち自己完結しているため
+実装には影響しない。
+
+### 2.4 牝馬15枠
+
+| 検証項目 | 結果 |
+|---|---|
+| 牝馬15枠が全部埋まる馬 | 2430 / 2873。残りも 8〜14 枠 |
+| 牝馬枠の延べ出現 | 約 42000 |
+| うち父母を両方持つ（＝全兄妹判定可能） | 93.4% |
+
+### 2.5 牝馬を入れたときのクロス増分（サンプル 4000 配合）
 
 | | クロス群の平均数 |
 |---|---:|
@@ -75,35 +155,122 @@
 **約 23% の配合で新たなクロスが検出される。** 目に見える挙動変更なので、
 リリースは単独で行い変化を確認する（§13）。
 
+### 2.6 全書側（変更なし）
+
+| 検証項目 | 結果 |
+|---|---|
+| 種牡馬一覧ページから取得したレア度 | 2375 / 2375 一致（不一致 0） |
+| 牝馬一覧ページの id と現行 summary の id | 498 / 499 一致、現行にあって一覧に無い id は 0 |
+
 ---
 
 ## 3. データソースと配置
 
-### 3.1 配置
+### 3.1 入力の取得元 — Cloudflare R2（ビルド時のみ）
+
+2 つの入力 JSON は **Cloudflare R2 に置き、ビルド時に Python が取得する**。
+リポジトリには入れない。フロントエンドからは一切 fetch しない。
 
 ```
-json/pedigree_master.json      ビルド専用入力（手動更新・約 5.9MB）
-json/pedigreeNodes.json        実行時に読む血統ノード表（新規・約 503KB / gzip 188KB）
-json/dabimasFactor.summary.json          既存（nodeId 追加）
-json/dabimasFactor-details/*.json        既存（nodeId・mares 追加）
+R2                                        ビルド時に取得（Python）
+  pedigree_master.json          実馬レイヤー
+  pedigree_master.game.json     ゲームノードレイヤー
+        |
+        v
+scripts/build_dabimas_stream.py  +  全書スクレイプ（一覧ページ2枚）
+        |
+        v
+json/dabimasFactor.summary.json          nodeId 追加
+json/dabimasFactor-details/*.json        nodeId・mares 追加
 json/dabimasFactor.json                  既存フォールバック（同上）
+json/pedigreeNodes.json                  新規（実行時に読む唯一の追加ファイル）
 json/brosData.json                       既存（§6.6 で役割縮小）
 ```
 
-### 3.2 `json/pedigree_master.json` の扱い（重要）
+この結果、**フロントエンドの通信量は `pedigreeNodes.json`（gzip 188KB）の増分のみ**になる。
+`service-worker.js` の `urlsToCache` に追加するのも `pedigreeNodes.json` だけ。
 
-要望どおり `json/` 配下に置くが、**これはビルド時にしか読まない**。
+### 3.2 R2 取得の実装要件
 
-- フロントエンドから `fetch` しない
-- **`service-worker.js` の `urlsToCache` に絶対に追加しない**。追加すると全ユーザーが
-  初回訪問で 5.9MB を余分にダウンロードする
-- 手動更新のたびに Git 履歴へ約 5.9MB のブロブが積まれる。更新頻度が上がるようなら
-  `json/` の外へ移すか Git LFS を検討する（§14 の未決事項）
+#### 接続先（確定）
+
+```
+エンドポイント : https://28b1c8418991144df39ed91917f7f401.r2.cloudflarestorage.com
+バケット       : dabimas-data
+リージョン     : auto
+オブジェクトキー : pedigree_master.json         （バケットのルート直下）
+                 pedigree_master.game.json    （バケットのルート直下）
+```
+
+キーは固定名でありバージョンをパスに含めない。したがって**過去バージョンのビルドを
+再現する手段が無い**。`--pedigree-dataset-version` による検証は「意図した版を取れたか」の
+確認にしかならない点に注意する（§14 の未決事項）。
+
+これは **R2 の S3 API エンドポイント**であり、公開バケットではない。
+未認証でアクセスすると次を返すことを確認済み。
+
+```
+400 <Error><Code>InvalidArgument</Code><Message>Authorization</Message></Error>
+```
+
+したがって **SigV4 署名が必須**。`requests` の素の GET では取得できない。
+`boto3` を使う（`scripts/requirements.txt` へ `boto3>=1.34.0` を追加）。
+
+```python
+import boto3
+s3 = boto3.client(
+    "s3",
+    endpoint_url=os.environ["R2_ENDPOINT_URL"],
+    aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+    aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+    region_name="auto",
+)
+obj = s3.get_object(Bucket=bucket, Key=key)
+```
+
+#### 認証情報の扱い
+
+| 環境変数 | 内容 |
+|---|---|
+| `R2_ENDPOINT_URL` | 上記エンドポイント（既定値としてコードに持ってよい） |
+| `R2_BUCKET` | `dabimas-data`（既定値を持ってよい） |
+| `R2_ACCESS_KEY_ID` | **秘密**。リポジトリに置かない |
+| `R2_SECRET_ACCESS_KEY` | **秘密**。リポジトリに置かない |
+
+- トークンは Cloudflare ダッシュボード → R2 → API トークン管理で発行する。
+  ビルドは読むだけなので **オブジェクト読み取り専用**で足りる
+- GitHub Actions では `secrets` に登録し、`.github/workflows/build-dabimas-stream.yml`
+  の `env:` で渡す。登録には既存の `scripts/update_repo_secret.py` が使える
+- ローカル実行では各自の環境変数に置く。`.env` をコミットしない
+
+#### CLI
+
+```
+--r2-endpoint            <URL>   既定 $R2_ENDPOINT_URL
+--r2-bucket              <NAME>  既定 $R2_BUCKET（dabimas-data）
+--pedigree-master-key    <KEY>   既定 pedigree_master.json
+--pedigree-game-nodes-key <KEY>  既定 pedigree_master.game.json
+--pedigree-cache-dir     <DIR>   取得結果のローカルキャッシュ（既定 .cache/pedigree）
+--pedigree-dataset-version <VER> 期待する dataset_version（省略時は検証をスキップ）
+```
+
+#### 取得時の検証（必須）
+
+- **2 ファイルの `dataset_version` と `source.sha256` が一致すること**。
+  食い違ったらビルドを失敗させる。片方だけ更新された状態で生成すると
+  `node_id` と `pedigree_id` の対応が壊れるため
+- `--pedigree-dataset-version` が指定されていれば、その値との一致も検証する。
+  リリースビルドでは必ず指定し、再現性を担保する
+- `ETag` を `--pedigree-cache-dir` に保存し、`IfNoneMatch` で条件付き取得する。
+  変更が無ければ再取得しない
+- 取得失敗時はキャッシュへフォールバックし WARN を出す。キャッシュも無ければ失敗
+- 認証情報が環境変数に無い場合は、その旨を明示したエラーで即座に失敗する
+  （空文字で署名して 400 を食う前に落とす）
 
 ### 3.3 全書（スクレイピング）から取るもの
 
 因子・親系統・子系統・天性・レア度は全書を正とする。ゲーム更新で因子が変わっても
-`pedigree_master.json` を上げ直さずに追従できる。
+R2 のマスタを上げ直さずに追従できる。
 
 取得は**一覧ページ 2 枚のみ**で完結し、詳細ページ 2980 件のフェッチは不要になる。
 
@@ -116,45 +283,123 @@ https://dabimas.jp/kouryaku/broodmares/name.html   約 1.4MB（URL・馬名）
 
 ## 4. 名前解決とスロット定義
 
-### 4.1 2 つの名前フィールドの使い分け（取り違え厳禁）
+### 4.1 ID の役割分離（混用禁止）
 
-| フィールド | 中身 | 用途 |
-|---|---|---|
-| `name` | 全書の表示名（年号・非凡込み、繁殖牝馬の表示名も） | **ルート馬の引き当て** |
-| `pedigree_name` | 血統レコード名 | **祖先の照合・表示** |
+用途ごとに使うキーを固定する。これを混ぜるとゲーム再現にならない
+（アルゴリズム仕様書 §45）。
 
-祖先照合に `name` を使うと 2873 頭中 713 頭しか一致しない（`name` に年号が入った
-ノードが 454 件あり、血統表の祖先欄では素の名前で出るため）。
+| 用途 | 比較キー |
+|---|---|
+| 実馬として同一か | `pedigree_id` |
+| ゲームノードとして同一か | `node_id` |
+| クロス出現ノードの重複判定 | `node_id` |
+| インブリード因子の加算単位 | `node_id` |
+| 全兄妹グループ判定 | 父母の `pedigree_id` |
+| 祖先ツリーの展開 | `pedigree_id` |
+| 奇跡グループの同一判定 | `kiseki_group_id`（§2.3。`pedigree_id` では代用不可） |
 
-### 4.2 ルート馬の解決手順
+具体例（シンザン通常版とシンザン神速）:
 
-```python
-def resolve_root_node(zensho_name, zensho_sub_name, index):
-    # 非凡（漢字2字）は別ノードなのでキーに残す。年号（4桁 / 20XX）はそのまま連結する。
-    decorated = f"{zensho_name}-{zensho_sub_name}-" if is_hihon(zensho_sub_name) \
-                else zensho_name + (zensho_sub_name or "")
-    for key in (decorated, zensho_name):
-        for idx in (index.by_name, index.by_pedigree_name):
-            hits = idx.get(normalize(key))
-            if hits:
-                return disambiguate(hits)
-    return None
+```
+pedigree_id   : 同じ（0000008661）
+node_id       : 異なる（-00 と -10）
+父母 pedigree_id : 同じ
 ```
 
-`normalize` は NFKC → trim → lower → 空白除去。既存の `normalize_search_text` と同じ規則。
+したがってゲームアルゴリズム上は **別ゲームノード / 同一父母を持つ全兄妹グループ /
+因子は各 node 分を数える**、となる。
 
-### 4.3 曖昧解消と自己検証
+### 4.2 ルート馬の名前解決 — 優先順位（固定）
 
-候補が複数のときも 1 件のときも、**男系15祖先の `pedigree_name` を全書の
-`descendants[].name` と全件照合**して確定させる。
+全書の `(name, subName)` から game node を引く。**この順に試し、最初に当たった段階で止める。**
 
-- 15/15 一致した候補が 1 件だけ → 確定
-- 15/15 一致が 0 件 → **結合を破棄**し `nodeId = null` で出力（§6.7 のフォールバックへ）
-- 15/15 一致が 2 件以上 → 重複ノード。`node_id` が小さい方を採用し WARN
+```
+1. node_id
+2. dabimas_master_id
+3. name + subname 完全一致
+4. canonical_name
+5. pedigree_name
+6. aliases
+7. source_names
+8. source_pedigree_names
+```
 
-この照合は master が古くなったときの検出器も兼ねる（§10.3）。
+1 と 2 は将来 ID 直指定に対応するための入口で、全書からの解決では 3 以降を使う。
+`normalize` は NFKC → trim → lower → 空白除去（既存 `normalize_search_text` と同じ）。
 
-### 4.4 スロット定義
+実測での内訳（全書 2873 頭）:
+
+| 当たった段階 | 件数 |
+|---|---:|
+| `name + subname` | 2438 |
+| `source_names` | 277（繁殖牝馬の表示名。これが無いと 221/498 しか引けない） |
+| `aliases` | 2 |
+| 年号フォールバック（§4.3） | 156 |
+
+### 4.3 年号 subName のフォールバック（唯一の例外）
+
+**named variant（非凡）へのフォールバックは禁止**。ただし年号だけは例外とする。
+
+全書には年号付き種牡馬が 332 件あるのに対し、マスタの `year` variant は 170 件しかない。
+残りはマスタ側に年号 variant が存在せず、`name + subname` では引けない。
+実測で **156 頭が unresolved** になる（全部が種牡馬。内訳は 4 桁年号 149・`20XX` 7）。
+
+```
+全書: アグネスタキオン 2008  →  マスタ側の subname は None / 獅煌 / 瞬天 / 瞬走 / 闘覇
+全書: アルサイド 1958 と 1959 →  マスタ側は base のみ
+```
+
+年号は全書側の識別子であって血統ノードを分けるものではない。
+マスタ自身も `year` variant に `is_base_equivalent: true` を付けている。
+
+**規則**: `subName` が 4 桁数字または `20XX` のときに限り、
+`is_base_equivalent = true` の variant（base または他の年号）へフォールバックしてよい。
+`is_base_equivalent = false`（named）へは決してフォールバックしない。
+
+これを入れると **2872 が一意 + 1 が候補2 → 15祖先照合で確定、未解決 0** になる。
+
+### 4.4 曖昧解消（自動で先頭を採らない）
+
+どの段階でも候補が複数になったら、**先頭を自動採用してはならない**。次で絞る。
+
+```
+1. subname
+2. 父母（father_pedigree_id / mother_pedigree_id）
+3. 種牡馬 / 繁殖牝馬の区分
+4. dabimas_master_id
+5. 男系15祖先の照合（全書の descendants[].name と canonical_name/source 名を突き合わせ）
+```
+
+それでも一意にならなければ **unresolved** とし、`nodeId = null` で出力する（§6.7 の縮退へ）。
+
+実測で候補 2 になるのはジョード 1 件のみで、5 の照合が 15/15 対 4/15 で決着する。
+
+この 5 の照合は master が古くなったときの検出器も兼ねる（§10.3）。
+
+### 4.5 祖先の代表 variant 決定規則（確定）
+
+`father_pedigree_id` は実馬単位なので、祖先がどの variant かは**マスタからは決まらない**。
+祖先セルへ `nodeId` を振るために、次の順で**代表ノード**を選ぶ。
+
+```
+1. variant_code == "00"
+2. is_base_equivalent == true のうち variant_code 最小
+3. 全 variant の variant_code 最小
+4. node が 1 件も無ければ解決失敗
+```
+
+通常は `00 → 01〜09 → 10〜99` の順になる。年号版は `is_base_equivalent = true` なので、
+base が存在しない場合は named variant より優先される。
+
+実測（全 14772 pedigree）: rule1 が 14533、rule2 が 169、rule3 が 70、**失敗 0**。
+
+**この node は「ゲーム内で実際に親として指定されていた variant」ではない。**
+あくまで祖先セル表示用の `representative_node_id` として扱うこと。
+参考として、祖先の因子を base variant と突き合わせると 33695 件が一致し、
+base variant を持たない祖先が 5207 件あった。後者は元 variant を復元したのではなく、
+上の規則で代表を選んだ結果である。
+
+### 4.6 スロット定義
 
 血統表 1 側 = ルート 1 + 男系15 + **牝馬15** = 31 ノード。両側で 62 ノード。
 
@@ -182,25 +427,31 @@ generation = 1 + path.length
 牝馬枠も同じ式。`MMMM` は 5 代目。ユーザー要望の
 「繁殖牝馬側の5代目牝馬がサドラーズギャル×キングマンボなら、
 種牡馬側3代目のエルコンドルパサーとクロス」はこの枠で成立する
-（そのノードの `father_node_id`/`mother_node_id` がエルコンドルパサーと一致 → 全兄妹）。
+（そのノードの父母 `pedigree_id` がエルコンドルパサーのそれと一致 → 全兄妹）。
 **6代目を展開する必要はない**（アルゴリズム仕様書 §9）。
 
-### 4.5 親系統のフォールバック
+### 4.7 親系統のフォールバック
 
-対象ノードに `child_sire_line` が無い場合、**父方向へ遡って解決する**
-（アルゴリズム仕様書 §24）。これを入れないと親系統が 2733 件ズレる。
+親系統・子系統は**実馬レイヤー**（`pedigree_master.json`）にある。
+対象 pedigree に `child_sire_line` が無い場合、**父方向へ遡って解決する**
+（アルゴリズム仕様書 §24）。これを入れないと親系統が大きくズレる。
 
 ```python
-def resolve_sire_line(node, nodes):
+def resolve_sire_line(pedigree_id, peds):
     seen = set()
-    cur = node
-    while cur and cur["node_id"] not in seen:
-        seen.add(cur["node_id"])
-        if cur.get("child_sire_line"):
-            return cur
-        cur = nodes.get(cur.get("father_node_id"))
+    cur = pedigree_id
+    while cur and cur not in seen:
+        seen.add(cur)
+        p = peds.get(cur)
+        if p is None:
+            return None
+        if p.get("child_sire_line"):
+            return p
+        cur = p["father_pedigree_id"]
     return None
 ```
+
+`child_sire_line` を持つ pedigree は 3337 件。残りはこのフォールバックで解決する。
 
 ---
 
@@ -210,8 +461,9 @@ def resolve_sire_line(node, nodes):
 
 ```
 scripts/
-  build_dabimas_stream.py        既存。--pedigree-master 指定時に新経路へ分岐
-  pedigree_master_source.py      新規。master 読み込み・名前解決・血統展開（男系+牝馬）
+  build_dabimas_stream.py        既存。--r2-endpoint 指定時に新経路へ分岐
+  pedigree_master_source.py      新規。2ファイル読み込み・名前解決・血統展開（男系+牝馬）
+  pedigree_master_fetch.py       新規。R2 取得・dataset_version/sha256 検証・キャッシュ
   zensho_list_source.py          新規。一覧ページ2枚 → 因子/系統/レア度/天性/URL
 ```
 
@@ -239,8 +491,9 @@ id が変わると保存済み配合・作業枠・自家製馬の参照がす�
 
 ```jsonc
 {
-  "id": "s7985491231",      // 変更なし（URL 由来）
-  "nodeId": 267812,         // 追加。解決できなければ null
+  "id": "s7985491231",              // 変更なし（URL 由来）
+  "nodeId": "0000267812-00",        // 追加。文字列。解決できなければ null
+  "pedigreeId": "0000267812",       // 追加。実馬同一性用（§4.1）
   "detailChunk": 0, "name": "...", "ruby": "...", "subName": "...",
   "nature": "...", "sex": "0", "rare": 4,
   "parentLine": "Ne", "parentLineId": 5, "son": "...", "sonId": 22,
@@ -254,14 +507,16 @@ id が変わると保存済み配合・作業枠・自家製馬の参照がす�
 {
   "id": "s7985491231",
   "descendants": [
-    { "name": "...", "nodeId": 135523, "parentLine": "Ns", "parentLineId": 3,
-      "son": "...", "sonId": 5, "factors": ["", "", ""] }
+    // nodeId は §4.5 の代表 variant。ゲーム内の実 variant ではない
+    { "name": "...", "nodeId": "0000135523-00", "pedigreeId": "0000135523",
+      "parentLine": "Ns", "parentLineId": 3, "son": "...", "sonId": 5,
+      "factors": ["", "", ""] }
   ],
-  "mares": [4455790, 3028276, null, ...]   // 15要素。§4.4 の順。欠損は null
+  "mares": ["0004455790-00", "0003028276-00", null, ...]  // 15要素。§4.6 の順
 }
 ```
 
-`mares` は **`nodeId` の配列のみ**で名前を持たない。理由:
+`mares` は **`nodeId`（文字列）の配列のみ**で名前を持たない。理由:
 
 - 牝馬は血統表に表示されないため表示名が不要
 - 名前が要る場面（デバッグ・将来の表示）は `pedigreeNodes.json` から引ける
@@ -269,32 +524,54 @@ id が変わると保存済み配合・作業枠・自家製馬の参照がす�
 
 **pedigreeNodes.json**（新規）
 
-血統表 62 枠に登場しうる全ノード（実測 10060 件、牝馬 5625 件を含む）。
+血統表 62 枠に登場しうる全ノードを載せる。**父母・系統・奇跡グループは実馬単位**なので
+`pedigrees` と `nodes` の 2 段に分ける。
 
 ```jsonc
 {
-  "version": 1,
-  "fields": ["name", "father", "mother", "kiseki", "sireLineBaseId", "effects"],
+  "version": 2,
+  "datasetVersion": "2026-09-01T042317Z+raw.848bcf26f2fa",
+  "pedigreeFields": ["name", "father", "mother", "kiseki", "sireLineBaseId"],
+  "nodeFields": ["pedigreeId", "subname", "effects"],
+  "pedigrees": {
+    "0000008661": ["シンザン", "0000334377", "0000512345", 12, 3]
+  },
   "nodes": {
-    "267812": ["シンボリクリスエス", 135523, 4455790, 147, 3, [2]],
-    "135523": ["Roberto", 722524, 6927029, null, 2, []]
+    "0000008661-00": ["0000008661", null, []],
+    "0000008661-10": ["0000008661", "神速", [2, 2, 2]]
   }
 }
 ```
 
-- `name` は `pedigree_name`（血統レコード名）。§4.1 の使い分けに従う
+- `pedigrees[].name` は `canonical_name`
+- `father` / `mother` は `pedigree_id`（**祖先ツリーの展開はこちらだけを使う**）
+- `kiseki` は `kiseki_group_id`。null なら奇跡グループなし。
+  **奇跡・至高の同一判定はこの値の一致で行う**（§2.3・§7.2.5）
+- `effects` は node 側（variant ごとに違うため）
 - 配列形式にするのはサイズのため（キー名の反復を避ける）
-- 実測 503KB / gzip 188KB
+- `datasetVersion` を焼き込み、フロントで summary/details との齟齬を検出できるようにする
+
+収録範囲は「血統表 62 枠に登場しうる pedigree と、その全 variant」とする。
+ある pedigree を載せるなら variant は必ず全件載せる（一部だけだと
+全兄妹判定と因子カウントが壊れる）。
 
 ### 5.4 出力される警告と検収基準
 
 ビルドは以下を集計し、`--fail-on-error` 時は終了コード 1 とする。
 
-- `unresolved_node`: master に解決できなかった全書エントリ数（期待値 0〜数件）
-- `ancestor_mismatch`: 男系15祖先照合に失敗した数（**期待値 0**。1 件でも出たら master が古い）
-- `ambiguous_node`: 候補複数で確定できなかった数
+現行の R2 配置版（`2026-09-01T042317Z+raw.848bcf26f2fa`）での期待値を併記する。
+
+- `unresolved_node`: master に解決できなかった全書エントリ数（**期待値 0**）
+- `ancestor_mismatch`: 男系15祖先の名前照合に失敗した数（**期待値 0**。出たら master が古い）
+- `ambiguous_node`: 候補複数で確定できなかった数（**期待値 0**）
+- `sire_line_mismatch`: 祖先の親系統が全書と食い違った数（**期待値 0**）。
+  マスタ側のデータ誤りを検出する枠。出力には全書の値を使うため実害は無いので
+  **WARN 扱いとし `--fail-on-error` の対象にしない**
 - `missing_rare`: レア度が取れなかった種牡馬数（期待値 13 前後 = 全書未掲載の新規馬）
-- `mare_slot_missing`: 牝馬枠の欠損延べ数（期待値 2000 前後。§2.2 の 15.5% 相当）
+- `mare_slot_missing`: 牝馬枠の欠損延べ数（期待値 2000 前後。§2.4 相当）
+- `representative_fallback`: 代表 variant が rule2 / rule3 で決まった数（**期待値 169 / 70**）
+- `dataset_version_mismatch`: 2 ファイルの `dataset_version` / `source.sha256` 不一致
+  （**1 件でも即失敗**。§3.2）
 
 検収は「新経路の出力と現行 JSON を `nodeId` / `mares` 追加分以外で diff してゼロ」を
 合格条件とする。
@@ -303,7 +580,11 @@ id が変わると保存済み配合・作業枠・自家製馬の参照がす�
 
 ```
 python scripts/build_dabimas_stream.py \
-  --pedigree-master json/pedigree_master.json \
+  --r2-endpoint "$R2_ENDPOINT_URL" \
+  --r2-bucket dabimas-data \
+  --pedigree-master-key pedigree_master.json \
+  --pedigree-game-nodes-key pedigree_master.game.json \
+  --pedigree-dataset-version "2026-09-01T042317Z+raw.848bcf26f2fa" \
   --summary-output json/dabimasFactor.summary.json \
   --details-output-dir json/dabimasFactor-details \
   --pedigree-nodes-output json/pedigreeNodes.json \
@@ -311,7 +592,8 @@ python scripts/build_dabimas_stream.py \
   --fail-on-error
 ```
 
-`--pedigree-master` 未指定なら現行のスクレイピング経路で動く（退避）。
+`--r2-endpoint` が未指定かつ環境変数 `R2_ENDPOINT_URL` も無い場合は、
+現行のスクレイピング経路で動く（退避）。
 
 ---
 
@@ -332,8 +614,15 @@ const nodeTablePromise = fetch("./json/pedigreeNodes.json")
 
 `buildNodeTable()` が提供するもの:
 
-- `get(nodeId)` → `{ name, father, mother, kiseki, sireLineBaseId, effects }`
+- `getNode(nodeId)` → `{ pedigreeId, subname, effects }`
+- `getPedigree(pedigreeId)` → `{ name, father, mother, kiseki, sireLineBaseId }`
+- `parentsOf(nodeId)` → `{ father, mother }`（`pedigree_id` で返す。全兄妹判定用）
+- `variantsOf(pedigreeId)` → `nodeId[]`
 - `findByName(name)` → `nodeId[]`（自家製馬の祖先解決用。同名は配列で返す）
+
+`nodeId` は `"0000008661-10"` 形式の**文字列**。`pedigreeId` は `nodeId.split("-")[0]`
+で取れるが、実装では明示フィールドを使うこと（将来 `pedigree_id` に `-` を含む
+形式が来ても壊れないように）。
 
 **取得失敗しても起動を止めない。** `null` のときは全機能が現行の名前ベース挙動に
 縮退し、牝馬枠は判定に参加しない（§6.7）。
@@ -342,10 +631,11 @@ const nodeTablePromise = fetch("./json/pedigreeNodes.json")
 
 `vue/app/methods/horse-loading.js:81` の `normalizeHorseSummary()` は
 **ホワイトリスト方式**で、列挙されていないフィールドは捨てられる。
-`nodeId` を明示的に追加しないと JSON に入れても消える。
+`nodeId` / `pedigreeId` を明示的に追加しないと JSON に入れても消える。
 
 ```js
-nodeId: typeof horse.nodeId === "number" ? horse.nodeId : null,
+nodeId: typeof horse.nodeId === "string" ? horse.nodeId : null,
+pedigreeId: typeof horse.pedigreeId === "string" ? horse.pedigreeId : null,
 ```
 
 `createSavedHorseSummary()`（自家製馬）は `nodeId: null` を明示する。
@@ -446,10 +736,17 @@ master から全兄妹 4076 ペアが自動で取れるのに対し、`brosData.
        index は表示行を持つ男系のみ。牝馬は null（色付けの対象外）
 
 2. 交差ペア判定（種牡馬側 × 繁殖牝馬側のみ。片側内の重複は対象外）
-     isExactSameNode  : a.nodeId === b.nodeId （両方非 null）
-     isFullSibling    : 別ノード かつ father/mother の nodeId が両方一致
-                        （nodeTable 経由。5代目も父母 ID を持つので判定可能）
+     isExactSameNode  : a.nodeId === b.nodeId （文字列比較。両方非 null）
+     isFullSibling    : a.nodeId !== b.nodeId
+                        かつ 父母の pedigree_id が両方一致（§4.1 の役割分離）
                         OR brosData の手動オーバーライド（§6.6）
+
+     父母は nodeTable.parentsOf(nodeId) で引く。実馬レイヤーにあるため
+     5 代目でも取得でき、6 代目の展開は不要（アルゴリズム仕様書 §9）。
+
+     variant 違い（シンザン通常版と神速）はこの規則で自動的に全兄妹になる。
+     node_id が違い、父母 pedigree_id が同一だからである。これはゲームの
+     PedigreeTreeNode::isSibling() の挙動と一致する。
 
 3. 同一家系枝の重複除外（仕様書 §11）
      各出現に branchParentNodeId（その祖先へ到達する直前のノード）を持たせ、
@@ -655,7 +952,7 @@ window.Dabimas.constants.breedingTheories = {
   a. 世代集合が {3,4,5} を含む（重複世代は許容。3×4×5×5 も 3×3×4×5 も可）   ← 現行あり
   b. クロス候補の因子が 6 種類以上（個数ではなく種類）                        ← 現行あり
   c. 基準馬が牡馬かつ master 由来（自家製馬・エディット馬・牝馬は基準にしない） ← 追加
-  d. 候補内の別ノードが 基準馬と完全同一 or 同じ kisekiGroupId                 ← 追加
+  d. 候補内の別ノードが 基準馬と完全同一 or 同じ kiseki_group_id（＝同じ奇跡グループ）← 追加
   e. 血統全体の因子延べ数 >= 30                                               ← 追加
        種牡馬側表示祖先の因子延べ数 + 種牡馬自身の因子数 + 繁殖牝馬側表示祖先の因子延べ数
        （繁殖牝馬ルート自身は加算しない非対称実装。仕様書 §32.6）
@@ -679,9 +976,124 @@ detectMatchedTheories(S, D, context)          // → ["WONDERFUL","INTERESTING",
 selectDisplayedTheory(matched, priorityTable) // → 1件
 ```
 
-`priorityTable` は `vue/constants/breeding-theories.js` に置く。
-`breeding_theories` マスタが未入手のため**暫定値を置くが、ロジック内にハードコードしない**
-（仕様書 §40.8）。危険な配合は通常理論より後方へ回す（同 §35）。
+##### 結論: ゲーム画面の単一表示優先順位（確定）
+
+通常の配合理論だけを対象にした表示順は、次で確定する。
+
+```
+危険 > 至高 > 奇跡 > 超完璧 > 完璧 > 見事 > よくできた > 面白
+```
+
+| 表示順 | master id | 内部名 | 本設計上の日本語名 | `priority` | 備考 |
+|---:|---:|---|---|---:|---|
+| 1 | 5 | `DANGEROUS` | 危険な配合 | 999 | **表示側では数値どおり最優先** |
+| 2 | 8 | `SUPREME` | 至高の配合 | 800 | |
+| 3 | 7 | `MIRACLE` | 奇跡の配合 | 700 | |
+| 4 | 6 | `SUPER_PERFECT` | 超完璧な配合 | 600 | |
+| 5 | 1 | `PERFECT` | 完璧な配合 | 500 | |
+| 6 | 2 | `WONDERFUL` | 見事な配合 | 3 | |
+| 7 | 3 | `WELL` | よくできた配合 | 2 | |
+| 8 | 4 | `INTERESTING` | 面白い配合 | 1 | |
+
+画面表示側は、危険な配合を末尾へ送る例外比較関数を使用しない。
+`getCurrentRecordsOrderByPriority(time)` が有効レコードを `priority` の単純降順に並べ、
+先頭から最初に成立した 1 件を返す。そのため `DANGEROUS` は `priority=999` の数値どおり
+最優先となり、面白い配合などと同時成立した場合も画面には危険な配合が表示される。
+
+したがって、たとえば次の表示になる。
+
+| 同時に成立した理論 | 画面に出す 1 件 |
+|---|---|
+| 超完璧・完璧・見事・面白 | **超完璧** |
+| 完璧・見事・面白 | **完璧** |
+| よくできた・面白 | **よくできた** |
+| 面白・危険 | **危険** |
+| 危険のみ | **危険** |
+| 危険・至高・奇跡・完璧 | **危険** |
+| 至高・奇跡・完璧 | **至高** |
+
+##### 根拠となる逆解析結果
+
+検証対象は保存済みの `libcocos2dcpp.so`、Build ID
+`8f2654ea0b69ce2695155c65dcae5acf3c4cdf75` と、
+`breeding_theory_master_probe(1).json` / `breeding_theory_master_probe_summary(1).json`。
+
+1. `RecordMasterBreedingTheory::readValueFromJsonObject()`
+   （仮想アドレス `0x028bd468`）は JSON キー `priority` を読み、
+   レコードの `+0x48` へ格納する。したがって probe の `+0x48` は推定値ではなく
+   **master の `priority` 実値**である
+2. `CollectionMasterBreedingTheory::getCurrentRecordsOrderByPriority(time)`
+   （`0x028bd9ec`、数値降順ソート処理 `0x028bede8`）は、有効期間内のレコードを
+   `+0x48` の `priority` で**単純降順**に並べる
+3. `PedigreeTree::detectBreedingTheory(UserStallion, UserBroodmare, time)`
+   （`0x02a8fdd4`）は、その順序を先頭から走査し、
+   `isAccorded()` が最初に真になったレコードを返す。つまりゲーム画面用の結果は
+   **「成立理論の全表示」ではなく「優先順で最初の 1 件」**である
+4. `CollectionMasterBreedingTheory::compareByPriorityDescExceptDangerous()`
+   （`0x028bebfc`）が危険な配合を末尾へ送ること自体は事実だが、これは
+   **血統表の検索条件一覧用**であり、配合結果の画面表示経路では呼ばれない
+
+旧版 v1.1 では 4 の比較関数を 2〜3 の画面表示経路で使うものと誤認し、危険な配合を
+最下位と記載していた。実機で「面白＋危険 → 危険」となること、および呼び出し側の
+再解析により誤りを特定したため、本版で訂正した。
+
+`getCrossCommentType()` はインブリードのクロスコメント種別を決める別経路であり、
+この配合理論の単一表示選択には使わない。両者を同じ優先表へ統合しないこと。
+
+##### 利根川系を含む master 全 11 件
+
+本設計の非ゴールだが、master には期間限定の利根川系 3 件も存在する。
+有効期間内であれば通常理論の間へ次のように入る。
+
+| `priority` 降順での位置 | master id | 内部名 | `priority` |
+|---:|---:|---|---:|
+| 1 | 5 | `DANGEROUS` | 999 |
+| 2 | 8 | `SUPREME` | 800 |
+| 3 | 7 | `MIRACLE` | 700 |
+| 4 | 6 | `SUPER_PERFECT` | 600 |
+| 5 | 11 | `TONEGAWA_KINGS` | 550 |
+| 6 | 12 | `TONEGAWA_EVIL_HORSE` | 540 |
+| 7 | 1 | `PERFECT` | 500 |
+| 8 | 13 | `TONEGAWA_OUTSTANDING_ECCENTRIC` | 450 |
+| 9 | 2 | `WONDERFUL` | 3 |
+| 10 | 3 | `WELL` | 2 |
+| 11 | 4 | `INTERESTING` | 1 |
+
+`getCurrentRecordsOrderByPriority(time)` が `start_at` / `end_at` で有効レコードを絞ってから
+並べるため、期間外の利根川系は候補に入らない。利根川系を将来実装する場合も、
+上表を無条件に全件評価せず、有効期間フィルタを先に適用すること。
+
+##### フロントエンド実装
+
+`priorityTable` は `vue/constants/breeding-theories.js` に置き、上の実測値を正とする。
+画面表示用の比較は `priority` の単純降順とし、危険な配合の例外処理を加えない。
+`compareByPriorityDescExceptDangerous()` は検索条件一覧側だけの別仕様として扱い、
+この関数を `selectDisplayedTheory()` から呼び出してはならない。
+
+```js
+window.Dabimas.constants.breedingTheories = {
+  PRIORITY: Object.freeze({
+    INTERESTING: 1,
+    WELL: 2,
+    WONDERFUL: 3,
+    PERFECT: 500,
+    SUPER_PERFECT: 600,
+    MIRACLE: 700,
+    SUPREME: 800,
+    DANGEROUS: 999,
+  }),
+};
+
+function selectDisplayedTheory(matched, priorityTable) {
+  if (!Array.isArray(matched) || matched.length === 0) return null;
+  return matched.slice().sort(
+    (a, b) => priorityTable[b] - priorityTable[a]
+  )[0];
+}
+```
+
+同じ `priority` の有効レコードは現行 master に存在しない。将来同値が追加された場合、
+勝手に id 順を二次キーへ足さず、master 更新時にゲーム側の安定順を再確認する。
 
 戻り値の `styleThoeryClass`（`"theory_01"`〜`"theory_07"`）は CSS が依存しているため
 **文字列の対応関係を変えない**。
@@ -691,13 +1103,21 @@ selectDisplayedTheory(matched, priorityTable) // → 1件
 現行は `selected[19].name` と `selected[4..7].name` の**文字列比較**。
 
 ```js
+const kisekiOf = (x) =>
+  x.pedigreeId != null ? nodeTable.getPedigree(x.pedigreeId)?.kiseki ?? null : null;
+
 const isMiracleMatch = (a, b) =>
   (a.nodeId != null && a.nodeId === b.nodeId) ||
-  (a.kisekiGroupId != null && a.kisekiGroupId === b.kisekiGroupId);
+  (kisekiOf(a) != null && kisekiOf(a) === kisekiOf(b));
 ```
 
-`kisekiGroupId` は `pedigreeNodes.json` から引く。一致数がちょうど 1 のときのみ成立
-（現行と同じ）。どちらかに `nodeId` が無ければ名前比較へ縮退する。
+「同じ奇跡グループ」は **`kiseki_group_id` の一致**で判定する。
+`pedigree_id` の一致で代用してはならない。§2.3 のとおり 4 グループが
+別の実馬同士（グリーングラス + グランディ 等）をまとめており、
+`pedigree_id` 比較ではこれを取りこぼす。
+
+一致数がちょうど 1 のときのみ成立（現行と同じ）。
+どちらかに `nodeId` も `kiseki` も無ければ名前比較へ縮退する。
 
 ### 7.3 インブリード因子数カウント（`vue/logic/inbreed/inbreed-counts.js`）
 
@@ -711,6 +1131,8 @@ const isMiracleMatch = (a, b) =>
 ```
 1. 全クロスノードを集める（牝馬枠の出現も含む）
 2. 完全同一ノードのみ重複除去   key = nodeId ?? `${name}|${subName}`
+     nodeId は文字列。pedigree_id では重複除去しない
+     （variant 違いは別馬として数える。§4.1 の役割分離）
 3. 全兄妹は別ノードなので統合しない（仕様書 §19・§40.6）
 4. 各ノードの因子を数える
      nodeId があれば pedigreeNodes.effects、無ければセルの factors
@@ -762,7 +1184,7 @@ const isMiracleMatch = (a, b) =>
 
 この方針により **既存保存データの一括移行が不要**になる。
 
-サイズ増: `mareNodeIds` は 1 側 15 個の整数で約 120 バイト、両側で 240 バイト。
+サイズ増: `mareNodeIds` は 1 側 15 個の文字列（14 文字程度）で約 260 バイト、両側で 520 バイト。
 localStorage / snapshot への影響は無視できる。
 
 ### 8.3 スキーマ版数
@@ -987,9 +1409,9 @@ boot()
 ### 10.1 `pedigree_master.json` 更新フロー
 
 ```
-1. 新しい pedigree_master.json を json/ へ上書き
-2. python scripts/build_dabimas_stream.py --pedigree-master json/pedigree_master.json ... --fail-on-error
-3. ancestor_mismatch が 0 であることを確認
+1. R2 へ新しい `pedigree_master.json` と `pedigree_master.game.json` を**両方同時に**置く
+2. `--pedigree-dataset-version` を新しい版へ更新してビルドを実行
+3. `dataset_version_mismatch` が 0、`ancestor_mismatch` が 0 であることを確認
 4. service-worker.js の CACHE_NAME を更新
 5. コミット・デプロイ
 ```
@@ -1027,7 +1449,7 @@ boot()
 
 | ファイル | 変更 |
 |---|---|
-| `json/pedigree_master.json` | **新規配置**（ビルド専用・SW キャッシュ禁止） |
+| `json/pedigree_master.json` | **置かない**。R2 からビルド時に取得する（§3.1） |
 | `json/pedigreeNodes.json` | **新規生成** |
 | `json/dabimasFactor.summary.json` | `nodeId` 追加 |
 | `json/dabimasFactor-details/*.json` | `nodeId` + `mares` 追加 |
@@ -1075,8 +1497,15 @@ boot()
 - 新経路の出力が現行 JSON と `nodeId` / `mares` 以外で一致する（全 2873 頭）
 - `ancestor_mismatch` が 0
 - `derive_horse_id` が現行と同一 id を返す（種牡馬 2375 / 牝馬 498）
-- 非凡サフィックス・年号サフィックスの解決（§4.2 の分岐を個別に）
-- 親系統の父方向フォールバック（`child_sire_line` を持たないノード）
+- 名前解決の優先順位（§4.2）が宣言順に試され、先に当たった段階で止まること
+- 年号フォールバック（§4.3）が `is_base_equivalent = true` にだけ効き、
+  named variant には**効かない**こと
+- 曖昧解消（§4.4）が自動で先頭を採らず、絞れなければ unresolved にすること
+- 代表 variant 決定（§4.5）の 4 段階が宣言順どおりに効くこと
+  （rule1 14533 / rule2 169 / rule3 70 / 失敗 0）
+- 2 ファイルの `dataset_version` / `source.sha256` 不一致でビルドが失敗すること
+- R2 取得失敗時にキャッシュへフォールバックし、キャッシュも無ければ失敗すること
+- 親系統の父方向フォールバック（`child_sire_line` を持たない pedigree）
 - **牝馬15枠の path 順が §4.4 と一致する**（順序を間違えると世代がズレる）
 - 牝馬枠の欠損が `null` で埋まる
 
@@ -1100,6 +1529,19 @@ boot()
 | TC-013〜016 | 至高の世代条件 | 3×4×5 系 ○ / 3×3×4×4 × |
 | TC-017〜019 | 至高の因子条件 | 5 種類 × / 6 種類+29 個 × / 6 種類+30 個 ○ |
 
+配合理論の単一表示優先順位（§7.2.4）の追加ケース:
+
+| ID | `matched` | 期待する単一表示 |
+|---|---|---|
+| TC-T01 | `SUPER_PERFECT, PERFECT, WONDERFUL, INTERESTING` | `SUPER_PERFECT` |
+| TC-T02 | `PERFECT, WONDERFUL, INTERESTING` | `PERFECT` |
+| TC-T03 | `WELL, INTERESTING` | `WELL` |
+| TC-T04 | `INTERESTING, DANGEROUS` | `DANGEROUS` |
+| TC-T05 | `DANGEROUS` | `DANGEROUS` |
+| TC-T06 | `SUPREME, MIRACLE, PERFECT` | `SUPREME` |
+| TC-T07 | 空配列 | `null` |
+| TC-T08 | master の全 8 通常理論 | §7.2.4 の順に整列され、先頭は `DANGEROUS` |
+
 牝馬追加分の追加ケース:
 
 | ID | 内容 | 期待 |
@@ -1111,6 +1553,18 @@ boot()
 | TC-M05 | 牝馬の全兄妹が男系ノードを引き込む | その男系ノードの因子が因子カウントに加算される |
 | TC-M06 | 自家製馬を入れ子で保存（ルートが自家製馬） | 牝馬枠が再帰的に伝播する |
 | TC-M07 | 旧版で保存した自家製馬 | §9.3 の backfill で `mares` が埋まる。config が無ければ `null` のまま縮退 |
+
+ID 役割分離（§4.1）の追加ケース:
+
+| ID | 内容 | 期待 |
+|---|---|---|
+| TC-N01 | 種牡馬に「シンザン-神速-」、繁殖牝馬側祖先に「シンザン」(base) | `node_id` 相違・父母 `pedigree_id` 一致 → **全兄妹クロス成立** |
+| TC-N02 | 同上の因子カウント | 両 node の因子をそれぞれ数える（1 頭に統合しない） |
+| TC-N03 | 同一 `node_id` が 3 代と 5 代に出現 | 因子は 1 頭分。血量は両方加算 |
+| TC-N04 | 奇跡判定で `kiseki_group_id` 一致（同一 `pedigree_id`） | 一致として数える |
+| TC-N05 | 奇跡判定で `kiseki_group_id` 一致（**別 `pedigree_id`**。グリーングラス × グランディ） | 一致として数える（`pedigree_id` 比較では落ちる） |
+| TC-N07 | 奇跡判定で `pedigree_id` は同じだが `kiseki` が null | 一致として数えない |
+| TC-N06 | 祖先ツリーの展開に `node_id` を使っていないこと | `pedigree_id` のみで辿れる |
 
 ### 12.3 回帰テスト
 
@@ -1142,7 +1596,7 @@ boot()
 | 3 | インブリード判定を node ベースへ（**牝馬はまだ入れない**）。血量・危険な配合を追加 | 全兄妹が 36 → 4076 ペアに増える |
 | 4 | **牝馬15枠を判定へ投入** | **クロス群が平均 1.06 → 1.47。23% の配合で増加** |
 | 5 | 因子数カウントを `nodeId` キーへ | 同名別馬の誤統合が解消 |
-| 6 | 理論判定の式変更・成立/表示の分離・奇跡の照合方法 | 見事/完璧/超完璧の境界が変わる |
+| 6 | 理論判定の式変更・成立/表示の分離（確定 priority）・奇跡の照合方法 | 見事/完璧/超完璧の境界が変わる |
 | 7 | 至高の条件追加（c/d/e） | 至高が厳しくなる |
 
 段階 3・4・6・7 はそれぞれ単独でリリースし、判定結果の変化を確認する。
@@ -1157,9 +1611,9 @@ boot()
 | 1 | `brosData.json` の 10 ペアが実際に全兄妹か（§6.6） | 実機確認。それまで両方有効 |
 | 2 | 血量・危険な配合を画面に出すか | UI 設計として別途 |
 | 3 | 旧版保存の自家製馬で config が消えている場合の扱い | `mares` を `null` のままにする（縮退）で問題ないか。配合を開いて保存し直せば埋まる |
-| 4 | `breeding_theories.priority` の実値 | マスタ dump 待ち。暫定表で運用 |
-| 5 | `getCrossCommentType()` の日本語文言 | Word マスタ dump 待ち。本設計では対象外 |
-| 6 | `pedigree_master.json` を Git に入れ続けるか（§3.2） | 更新頻度を見て判断 |
+| 4 | `getCrossCommentType()` の日本語文言 | Word マスタ dump 待ち。本設計では対象外 |
+| 5 | R2 のキーが固定名のため過去バージョンを再現できない | 運用上許容するか、バージョン付きパスへ移行するか（§3.2） |
+| 6 | R2 API トークンの発行と GitHub Actions secrets への登録 | 実装前に必要。読み取り専用で足りる（§3.2） |
 
 ---
 
@@ -1170,7 +1624,8 @@ boot()
 
 | 段階 | 指示書 slug | 主な対象 | 依存 |
 |---|---|---|---|
-| 1 | `pedigree-master-python` | `scripts/pedigree_master_source.py` / `zensho_list_source.py` / `build_dabimas_stream.py` / JSON 出力 | なし |
+| 0 | `pedigree-master-r2-fetch` | `scripts/pedigree_master_fetch.py`（R2 取得・版数検証・キャッシュ） | なし |
+| 1 | `pedigree-master-python` | `scripts/pedigree_master_source.py` / `zensho_list_source.py` / `build_dabimas_stream.py` / JSON 出力 | 段階0 |
 | 2 | `pedigree-nodes-frontend-load` | `horse-loading.js` / `bootstrap.js` / `pedigree-builder.js` / `service-worker.js` | 段階1 |
 | 3 | `inbreed-node-based` | `inbreed-detector.js`（男系のみ・血量・危険な配合） | 段階2 |
 | 4 | `inbreed-mares` | `inbreed-detector.js`（牝馬15枠の投入）/ `saved-horse-builder.js` | 段階3 |
@@ -1182,8 +1637,9 @@ boot()
 
 - 本設計書の該当節への参照（指示書に仕様を書き写さず、節番号で参照する）
 - 検証可能な受け入れ基準（§12 のテストケース ID をそのまま使う）
-- スコープ外の明記（特に「表示行を 32 から増やさない」「id 体系を変えない」
-  「`pedigree_master.json` を SW キャッシュへ追加しない」の 3 点は毎回書く）
+- スコープ外の明記（特に「表示行を 32 から増やさない」「全書由来の `id` 体系を変えない」
+  「入力 JSON をリポジトリへコミットしない」「§4.1 の ID 役割分離を崩さない」の
+  4 点は毎回書く）
 - `AGENTS.md` に従うこと（`index.html` を触る段階 2・6 は特に）
 
 段階 4 と 6 は挙動が目に見えて変わるため、指示書に
