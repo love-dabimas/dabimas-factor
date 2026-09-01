@@ -25,6 +25,13 @@ jobs:
     # 実行環境と制限時間（18:30 JST までの待機 最大約5.5h + 実処理 1h をカバー）
     runs-on: ubuntu-latest
     timeout-minutes: 360
+    env:
+      # 血統マスター(R2)の読み取り専用トークン。これが無いと build が
+      # nodeId / pedigreeId / mares の無い json を生成して main へ push してしまう。
+      R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
       # 前倒し起動からデータ公開後の 18:30 JST まで待つ。
       # 起動が 18:30 を過ぎるほど遅延した場合は待たずに即実行する。
@@ -92,7 +99,9 @@ jobs:
             --output latest_stallions.png \
             --font-path fonts/NotoSansCJKjp-Regular.otf
 
-      # 公開用 json を生成（full + 初期ロード軽量化用の summary / detail 分割）
+      # 公開用 json を生成（full + 初期ロード軽量化用の summary / detail 分割 + 血統ノード辞書）
+      # dataset_version はここでは固定しない。週次の自動実行なので、R2 側が
+      # 更新されるたびに落ちてしまう。2 ファイル間の版一致検査は常に効いている。
       - name: Build dabimasFactor.json
         if: ${{ steps.latest_news.outputs.news_changed == 'true' }}
         run: |
@@ -100,6 +109,8 @@ jobs:
             --output json/dabimasFactor.json \
             --summary-output json/dabimasFactor.summary.json \
             --details-output-dir json/dabimasFactor-details \
+            --pedigree-nodes-output json/pedigreeNodes.json \
+            --r2-endpoint "$R2_ENDPOINT_URL" \
             --detail-chunk-size 128 \
             --progress 200 \
             --fail-on-error
@@ -145,6 +156,7 @@ jobs:
             json/dabimasFactor.json \
             json/dabimasFactor.summary.json \
             json/dabimasFactor-details \
+            json/pedigreeNodes.json \
             service-worker.js
 
           if git diff --cached --quiet; then

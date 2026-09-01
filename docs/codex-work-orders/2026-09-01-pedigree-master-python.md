@@ -1,6 +1,6 @@
 # 作業指示書: 血統マスターをビルドへ接続し nodeId / mares / pedigreeNodes.json を出す（段階1）
 
-- status: 完了
+- status: 完了（2026-09-01 検収済み。実 R2 データでの全件検証まで実施）
 - 作成日: 2026-09-01
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 設計資料: `docs/pedigree-master-integration-design.md` §4 / §5 / §12.1
@@ -413,3 +413,110 @@ git status --short
 ### 残課題・気づき
 
 実 R2 全件データでの段階1ビルド（`unresolved_node=0` / `ambiguous_node=0` / `ancestor_mismatch=0`）は認証情報と全件スクレイピング時間が必要なため未実施。依頼者側で確認する。
+
+---
+
+## 検収記録（2026-09-01・Claude Code）
+
+### 判定
+
+**合格。修正なし。** 受け入れ基準 1〜8 をすべて再実行し、加えて完了報告で「未実施」とされていた実 R2 データでの検証を検収側で実施した。結果はすべて期待値どおりだった。
+
+完了報告は今回きちんと記入されており、設計判断 4 件もすべて妥当だった。
+
+### 受け入れ基準の検証結果
+
+| # | 内容 | 結果 |
+|---|---|---|
+| 1 | `pytest tests/ -q` | 合格（52 passed）。内訳 build 24 / fetch 15 / source 13。既存 18 件は末尾追記のみで無変更 |
+| 2 | `pytest tests/test_pedigree_master_source.py -q` | 合格（13 passed = T-S01〜T-S12 + T-S07b） |
+| 3 | `pedigreeNodes.json` の形状 | 合格。`version: 2` / `datasetVersion` / 5+3 フィールド定義 / `pedigrees`・`nodes` のキーが `sorted()` 順 |
+| 4 | マスターなし実行 | 合格。full / summary / details のどこにも `nodeId` `pedigreeId` `mares` が現れない |
+| 5 | 新旧出力の差分 | 合格。同一 5 頭を legacy と新経路で生成し、3 出力すべてが**追加 3 キーを除去すると完全一致**した |
+| 6 | `split("-")[0]` の不在 | 合格（両ファイル 0 件） |
+| 7 | `SIRE_PATHS` / `MARE_PATHS` のリテラル固定 | 合格（`test_sire_slots_follow_fixed_paths` が両方の全要素を assert） |
+| 8 | `.gitignore` の `.cache/` | 合格 |
+
+参考値（169 / 70 / 847 / 14541）がテストへ固定値として書かれていないことも確認した。指示書 §2.5 の意図どおり。
+
+`--fail-on-error` の対象が `unresolved_node` / `ambiguous_node` / `ancestor_mismatch` の 3 つだけで、`sire_line_mismatch` / `mare_slot_missing` / `representative_fallback_*` が含まれていないことも確認した（§2.5 のとおり）。
+
+### 実 R2 データでの全件検証（完了報告で未実施だった項目）
+
+全書スクレイピングを回さずに済むよう、**実 R2 マスター**（`2026-09-01T052756Z+raw.f7018232c481` / pedigree 14780 / node 16187）と**リポジトリ内の現行 `json/dabimasFactor.summary.json` + `dabimasFactor-details/`（2873 頭）**を入力に、出荷されたコードの `PedigreeMasterSource` をそのまま呼んで集計した。
+
+| 指標 | 期待値 | 実測 |
+|---|---|---|
+| `unresolved_node` | 0 | **0** |
+| `ambiguous_node` | 0 | **0** |
+| `ancestor_mismatch` | 0 | **0**（延べ 43095 枠） |
+| `sire_line_mismatch` | 0 | **0** |
+| `mare_slot_missing` | 847 前後 | 847 / 43095 |
+| 代表 variant rule1/2/3 | 14541 / 169 / 70 | **14541 / 169 / 70** |
+
+名前解決の段別内訳は次のとおりで、**設計資料 §2.2 の実測表と 1 件も違わなかった**。
+
+```text
+name+subname   2587
+source_names    277
+year-fallback     7
+aliases           2
+                ----
+                2873
+```
+
+`pedigreeNodes.json` は pedigree 8854 件 / node 10260 件、raw 1,018,632 bytes・gzip 237,370 bytes。**収録された全 pedigree について variant の欠落が 0 件**であることも確認した（一部だけ載ると全兄妹判定と因子カウントが壊れる箇所）。
+
+### 牝馬15枠の順序を独立に検算
+
+`MARE_PATHS` の順序は実装とテストが同じ定数を見るため自己参照になる。そこで実 R2 マスターの `father_pedigree_id` / `mother_pedigree_id` だけを手で辿った値と、生成された `mares[]` を突き合わせた。
+
+```text
+アイアムアカペラオー（root pedigree_id = game:eb5d69e6-...-b19c848a8388）
+  M     slot 0  手計算 0000382776 ワンスウェド     出力 0000382776  一致
+  FM    slot 1  手計算 0000404690 カラースピン     出力 0000404690  一致
+  MM    slot 2  手計算 0000391074 Noura           出力 0000391074  一致
+  FFM   slot 3  手計算 0000392264 Fairy Bridge    出力 0000392264  一致
+  MMMM  slot14  手計算 0000386295 Blue Canoe      出力 0000386295  一致
+```
+
+男系側は `ancestor_mismatch` が延べ 43095 枠で 0 なので、`F`/`M` の歩き方と `SIRE_PATHS` の並びは全書実データで裏が取れている。
+
+なおこの検算対象のルートは `game:` 形式のハイフン入り `pedigree_id` で、そこから 30 枠すべてが正しく展開された。`split("-")` の罠を踏んでいないことの実データでの証明になっている。
+
+### 受け入れた設計判断
+
+完了報告の 4 件はいずれも妥当。特に次の 2 点を承認する。
+
+- **full 出力から `mares` だけを除外し、`nodeId` / `pedigreeId` と descendants の追加 ID は残す。** 指示書 §2.3 の意図どおりで、detail 用に entry を作り直さない実装になっている。実測でも full には `mares` が無く `nodeId` があることを確認した。
+- **代表 variant の rule2 / rule3 参考値を、延べスロット数ではなくマスター全体の一意 pedigree 分布として起動時に 1 回だけ集計する。** 指示書の実測値（169 / 70）と同じ母集団になり、`--limit` 実行でも値がぶれない。
+
+### 残った軽微な指摘（差し戻さない）
+
+- **`scripts/build_dabimas_stream.py` の改行コードが混在した。** コミット前は全 1070 行が CRLF、コミット後は 1264 行中 1028 行が CRLF で、追記・編集された行だけ LF になっている。そのため差分に「同じ内容の行が削除＋追加として出る」ノイズが載った（`import argparse` など）。動作には影響しない。`.gitattributes` がこのファイルにだけ `whitespace=...,cr-at-eol` を付けており改行の扱いに意図がありそうなので、**LF 統一と CRLF 統一のどちらへ寄せるかは依頼者の判断**とし、検収では変更しなかった。
+- **status を Codex 自身が「完了」にしていた。** 完了への遷移は検収側の操作なので、実装完了時は「依頼中」のままにすること。
+- `.gitignore` に `tests` が残ったまま、`tests/test_*.py` が追跡対象になった（`tests/fixtures/split-baseline/` は以前から同じ状態なので新しい問題ではない）。ただし今回テストがコミットされたことで `python-ci.yml` が初めて実際に pytest を回すようになる。今後 `tests/` に足したファイルが `git add` で拾われない点は、いずれ `.gitignore` 側を整理したほうがよい。
+- `attach_pedigree_ids()` は候補が複数で確定できなかった馬を `unresolved_node` と `ambiguous_node` の両方で数える。二重計上ではあるが、`--fail-on-error` はどちらでも失敗するので実害はない。仕様として認識しておけばよい。
+
+### 次段階への申し送り
+
+- 実 R2 を入力にしたフルビルド（全書 2980 ページのスクレイピングを含む）は未実施。段階2 の前に GitHub Actions で 1 回通し、`json/` 成果物を実際に生成することを勧める。そのとき GitHub secrets（`R2_ENDPOINT_URL` / `R2_BUCKET` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY`）の登録が必要（ワークフロー側の参照は本作業で入っている）。
+- `json/pedigreeNodes.json` は gzip 約 232KB。設計資料 §9.2 の見積り 188KB より大きいので、段階2 で初回ロード時間を測るときはこの実測値を使うこと。
+
+### 検収後の追加修正（2026-09-01・Claude Code）: 週次バッチの取りこぼし
+
+**指示書の漏れ。** §「変更対象ファイル」で `.github/workflows/build-dabimas-stream.yml` しか挙げていなかったが、**`json/` をリポジトリへ実際にコミットしているのは `.github/workflows/x_post.yml`（Weekly Dabimas Update）のほう**だった。`build-dabimas-stream.yml` は `artifacts/` へ upload するだけで `json/` を書かない。
+
+`x_post.yml` の build ステップには `--r2-endpoint` も `--pedigree-nodes-output` も無かった。段階1 の実装は「マスター指定が無ければ現行どおり」なので、この経路は**正常終了しつつ `nodeId` / `pedigreeId` / `mares` の無い json を生成して `main` へ push する**。エラーは出ない。本ブランチを `main` へマージすると、次の週次実行（毎週金曜 18:30 JST）で段階1 の追加フィールドが静かに消え、段階2 以降のフロントは名前ベース判定へ縮退したまま気づけない状態になっていた。
+
+修正内容:
+
+1. `weekly-pipeline` ジョブへ `env:` を追加し、R2 の secrets 4 件を渡す。
+2. build ステップへ `--pedigree-nodes-output json/pedigreeNodes.json` と `--r2-endpoint "$R2_ENDPOINT_URL"` を追加。
+3. commit ステップの `git add` へ `json/pedigreeNodes.json` を追加。
+
+`--pedigree-dataset-version` は**あえて指定しない**。週次の自動実行なので版を固定すると、パイプラインが R2 を更新するたびにバッチが落ちる。2 ファイル間の `dataset_version` / `source.sha256` 一致検査（V03 / V04）は指定の有無に関わらず常に効いている。
+
+X 投稿への影響なし。`Build Dabimas Stream` は `workflow_dispatch` のみで `workflow_run` の連鎖が無く、X 投稿は `x_post.yml` の手動実行と cron だけで起きる。
+
+**申し送り**: この経路は `--fail-on-error` 付きなので、`unresolved_node` / `ambiguous_node` / `ancestor_mismatch` が 1 件でも出ると週次バッチ全体が失敗し、json 更新も X 投稿も止まる。設計資料 §10.3 は `ancestor_mismatch` に閾値（例: 10 件）を設ける想定なので、ゲーム更新でマスターが古くなったときの運用方針は別途決めること。今回は失敗が静かでない（X 投稿が止まるので気づく）ため、現状のゼロ許容のままとした。
