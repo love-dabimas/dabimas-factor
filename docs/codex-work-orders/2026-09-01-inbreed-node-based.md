@@ -283,20 +283,31 @@ git status --short
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/logic/inbreed/inbreed-detector.js`: `nodeTable` 引数、nodeId による同一馬判定、父母 pedigreeId による全兄妹判定、クロスグループ、整数血量、危険な配合フラグを追加した。既存6キーと祖先除外・例外処理の流れは維持した。
+- `vue/app/methods/inbreed-ui.js`: 純関数ラッパから `window.Dabimas.pedigreeNodes || null` を第3引数として渡すようにした。
+- `docs/codex-work-orders/2026-09-01-inbreed-node-based.md`: 本完了報告を記入した（実装対象2ファイルには含めない）。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」>
+`crosses` は既存フローで祖先・例外除外を通過した `sameName` / `sibling` の認定ペアを種にし、同一 node、master 全兄妹、`fullBrothers` 手動オーバーライドの関係を推移的に連結した。その後、同じ関係にある32セル内の全出現を加えた。これにより既存の除外判断を変えず、血量だけは仕様どおり同一グループの全出現位置から計算できる。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 基準1: `node scripts/verify-storage-boot-order.cjs`、`node scripts/verify-horse-badges.cjs`、`node scripts/verify-horse-candidate-lists.cjs` → すべて `OK`。
+- 基準2: `powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-index-exp .\index.html` → `[verify] OK`。
+- 基準3: `python -m pytest tests/ -q` → `52 passed`。
+- 基準4: 一時 `tmp/verify-inbreed-node-based.cjs` で変更前コミットの純関数を読み、クロスなし・名前一致・`fullBrothers` の3盤面について、2引数呼び出しの既存6キーが完全一致することを確認した。
+- 基準5: 同一nodeは同一馬クロスかつ全兄妹なし、別node・父母一致は全兄妹、片親欠損は全兄妹なしを確認した。実 `pedigreeNodes.json` を使い、シンザン `0000008661-00` × `0000008661-10` の全兄妹成立も確認した。
+- 基準6: 一時検証で 3×4=`18750`、3×4×5=`21875`、2×2=`50000` かつ `dangerous === true`、別グループの `28125` と `25000` は `dangerous === false` を確認した。
+- 基準7: 同じ3盤面で第3引数省略時と `null` 指定時の既存6キーが一致した。
+- 基準8: `git diff --stat tests/fixtures/split-baseline/` → 差分なし。
+- 基準9: 実装差分は指定2ファイル、これに本完了報告1ファイルを加えた。作業開始前から存在する `css/style.css`、`docs/pedigree-master-integration-design.md`、`getSize.html` の変更には触れていない。
+- 追加確認: `node --check` を変更した2つの JS に実行し、`node tmp/verify-inbreed-node-based.cjs` → `inbreed node verifier: OK`。
 
 ### ベースライン差分の内訳（基準8）
 
-<split-baseline に差分が出た場合、1 件ずつ「どの馬とどの馬が新たに全兄妹になったか」を列挙する。差分が無ければ「差分なし」>
+差分なし。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+`brosData` の手動オーバーライドには master で全兄妹の裏が取れない4ペアが残る。特に `ハーランズホリデー` × `Harlan's Holiday` は同一馬の表記ゆれと見られるが、指示どおり現行挙動を維持した。ほかは `ダイワメジャー` × `ウィルロック`、`Bull Lea` × `Dogpatch`、`フジキセキ` × `ハツコイケール`。

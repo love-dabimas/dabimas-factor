@@ -101,7 +101,8 @@
           // 逐語移動した純関数（vue/logic/inbreed/inbreed-detector.js）を呼ぶ。
           const result = window.Dabimas.logic.inbreed.judgeInbreed(
             this.selected,
-            this.inbreedExceptions
+            this.inbreedExceptions,
+            window.Dabimas.pedigreeNodes || null
           );
 
           // 結果を Vue state へ反映する（旧実装が this へ直接代入していた分）。

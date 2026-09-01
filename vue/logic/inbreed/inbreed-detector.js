@@ -1,29 +1,80 @@
 /**
  * このファイルの役割:
  * - judgeInbreed（クロス＝インブリード判定）を純関数として提供する。
- * - 入力: 選択済み32頭（selected）と例外ルール（inbreedExceptions）。
+ * - 入力: 選択済み32頭（selected）、例外ルール（inbreedExceptions）、
+ *   任意の血統ノードテーブル（nodeTable）。
  * - 出力: クロス件数と、画面表示に必要な判定結果一式
  *   （sameNameGroups / siblingGroups / sameNameSpecialChecks /
- *   sameNameSpecialChecksByIndex / inbreedColorIndexes）をまとめたオブジェクト。
- * - 本体は index.html の旧 judgeInbreed を逐語コピーしたもの（ロジックは
- *   1行も変えていない）。唯一の変更は Vue の this への直接代入をやめ、
- *   ローカル変数経由で戻り値オブジェクトに含めるようにしたことだけ。
+ *   sameNameSpecialChecksByIndex / inbreedColorIndexes）に加え、nodeId ベースの
+ *   crosses と整数血量による dangerous をまとめたオブジェクト。
  *
  * このファイルに置かない処理:
  * - Vue state（this.sameNameGroups 等）への代入、dispColor への $set。
  *   それは呼び出し側（root app の judgeInbreed ラッパ）が担当する。
  *
  * 分けている理由:
- * - judgeInbreed は「選択済み32頭 + 例外ルール」から「判定結果」を返すだけの
- *   変換処理で、Vue のインスタンスに依存しない。root app から切り離すことで
- *   単体で入出力を確認できる（docs/index-split-completion-plan.md Phase 1）。
+ * - judgeInbreed は「選択済み32頭 + 例外ルール + 任意のノードテーブル」から
+ *   「判定結果」を返す変換処理で、Vue のインスタンスに依存しない。
+ *   root app から切り離すことで単体で入出力を確認できる
+ *   （docs/index-split-completion-plan.md Phase 1）。
  */
 (function (window) {
   window.Dabimas = window.Dabimas || {};
   window.Dabimas.logic = window.Dabimas.logic || {};
   window.Dabimas.logic.inbreed = window.Dabimas.logic.inbreed || {};
 
-  window.Dabimas.logic.inbreed.judgeInbreed = function (selected, inbreedExceptions) {
+  window.Dabimas.logic.inbreed.judgeInbreed = function (
+    selected,
+    inbreedExceptions,
+    nodeTable
+  ) {
+          const isExactSameNode = (a, b) => {
+            if (
+              typeof a?.nodeId === "string" &&
+              typeof b?.nodeId === "string"
+            ) {
+              return a.nodeId === b.nodeId;
+            }
+            return a?.name === b?.name;
+          };
+          const parentsOf = (horse) => {
+            if (!nodeTable || typeof horse?.nodeId !== "string") {
+              return null;
+            }
+            return nodeTable.parentsOf(horse.nodeId);
+          };
+          const isFullSiblingByMaster = (a, b) => {
+            if (
+              typeof a?.nodeId !== "string" ||
+              typeof b?.nodeId !== "string" ||
+              a.nodeId === b.nodeId
+            ) {
+              return false;
+            }
+            const parentsA = parentsOf(a);
+            const parentsB = parentsOf(b);
+            if (
+              !parentsA?.father ||
+              !parentsA?.mother ||
+              !parentsB?.father ||
+              !parentsB?.mother
+            ) {
+              return false;
+            }
+            return (
+              parentsA.father === parentsB.father &&
+              parentsA.mother === parentsB.mother
+            );
+          };
+          const isFullSiblingByOverride = (a, b) =>
+            (Array.isArray(a?.fullBrothers) &&
+              a.fullBrothers.includes(b?.name)) ||
+            (Array.isArray(b?.fullBrothers) &&
+              b.fullBrothers.includes(a?.name));
+          const isCrossRelated = (a, b) =>
+            isExactSameNode(a, b) ||
+            isFullSiblingByOverride(a, b) ||
+            isFullSiblingByMaster(a, b);
           const isInbreedExcludedHorse = (horse) => {
             const horseName = horse?.name;
             if (typeof horseName !== "string") {
@@ -43,6 +94,13 @@
             1, 2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
             1, 2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
           ];
+          const BLOOD_VOLUME = {
+            1: 50000,
+            2: 25000,
+            3: 12500,
+            4: 6250,
+            5: 3125,
+          };
 
           // 選択済み32枠を牡馬（0-15）・牝馬（16-31）に分割
           const stallionsArray = [];
@@ -72,6 +130,8 @@
               sameNameSpecialChecks: [],
               sameNameSpecialChecksByIndex: Array.from(new Array(32).fill(false)),
               inbreedColorIndexes: [],
+              crosses: [],
+              dangerous: false,
             };
           }
 
@@ -224,17 +284,9 @@
                 continue;
               }
               
-              let isSibling = false;
-              
-              // stallionのfullBrothersにbroodmareの名前がある
-              if (Array.isArray(stallion.fullBrothers) && stallion.fullBrothers.includes(broodmare.name)) {
-                isSibling = true;
-              }
-              
-              // broodmareのfullBrothersにstallionの名前がある
-              if (Array.isArray(broodmare.fullBrothers) && broodmare.fullBrothers.includes(stallion.name)) {
-                isSibling = true;
-              }
+              const isSibling =
+                isFullSiblingByOverride(stallion, broodmare) ||
+                isFullSiblingByMaster(stallion, broodmare);
               
               if (isSibling) {
                 const stallionGlobalIdx = stallion.index;
@@ -277,7 +329,7 @@
               const broodmare = broodmaresArray[bIdx];
               if (!broodmare || !broodmare.name) continue;
               
-              if (stallion.name === broodmare.name) {
+              if (isExactSameNode(stallion, broodmare)) {
                 const stallionGlobalIdx = stallion.index;
                 const broodmareGlobalIdx = broodmare.index;
                 
@@ -655,6 +707,79 @@
             );
           }
 
+          // 認定された同一馬・全兄妹クロスを連結し、同じグループの全出現を集める。
+          const crossGroups = [];
+          recognizedCrosses
+            .filter((cross) => cross.type === 'sameName' || cross.type === 'sibling')
+            .forEach((cross) => {
+              const pair = [cross.stallionNode, cross.broodmareNode].filter(Boolean);
+              const matchingGroups = crossGroups.filter((group) =>
+                group.some((member) =>
+                  pair.some((node) => isCrossRelated(member, node))
+                )
+              );
+              const merged = pair.slice();
+              matchingGroups.forEach((group) => merged.push(...group));
+              matchingGroups.forEach((group) => {
+                crossGroups.splice(crossGroups.indexOf(group), 1);
+              });
+              crossGroups.push(merged);
+            });
+
+          const allOccurrences = [...stallionsArray, ...broodmaresArray];
+          crossGroups.forEach((group) => {
+            let added;
+            do {
+              added = false;
+              allOccurrences.forEach((horse) => {
+                if (
+                  !group.some((member) => member.index === horse.index) &&
+                  group.some((member) => isCrossRelated(member, horse))
+                ) {
+                  group.push(horse);
+                  added = true;
+                }
+              });
+            } while (added);
+          });
+
+          const crosses = crossGroups.map((group) => {
+            const unique = [];
+            const seenIndexes = new Set();
+            group
+              .slice()
+              .sort((a, b) => a.index - b.index)
+              .forEach((horse) => {
+                if (!seenIndexes.has(horse.index)) {
+                  seenIndexes.add(horse.index);
+                  unique.push(horse);
+                }
+              });
+            const occurrences = unique.map((horse) => ({
+              nodeId: typeof horse.nodeId === "string" ? horse.nodeId : null,
+              side: horse.index < 16 ? "stallion" : "broodmare",
+              generation: generationMap[horse.index],
+              index: horse.index,
+            }));
+            const generations = occurrences.map((item) => item.generation);
+            const bloodVolume = generations.reduce(
+              (sum, generation) => sum + (BLOOD_VOLUME[generation] || 0),
+              0
+            );
+            const representative = unique.find(
+              (horse) => typeof horse.nodeId === "string"
+            );
+            return {
+              representativeNodeId:
+                representative?.nodeId || unique[0]?.name || null,
+              occurrences,
+              bloodVolume,
+              generations,
+              hasMareOccurrence: false,
+            };
+          });
+          const dangerous = crosses.some((cross) => cross.bloodVolume >= 50000);
+
 
           // sameNameGroupsとsiblingGroupsに分類
           const sameNameGroupsFinal = [];
@@ -906,6 +1031,8 @@
             sameNameSpecialChecks: specialCheckIndexes,
             sameNameSpecialChecksByIndex: specialCheckSeen,
             inbreedColorIndexes,
+            crosses,
+            dangerous,
           };
         };
 
