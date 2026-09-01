@@ -103,6 +103,9 @@
 
           // 配合理論
           styleThoeryClass: "",
+          // 危険な配合（judgeInbreed が返す dangerous）。
+          // 配合理論の表示で最優先（theory_08）になる。
+          dangerousCombination: false,
 
           // リストで選択された性別
           selectedSex: null,

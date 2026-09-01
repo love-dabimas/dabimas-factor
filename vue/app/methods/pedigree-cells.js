@@ -75,6 +75,7 @@
             this.styleThoeryClass = window.Dabimas.logic.theory.compatibility(S, D, {
               sameNameSpecialChecks: this.sameNameSpecialChecks,
               selected: this.selected,
+              dangerous: this.dangerousCombination,
             });
           } else {
             // 理論系統が埋まっていない場合は、空白を設定

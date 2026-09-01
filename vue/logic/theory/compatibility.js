@@ -47,9 +47,18 @@
   // context には、この判定だけでは分からない「盤面全体」の情報を渡す。
   // - sameNameSpecialChecks: 至高判定（同名馬の特別ルール）に該当する組み合わせの一覧。
   // - selected: 血統表32行ぶんの選択済み馬（奇跡判定で特定の代の馬名を参照するため）。
+  // - dangerous: judgeInbreed が返す危険な配合フラグ（クロス血量 50% 以上の群がある）。
   function compatibility(Sire, Dam, context) {
     var sameNameSpecialChecks = (context && context.sameNameSpecialChecks) || [];
     var selected = (context && context.selected) || [];
+    var dangerous = !!(context && context.dangerous);
+
+    // 危険な配合はどの理論よりも優先して表示する。
+    // ゲームの master でも priority=999 で、有効レコードを priority 降順に
+    // 走査したときの先頭になる（設計 docs/pedigree-master-integration-design.md §7.2.4）。
+    if (dangerous) {
+      return "theory_08";
+    }
 
     // 面白配合判定
     var omoshiro_count = countUniqueElements(Sire[0], Dam[0]);

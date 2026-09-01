@@ -245,6 +245,7 @@
 
           // 理論表示
           this.styleThoeryClass = "";
+          this.dangerousCombination = false;
           // インブリードされているところを格納する変数
           this.inbreedList = Array.from(new Array(32).fill(null));
           this.sameNameGroups = [];
