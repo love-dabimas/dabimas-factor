@@ -11,3 +11,5 @@ artifacts/*
 tests
 
 tmp
+
+index.*.html
