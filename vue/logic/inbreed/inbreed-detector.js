@@ -1209,29 +1209,147 @@
             }
           });
 
-          // 結果をまとめる（旧実装は this.sameNameGroups 等へ直接代入していたが、
-          // 純関数化のためローカル変数を経由して戻り値オブジェクトに含める）。
-          const inbreedColorIndexes = [];
+          // 段階4bの count は表示出口の変更後も維持する。
+          const legacyInbreedColorIndexes = [];
           newCombinedFlatIndexes.forEach(element => {
-            inbreedColorIndexes.push(element);
+            legacyInbreedColorIndexes.push(element);
           });
           // specialCheckIndexes.forEach(element => {
-          //   inbreedColorIndexes.push(element); // 元は dispColor に "supreme" を$setする行。コメントアウトのまま維持。
+          //   legacyInbreedColorIndexes.push(element); // 元は dispColor に "supreme" を$setする行。コメントアウトのまま維持。
           // });
 
-          // インブリード発生数と各種判定結果をまとめて返す
-          const colored = new Set(inbreedColorIndexes);
-          const hiddenCrossCount = crosses.filter(
+          const legacyColored = new Set(legacyInbreedColorIndexes);
+          const legacyHiddenCrossCount = crosses.filter(
             (cross) =>
               !cross.occurrences.some(
                 (occurrence) =>
-                  occurrence.index !== null && colored.has(occurrence.index)
+                  occurrence.index !== null &&
+                  legacyColored.has(occurrence.index)
               )
           ).length;
+          const legacyCount =
+            legacyInbreedColorIndexes.length + legacyHiddenCrossCount;
+
+          let displaySameNameGroups = sameNameGroupsFinalFiltered;
+          let displaySiblingGroups = siblingGroupsFinalGrouped;
+          let inbreedColorIndexes = legacyInbreedColorIndexes;
+          if (nodeTable) {
+            displaySameNameGroups = [];
+            displaySiblingGroups = [];
+            inbreedColorIndexes = [];
+            const displayedIndexes = new Set();
+
+            const addDisplayGroup = (nodes, sameHorse) => {
+              const uniqueNodes = nodes.filter((node) => {
+                if (
+                  !Number.isInteger(node?.index) ||
+                  displayedIndexes.has(node.index)
+                ) {
+                  return false;
+                }
+                displayedIndexes.add(node.index);
+                inbreedColorIndexes.push(node.index);
+                return true;
+              });
+              if (uniqueNodes.length === 0) {
+                return;
+              }
+              (sameHorse
+                ? displaySameNameGroups
+                : displaySiblingGroups
+              ).push(uniqueNodes);
+            };
+
+            crosses.forEach((cross) => {
+              const occurrenceSides = new Set(
+                cross.occurrences.map((occurrence) => occurrence.side)
+              );
+              if (
+                !occurrenceSides.has("stallion") ||
+                !occurrenceSides.has("broodmare")
+              ) {
+                return;
+              }
+              const displayNodes = cross.occurrences
+                .filter((occurrence) => occurrence.index !== null)
+                .map((occurrence) => selected[occurrence.index])
+                .filter(Boolean);
+              if (displayNodes.length === 0) {
+                return;
+              }
+
+              const stallionIndexes = cross.occurrences
+                .filter(
+                  (occurrence) =>
+                    occurrence.side === "stallion" &&
+                    occurrence.index !== null
+                )
+                .map((occurrence) => occurrence.index);
+              const broodmareIndexes = cross.occurrences
+                .filter(
+                  (occurrence) =>
+                    occurrence.side === "broodmare" &&
+                    occurrence.index !== null
+                )
+                .map((occurrence) => occurrence.index);
+              const crossPairs = [];
+              stallionIndexes.forEach((stallionIndex) => {
+                broodmareIndexes.forEach((broodmareIndex) => {
+                  crossPairs.push([stallionIndex, broodmareIndex]);
+                });
+              });
+              const allExcluded =
+                crossPairs.length > 0 &&
+                crossPairs.every(
+                  ([stallionIndex, broodmareIndex]) =>
+                    exceptionExcludedPairs.has(
+                      getPairKey(stallionIndex, broodmareIndex)
+                    ) ||
+                    exceptionExcludedPairs.has(
+                      getPairKey(broodmareIndex, stallionIndex)
+                    )
+                );
+              if (allExcluded) {
+                return;
+              }
+
+              const hasCompleteNodeIds = displayNodes.every(
+                (node) => typeof node.nodeId === "string"
+              );
+              const identityValues = hasCompleteNodeIds
+                ? displayNodes.map((node) => node.nodeId)
+                : displayNodes.map((node) => node.name);
+              addDisplayGroup(
+                displayNodes,
+                new Set(identityValues).size === 1
+              );
+            });
+
+            recognizedCrosses
+              .filter((cross) => cross.type === "exception")
+              .forEach((cross) => {
+                const targetNode = cross.stallionNode || cross.broodmareNode;
+                if (!Number.isInteger(targetNode?.index)) {
+                  return;
+                }
+                const legacyGroups = cross.displayInSameNameGroups
+                  ? sameNameGroupsFinalFiltered
+                  : siblingGroupsFinalGrouped;
+                const legacyGroup = legacyGroups.find((group) =>
+                  group.some((node) => node?.index === targetNode.index)
+                );
+                addDisplayGroup(
+                  legacyGroup || [targetNode],
+                  cross.displayInSameNameGroups
+                );
+              });
+          }
+
+          // インブリード発生数と各種判定結果をまとめて返す
           return {
-            count: inbreedColorIndexes.length + hiddenCrossCount,
-            sameNameGroups: sameNameGroupsFinalFiltered,
-            siblingGroups: siblingGroupsFinalGrouped,
+            count: legacyCount,
+            sameNameGroups: displaySameNameGroups,
+            siblingGroups: displaySiblingGroups,
             sameNameSpecialChecks: specialCheckIndexes,
             sameNameSpecialChecksByIndex: specialCheckSeen,
             inbreedColorIndexes,
