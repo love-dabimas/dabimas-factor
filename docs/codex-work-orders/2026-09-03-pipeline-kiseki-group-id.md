@@ -209,20 +209,54 @@ python run_pipeline.py --dry-run \
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか。バックアップの置き場所も書く>
+- `C:\derby\data\pedigree_r2_pipeline\agents\dump_pedigree_master_game.js`: `members[0]` を奇跡グループの安定IDとして採用し、重複所属を検出した場合はdumpをエラー停止するようにした。出力2か所の `id_policy` も更新した。
+- `C:\derby\data\pedigree_r2_pipeline\src\normalize.py`: `kiseki_group_id` の不一致だけraw値で上書きし、`applied_shared_field_changes` へ記録するようにした。他3フィールドは現行値を保持し、audit記録に加えてwarningを出すようにした。
+- `C:\derby\data\pedigree_r2_pipeline\tests\test_pipeline.py`: 奇跡ID一意性、古い値の上書き、他共有フィールドの保持と警告、`members[0]` 採番と重複時停止の回帰テスト4件を追加した。
+- `docs/codex-work-orders/2026-09-03-pipeline-kiseki-group-id.md`: 本完了報告を記入した。
+- 編集前バックアップ: `C:\derby\data\pedigree_r2_pipeline\src\normalize.py.bak.20260903`、`C:\derby\data\pedigree_r2_pipeline\agents\dump_pedigree_master_game.js.bak.20260903`。指示どおり削除していない。
+- dry-run成果物: `runs/20260902T213207Z/`（既存rawをそのまま使用）、`runs/20260902T213334Z/`（新ダンパー相当の安定IDを反映した一時rawを使用）。過去runは変更していない。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」>
+- Frida端末なしでJS採番を回帰テストできるよう、採番と重複検査を純粋関数 `assignKisekiGroupIds()` に分離した。Node実行時だけCommonJS exportし、Frida上の `rpc.exports` とdump経路は維持した。
+- `normalize.py` はlogger引数を受け取らないため、既存APIを変更せずモジュールloggerで他共有フィールドの不一致を警告した。
+- 指示書例の `--raw-dump runs/.../attempt-1` はディレクトリだが、CLIは単一JSONを `read_json()` する実装なので、実行時は `runs/.../attempt-1/pedigree_master.game.json` を指定した。
+- 既存rawは旧連番採番の成果物であり、端末からの再dumpは禁止されている。そのため、既存 `kiseki_groups.game.json` の475グループ集合から各 `members[0]` を既存rawのコピーへ反映した一時JSONを作り、新ダンパー相当の入力として2回目のdry-runを行った。一時JSONは検証後に削除した。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 基準1: `python -m pytest tests/ -q` → **38 passed / 1 skipped / 1 failed**。失敗は変更前にも再現した既存の `RunLockTest.test_orphan_process_lock_is_recovered` 1件で、本変更とは無関係。Windowsでは `os.kill(99999999, 0)` が `ProcessLookupError` ではなく `OSError(WinError 87)` となり、既存 `src/run_lock.py` がロックをstale扱いしないことが原因。スコープ外のため変更していない。したがって基準1の「全件成功」は未達。
+- 基準1の切り分け: `python -m pytest tests/ -q -k "not test_orphan_process_lock_is_recovered"` → **38 passed / 1 skipped / 1 deselected**。
+- 基準2: 追加した回帰テスト4件を指定実行 → **4 passed**。各機能を実装する前に、古い奇跡IDの残存、warning不在、JS採番関数不在の失敗を確認してからgreenにした。
+- 基準3: 既存rawを単一JSONパスで指定した `run_pipeline.py --dry-run` → 終了コード0、run `20260902T213207Z`。端末接続・R2配置なし。
+- 基準3・7: 既存グループ集合から `members[0]` を反映した一時rawによる `run_pipeline.py --dry-run` → 終了コード0、run `20260902T213334Z`。raw各game pedigreeから正規化後pedigreeへの奇跡ID不一致は0件。
+- 基準9: 両dry-runとも `output_validation.errors=0`。E01〜E15のエラーなし。既存警告W08が1件ある。
+- 追加確認: `python -m py_compile src/normalize.py tests/test_pipeline.py`、`node --check agents/dump_pedigree_master_game.js` → 成功。
+- Standardsレビュー: 明確な規約違反0件、重大スメル0件。Specレビュー: 実装要件の欠落・誤実装・スコープクリープ0件。下記の指示書／既存テスト上の制約のみ指摘された。
 
 ### 再正規化の結果（基準4〜8）
 
-<kiseki_group_id のユニーク数・4 件の衝突の解消・audit の件数・出力差分の内訳>
+既存rawをそのまま使ったrun `20260902T213207Z` では、奇跡IDを持つpedigreeが **475件 / ユニーク475件 / 重複なし**になった。`shared_field_differences` は **0件**、`applied_shared_field_changes` は **193件**。
+
+- グリーングラス `280` / グランディ `279`
+- サイテーション `294` / Fair Copy `292`
+- Charlottesville `302` / ジャイプール `305`
+- エスケンデレヤ `317` / キタサンブラック `321`
+
+このrunを `runs/20260901T052449Z/output/` と比較すると、masterの差分195件は `kiseki_group_id` 193件とtop-levelの `dataset_version` / `generated_at` だけだった。gameの差分16189件は全nodeの `last_seen_at` とtop-levelの `dataset_version` / `generated_at` だけで、`pedigree_id` / `node_id` / `variant_code` / 父母参照 / 因子の差分は0件。
+
+新しい `members[0]` 採番を反映したrun `20260902T213334Z` では、奇跡IDが **475件 / ユニーク475件 / 範囲4〜20440 / 重複なし**。`shared_field_differences` は **0件**、`applied_shared_field_changes` は **475件**、rawから出力へのID不一致は **0件**だった。
+
+- グリーングラス `1266` / グランディ `1254`
+- サイテーション `2276` / Fair Copy `1941`
+- Charlottesville `2640` / ジャイプール `2707`
+- エスケンデレヤ `10724` / キタサンブラック `10732`
+
+旧出力との差分はmasterが `kiseki_group_id` 475件と生成時刻/version、gameが全nodeの `last_seen_at` と生成時刻/versionだけで、識別子・父母参照・因子の差分は0件。端末再dumpを行っていないため、実在する旧 `kiseki_groups.game.json` は依然として旧連番（`kiseki_group_id == members[0]` は0/475）だが、純粋関数の回帰テストと上記派生rawのdry-runで新ダンパーが生成する契約を検証した。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+- 既存のWindows用RunLockテスト1件が失敗するため、受け入れ基準1の全件成功は未達。`src/run_lock.py` のWindowsにおける不存在PID判定は別作業で修正が必要。
+- 新しい `kiseki_groups.game.json` 実物の確認には、次回の許可された端末dumpが必要。今回は禁止事項に従い実施していない。
+- 指示書の検証コマンドは `--raw-dump` にディレクトリを渡しており、そのままでは実行できない。実際には `pedigree_master.game.json` のファイルパスが必要。
+- validationのW08（牝馬として参照される一部pedigreeに標準nodeがない）が1件残るが、本変更前からの既存警告である。
