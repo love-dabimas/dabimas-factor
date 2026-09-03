@@ -1,6 +1,6 @@
 # 作業指示書: 奇跡グループ ID の採番を安定化し、古い値の残存を止める（血統マスターパイプライン）
 
-- status: 依頼中
+- status: 完了（2026-09-03 検収済み。修正なし。実機 dump + R2 配置まで確認）
 - 作成日: 2026-09-03
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - **対象リポジトリ: `C:\derby\data\pedigree_r2_pipeline`**（ダビふぁく本体とは別。この作業指示書だけ本体リポジトリに置いてある）
@@ -260,3 +260,117 @@ python run_pipeline.py --dry-run \
 - 新しい `kiseki_groups.game.json` 実物の確認には、次回の許可された端末dumpが必要。今回は禁止事項に従い実施していない。
 - 指示書の検証コマンドは `--raw-dump` にディレクトリを渡しており、そのままでは実行できない。実際には `pedigree_master.game.json` のファイルパスが必要。
 - validationのW08（牝馬として参照される一部pedigreeに標準nodeがない）が1件残るが、本変更前からの既存警告である。
+
+---
+
+## 検収記録（2026-09-03・Claude Code）
+
+### 判定
+
+**合格。修正なし。** 受け入れ基準を再実行・独立検証した。基準1 だけ形式上は未達だが、原因は本作業と無関係な既存不具合で、完了報告の切り分けが正しかった。
+
+**検収中に、実機 dump を伴う本番 run が完了して R2 へ配置されていることを確認した。** これにより、机上検証にとどまっていた基準7 が実データで裏付けられた。
+
+### 受け入れ基準の検証結果
+
+| # | 内容 | 結果 |
+|---|---|---|
+| 1 | テスト全件成功 | **形式上は未達**。38 passed / 1 skipped / **1 failed**。失敗は `RunLockTest::test_orphan_process_lock_is_recovered` で、本変更と無関係な既存の Windows 固有不具合（下記） |
+| 2 | 追加した回帰テスト 4 件 | 合格。`test_normalized_kiseki_group_ids_are_unique` / `test_raw_kiseki_group_id_replaces_stale_current_value` / `test_non_kiseki_shared_field_keeps_current_value_and_warns` / `test_kiseki_group_assignment_uses_minimum_member_and_rejects_overlap` |
+| 3 | 既存 raw での再正規化 | 合格。2 つの dry-run がどちらも `status: succeeded` / `published: false` |
+| 4 | `kiseki_group_id` の一意性 | 合格。**475 件 / ユニーク 475 / 重複なし**（現状 471・重複 `[279,292,302,317]` から解消） |
+| 5 | 4 件の衝突解消 | 合格（下記） |
+| 6 | `shared_field_differences` が 0 | 合格。**193 → 0**、`applied_shared_field_changes` に振り替え |
+| 7 | `kiseki_group_id == members[0]` | **合格。実機 dump で 475/475**（下記） |
+| 8 | 出力差分の内訳 | 合格。差分は `kiseki_group_id` 475 件と `dataset_version` / `generated_at` / `last_seen_at` だけ（下記） |
+| 9 | `validate.py` の検証 | 合格。3 つの run すべて `output_validation.errors = 0` |
+
+### 基準1 の未達は本作業と無関係
+
+`src/run_lock.py` は今回**変更されていない**（mtime 08-29、変更 3 ファイルは 09-03）。失敗の原因も再現確認した。
+
+```text
+Windows: os.kill(99999999, 0) → OSError(WinError 87, errno 22)
+run_lock.py:59  except OSError: pass   ← stale と判定せず素通り
+```
+
+Linux なら `ProcessLookupError` が飛んで stale 判定できるが、Windows では OSError になるためロックが残る。**このテストは Linux 前提で、Windows では通らない。** 本作業のスコープ外という完了報告の判断は妥当。
+
+ただし**実害はある**。プロセスが落ちた場合、`state/pipeline.lock` が 12 時間残り、その間パイプラインを再実行できない。同ファイルにある `test_reused_pid_owned_by_other_command_is_recovered` は `/proc` の有無で skip しているので、**この test も同様に Windows では skip するか、`run_lock.py` 側を Windows 対応にする**のが筋。別件として起票を勧める。
+
+### 基準5: 4 件の衝突は解消した
+
+| 馬 | 修正前 | 修正後（本番 run） |
+|---|---:|---:|
+| グリーングラス | 279 | **1266** |
+| グランディ | 279 | **1254** |
+| サイテーション | 292 | **2276** |
+| Fair Copy | 292 | **1941** |
+| Charlottesville | 302 | **2640** |
+| ジャイプール | 302 | **2707** |
+| エスケンデレヤ | 317 | **10724** |
+| キタサンブラック | 317 | **10732** |
+
+### 基準7 は実機 dump で裏が取れた
+
+完了報告は「端末の再 dump をしていないので、実在する `kiseki_groups.game.json` は旧連番のまま（0/475）。純粋関数の回帰テストと合成 raw で契約を検証した」と留保していた。これは誠実な報告である。
+
+検収中に確認したところ、**端末 dump を伴う本番 run `20260903T071003Z` が 2026-09-03 16:13 JST に完了していた**。その raw を見ると留保は解消している。
+
+```text
+runs/20260903T071003Z/raw/attempt-1/kiseki_groups.game.json
+  475 / 475 が members[0] 採番
+  id_policy: "stable game pedigree ID of minimum group member"
+  conflicts: 0
+```
+
+出力側も `kiseki` 保持 475 件 / ユニーク 475 / 重複なし / 範囲 4〜20440、`shared_field_differences` 0 件、`output_validation.errors` 0 件。
+
+### 基準8: 出力差分の内訳
+
+`runs/20260902T213334Z/output` と `runs/20260901T052449Z/output` を全レコード比較した。
+
+```text
+pedigree_master.json
+  top-level 差分      : dataset_version / generated_at のみ
+  pedigree_id 集合の差 : 0
+  レコード差分         : kiseki_group_id 475 件のみ（他フィールドの差分 0）
+
+pedigree_master.game.json
+  node_id 集合の差 : 0
+  レコード差分      : last_seen_at 16187 件のみ
+```
+
+**`pedigree_id` / `node_id` / `variant_code` / 父母参照 / 因子は 1 件も変わっていない。** 採番方式を変える変更で巻き添えが出ていないことを確認できた。
+
+### 受け入れた設計判断
+
+- **採番と重複検査を純粋関数 `assignKisekiGroupIds()` へ分離し、Node からも呼べるよう CommonJS export を足した。** Frida 実行時の `rpc.exports` と dump 経路は維持されている。端末なしで採番を回帰テストできるようになったのは良い改善。
+- **`conflicts` が空でないときに例外で停止するようにした。** 指示書どおり。`members[0]` の一意性が崩れたまま出力するより落ちるほうが安全。
+- **他 3 フィールドは現行値保持のまま、`logger.warning` を追加。** 指示書どおりで、実データでの発生も 0 件。
+- **指示書の検証コマンドの誤りを実行時に修正した。** `--raw-dump` にディレクトリを書いていたが、CLI は単一 JSON を読む実装だった。指示書側の誤り。
+
+### 重要な申し送り: R2 が更新された
+
+本番 run が **R2 へ配置済み**である。
+
+```text
+dataset_version : 2026-09-03T071324Z+raw.bfe55ddd0585
+pedigree_count  : 14780
+node_count      : 16190   （前回 16187 から +3）
+published       : true
+```
+
+したがって**ダビふぁく本体の `json/` は古い**。次のことが要る。
+
+1. `json/` を再生成する（GitHub Actions の Build Dabimas Stream を `--pedigree-dataset-version 2026-09-03T071324Z+raw.bfe55ddd0585` で実行）。
+2. `json/pedigreeNodes.json` の `datasetVersion` が上記に変わるので、`service-worker.js` の `CACHE_NAME` も上げる。
+3. これまでの実測値（クロス群の平均など）は `2026-09-01T052756Z+raw.f7018232c481` 基準なので、段階5・6 の指示書を書くときは新しい版で測り直す。
+
+### 段階6 への影響
+
+`kiseki_group_id` が正しくなったので、**段階6 で奇跡判定に `kiseki_group_id` を使う道が開いた**。ただし新データでの再確認が要る。
+
+- 修正前の測定では、4 ペアが奇跡判定の対象位置に同時に立つ組合せは全 120 万通り中 0 件だった。
+- 修正後は 4 ペアが別 ID になったので、そもそも「別の実馬が同じグループ」という状態自体が消えた。**設計資料 §2.3 の「`pedigree_id` では代用不可」という主張は、この修正で根拠を失う。**
+- 段階6 の指示書を書くときに、新しい R2 データで「475 グループがすべて 1 pedigree か」を測り直し、そのうえで `kiseki` を使うか `pedigreeId` で足りるかを決めること。
