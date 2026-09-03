@@ -29,8 +29,30 @@
       combinationCellStyle: { type: [Object, String], required: true },
       isCapturingScreenshot: { type: Boolean, required: true },
       sireLineCounts: { type: Object, default: null },
+      // 工程診断ボタン（vue/logic/plan/plan-diagnosis.js）。
+      planDiagnosisState: { type: String, default: "INCOMPLETE" },
+      planDiagnosisBadgeText: { type: String, default: "" },
+      planDiagnosisDisabled: { type: Boolean, default: true },
     },
     computed: {
+      planDiagnosisCellClass: function () {
+        return "plan-diagnosis-cell--" + this.planDiagnosisState.toLowerCase();
+      },
+      planDiagnosisIcon: function () {
+        switch (this.planDiagnosisState) {
+          case "DANGER":
+            return "mdi-alert";
+          case "UNKNOWN":
+            return "mdi-help-circle-outline";
+          case "RUNNING":
+            return "mdi-progress-clock";
+          default:
+            return "mdi-magnify-scan";
+        }
+      },
+      planDiagnosisTitle: function () {
+        return "工程診断（" + this.planDiagnosisBadgeText + "）";
+      },
       sireLineBuckets: function () {
         return Array.from({ length: 10 }, function (_, index) {
           return {
@@ -42,6 +64,12 @@
       },
     },
     methods: {
+      onPlanDiagnosisClick: function () {
+        if (this.planDiagnosisDisabled) {
+          return;
+        }
+        this.$emit("plan-diagnose");
+      },
       sireLineBucketValue: function (kind, index) {
         var values = this.sireLineCounts && this.sireLineCounts[kind];
         return values && typeof values[index] === "number" ? values[index] : 0;
@@ -63,6 +91,18 @@
               <th colspan="14" class="f00_inbreed_header"></th>
               <th v-if="dispCategory % 2 === 0" rowspan="2" class="table_footer_TH_theory">理論</th>
               <th v-else rowspan="2" class="table_footer_TH_theory">子系統数</th>
+              <th
+                rowspan="3"
+                width="3%"
+                class="plan-diagnosis-cell"
+                :class="planDiagnosisCellClass"
+                aria-label="工程診断"
+                :title="planDiagnosisTitle"
+                @click="onPlanDiagnosisClick"
+              >
+                <v-icon size="large" color="white">{{ planDiagnosisIcon }}</v-icon>
+                <span class="plan-diagnosis-badge">{{ planDiagnosisBadgeText }}</span>
+              </th>
               <th
                 rowspan="3"
                 width="3%"
@@ -168,6 +208,18 @@
               <th
                 rowspan="3"
                 width="3%"
+                class="plan-diagnosis-cell"
+                :class="planDiagnosisCellClass"
+                aria-label="工程診断"
+                :title="planDiagnosisTitle"
+                @click="onPlanDiagnosisClick"
+              >
+                <v-icon size="large" color="white">{{ planDiagnosisIcon }}</v-icon>
+                <span class="plan-diagnosis-badge">{{ planDiagnosisBadgeText }}</span>
+              </th>
+              <th
+                rowspan="3"
+                width="3%"
                 :style="combinationCellStyle"
                 aria-label="保存"
                 title="保存"
@@ -203,17 +255,22 @@
 
           <tbody v-if="$vuetify.breakpoint.smAndDown && dispCategory % 2 === 0">
             <tr>
-              <td colspan="2" class="exp-mobile-screenshot-cell">
+              <td
+                colspan="2"
+                class="exp-mobile-screenshot-cell plan-diagnosis-cell"
+                :class="planDiagnosisCellClass"
+              >
                 <button
                   type="button"
-                  class="exp-mobile-screenshot-button"
-                  :disabled="isCapturingScreenshot"
-                  aria-label="Save screenshot"
-                  title="Save screenshot"
+                  class="exp-mobile-plan-diagnosis-button"
+                  :disabled="planDiagnosisDisabled"
+                  aria-label="工程診断"
+                  :title="planDiagnosisTitle"
                   data-html2canvas-ignore="true"
-                  @click.stop.prevent="$emit('capture-screenshot')"
+                  @click.stop.prevent="onPlanDiagnosisClick"
                 >
-                  <v-icon small color="white">mdi-camera</v-icon>
+                  <v-icon small color="white">{{ planDiagnosisIcon }}</v-icon>
+                  <span class="plan-diagnosis-badge">{{ planDiagnosisBadgeText }}</span>
                 </button>
               </td>
               <td class="f01">短</td>
@@ -292,16 +349,22 @@
             class="sire-line-summary sire-line-summary--mobile"
           >
             <tr>
-              <td colspan="2" class="exp-mobile-screenshot-cell">
+              <td
+                colspan="2"
+                class="exp-mobile-screenshot-cell plan-diagnosis-cell"
+                :class="planDiagnosisCellClass"
+              >
                 <button
                   type="button"
-                  class="exp-mobile-screenshot-button"
-                  :disabled="isCapturingScreenshot"
-                  aria-label="Save screenshot"
-                  title="Save screenshot"
+                  class="exp-mobile-plan-diagnosis-button"
+                  :disabled="planDiagnosisDisabled"
+                  aria-label="工程診断"
+                  :title="planDiagnosisTitle"
                   data-html2canvas-ignore="true"
-                  @click.stop.prevent="$emit('capture-screenshot')"
-                ><v-icon small color="white">mdi-camera</v-icon></button>
+                  @click.stop.prevent="onPlanDiagnosisClick"
+                ><v-icon small color="white">{{ planDiagnosisIcon }}</v-icon><span
+                  class="plan-diagnosis-badge"
+                >{{ planDiagnosisBadgeText }}</span></button>
               </td>
               <th
                 v-for="bucket in sireLineBuckets"

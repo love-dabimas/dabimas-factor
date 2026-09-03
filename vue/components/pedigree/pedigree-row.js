@@ -36,7 +36,16 @@
         >{{ cell.text }}</td>
       </template>
 
-      <td :class="[row.autoClass, rowState.categoryColorClass]" :colspan="row.autoColspan">
+      <td
+        :class="[row.autoClass, rowState.categoryColorClass, rowState.planDanger ? 'plan-danger-cell' : '']"
+        :colspan="row.autoColspan"
+      >
+        <span
+          v-if="rowState.planDanger"
+          class="plan-danger-mark"
+          title="この工程は危険な配合"
+          aria-label="危険な配合"
+        >⚠</span>
         <horse-cell
           :class="rowState.rowColorClass"
           :index="row.index"

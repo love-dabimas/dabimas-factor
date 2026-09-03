@@ -69,10 +69,14 @@
           :sire-line-counts="dispCategory % 2 === 1 ? buildSireLineColorCounts() : null"
           :combination-cell-style="combinationCellStyle"
           :is-capturing-screenshot="isCapturingScreenshot"
+          :plan-diagnosis-state="planDiagnosisState"
+          :plan-diagnosis-badge-text="planDiagnosisBadgeText"
+          :plan-diagnosis-disabled="planDiagnosisDisabled"
           @toggle-category="handleClick"
           @combination-open="handleCombinationCellClick"
           @reset="initializer"
           @capture-screenshot="captureMobileScreenshot"
+          @plan-diagnose="runPlanDiagnosis"
         ></factor-summary-header>
       </header>
 
@@ -84,6 +88,12 @@
         @saved-horse-created="handleSavedHorseCreated"
         @saved-horse-removed="handleSavedHorseRemoved"
       ></combination-dialog>
+
+      <!-- 工程診断の結果パネル -->
+      <plan-diagnosis-panel
+        v-model="planDiagnosisPanelVisible"
+        :result="planDiagnosisResult"
+      ></plan-diagnosis-panel>
 
       <!-- detail（血統）取得失敗時の再試行メッセージ -->
       <v-snackbar
@@ -163,6 +173,7 @@
   <script src="./vue/logic/inbreed/inbreed-exceptions.js"></script>
   <script src="./vue/logic/inbreed/inbreed-detector.js"></script>
   <script src="./vue/logic/inbreed/inbreed-counts.js"></script>
+  <script src="./vue/logic/plan/plan-diagnosis.js"></script>
   <script src="./vue/components/pedigree/memo-cell.js"></script>
   <script src="./vue/components/pedigree/desktop-horse-autocomplete.js"></script>
   <script src="./vue/components/pedigree/mobile-horse-picker.js"></script>
@@ -171,6 +182,7 @@
   <script src="./vue/components/pedigree/pedigree-table.js"></script>
   <script src="./vue/components/pedigree/pedigree-card.js"></script>
   <script src="./vue/components/header/factor-summary-header.js"></script>
+  <script src="./vue/components/plan/plan-diagnosis-panel.js"></script>
 
   <!-- 統合版（カテゴリ・作業枠）: dabifaku_unified への接続はこの層のみが持つ -->
   <script src="./vue/logic/storage/unified-db.js"></script>
@@ -195,6 +207,7 @@
   <script src="./vue/app/methods/bootstrap.js"></script>
   <script src="./vue/app/methods/selection.js"></script>
   <script src="./vue/app/methods/inbreed-ui.js"></script>
+  <script src="./vue/app/methods/plan-diagnosis-ui.js"></script>
   <script src="./vue/app/methods/pedigree-cells.js"></script>
   <script src="./vue/app/methods/sire-line-color-settings.js"></script>
   <script src="./vue/app/app-options.js"></script>

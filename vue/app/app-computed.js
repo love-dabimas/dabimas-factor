@@ -63,6 +63,76 @@
               return "--";
           }
         },
+        // 工程診断: 現在の血統表のハッシュ。診断結果はこれと一致する間だけ有効
+        //（種牡馬・繁殖牝馬・血統セルのどれが変わってもずれる。仕様 §13）。
+        planCurrentSnapshotHash() {
+          return window.Dabimas.logic.plan.createSnapshotHash(this.selected);
+        },
+        // 現在の選択に対して有効な診断結果だけを返す。古い結果はここで捨てる。
+        planDiagnosisResult() {
+          const result = this.planDiagnosis;
+          if (!result || result.status !== "completed") {
+            return null;
+          }
+          return result.snapshotHash === this.planCurrentSnapshotHash ? result : null;
+        },
+        planEmptyCellCount() {
+          return this.selected.filter((entry) => !entry || !entry.name).length;
+        },
+        planDiagnosisState() {
+          if (this.planDiagnosisRunning) {
+            return "RUNNING";
+          }
+          if (this.planEmptyCellCount > 0) {
+            return "INCOMPLETE";
+          }
+          const result = this.planDiagnosisResult;
+          if (!result) {
+            return "READY";
+          }
+          if (result.summary.totalDangerCount > 0) {
+            return "DANGER";
+          }
+          if (result.summary.unknownCount > 0) {
+            return "UNKNOWN";
+          }
+          return "SAFE";
+        },
+        // 色が判別できなくても状態が分かるよう、必ず文字を出す（仕様 UI-08）。
+        planDiagnosisBadgeText() {
+          const result = this.planDiagnosisResult;
+          switch (this.planDiagnosisState) {
+            case "RUNNING":
+              return "診断中";
+            case "INCOMPLETE":
+              return "残り" + this.planEmptyCellCount + "枠";
+            case "READY":
+              return "未診断";
+            case "SAFE":
+              return "危険0";
+            case "UNKNOWN":
+              return "不明" + result.summary.unknownCount;
+            case "DANGER":
+              return result.summary.unknownCount > 0
+                ? "危険" +
+                    result.summary.totalDangerCount +
+                    "／不明" +
+                    result.summary.unknownCount
+                : "危険" + result.summary.totalDangerCount;
+            default:
+              return "";
+          }
+        },
+        planDiagnosisDisabled() {
+          return this.planDiagnosisState === "INCOMPLETE" ||
+            this.planDiagnosisState === "RUNNING";
+        },
+        // ⚠ を出す血統セル。診断結果を参照するだけで、ここでは危険判定をやり直さない
+        //（仕様 §16.2）。
+        planDangerCellIndexes() {
+          const result = this.planDiagnosisResult;
+          return result ? result.summary.dangerCellIndexes : [];
+        },
         isCompactMobileLayout() {
           return this.$vuetify.breakpoint.smAndDown;
         },
@@ -90,6 +160,7 @@
             dispCategory: this.dispCategory,
             category: this.category,
             sireLineColors: this.sireLineColorSettings,
+            planDangerCellIndexes: this.planDangerCellIndexes,
           };
         },
         // 種牡馬側16行ぶんの rowState。selected 等が変わるたびに作り直される

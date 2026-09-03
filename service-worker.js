@@ -1,5 +1,5 @@
 // cache name, cache files
-var CACHE_NAME = 'dabimas-factor-v20260903-01';
+var CACHE_NAME = 'dabimas-factor-v20260904-01';
 var BASE_PATH = self.location.pathname.replace(/\/service-worker\.js$/, '/');
 var APP_SHELL_URL = BASE_PATH + 'index.html';
 // プリキャッシュは「実行時に実際に使われるもの」だけに絞る。
@@ -60,6 +60,7 @@ var urlsToCache = [
   BASE_PATH + 'vue/logic/inbreed/inbreed-exceptions.js',
   BASE_PATH + 'vue/logic/inbreed/inbreed-detector.js',
   BASE_PATH + 'vue/logic/inbreed/inbreed-counts.js',
+  BASE_PATH + 'vue/logic/plan/plan-diagnosis.js',
   BASE_PATH + 'vue/components/pedigree/memo-cell.js',
   BASE_PATH + 'vue/components/pedigree/desktop-horse-autocomplete.js',
   BASE_PATH + 'vue/components/pedigree/mobile-horse-picker.js',
@@ -68,6 +69,7 @@ var urlsToCache = [
   BASE_PATH + 'vue/components/pedigree/pedigree-table.js',
   BASE_PATH + 'vue/components/pedigree/pedigree-card.js',
   BASE_PATH + 'vue/components/header/factor-summary-header.js',
+  BASE_PATH + 'vue/components/plan/plan-diagnosis-panel.js',
   BASE_PATH + 'vue/logic/storage/unified-db.js',
   BASE_PATH + 'vue/logic/storage/category-repository.js',
   BASE_PATH + 'vue/logic/storage/workspace-repository.js',
@@ -89,6 +91,7 @@ var urlsToCache = [
   BASE_PATH + 'vue/app/methods/bootstrap.js',
   BASE_PATH + 'vue/app/methods/selection.js',
   BASE_PATH + 'vue/app/methods/inbreed-ui.js',
+  BASE_PATH + 'vue/app/methods/plan-diagnosis-ui.js',
   BASE_PATH + 'vue/app/methods/pedigree-cells.js',
   BASE_PATH + 'vue/app/methods/sire-line-color-settings.js',
   BASE_PATH + 'vue/app/app-options.js',

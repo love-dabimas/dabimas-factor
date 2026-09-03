@@ -683,3 +683,105 @@
 .sire-line-color-label-row .v-text-field .v-label {
   font-size: 16px;
 }
+
+/* ---------------------------------------------------------------
+   工程診断（vue/logic/plan/plan-diagnosis.js）
+   --------------------------------------------------------------- */
+
+/* 危険と判定された工程の種牡馬セル。セル自体の背景色は理論・子系統表示で
+   使っているので、左肩に ⚠ を重ねるだけにして既存の色分けを壊さない。 */
+.plan-danger-cell {
+  position: relative;
+  box-shadow: inset 0 0 0 2px #c62828;
+}
+
+.plan-danger-mark {
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  transform: translateY(-50%);
+  z-index: 2;
+  color: #c62828;
+  font-size: 15px;
+  line-height: 1;
+  pointer-events: none;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+
+/* ヘッダの工程診断ボタン。色が判別できなくても文字で状態が分かるようにする。 */
+.plan-diagnosis-cell {
+  background-color: #37474f;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.plan-diagnosis-cell--incomplete,
+.plan-diagnosis-cell--running {
+  background-color: #90a4ae;
+  cursor: default;
+}
+
+.plan-diagnosis-cell--danger {
+  background-color: #c62828;
+}
+
+.plan-diagnosis-cell--unknown {
+  background-color: #ef6c00;
+}
+
+.plan-diagnosis-cell--safe {
+  background-color: #2e7d32;
+}
+
+.plan-diagnosis-badge {
+  display: block;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.exp-mobile-plan-diagnosis-button {
+  background: transparent;
+  border: 0;
+  color: #fff;
+  line-height: 1;
+  padding: 0;
+}
+
+.exp-mobile-plan-diagnosis-button .plan-diagnosis-badge {
+  font-size: 9px;
+}
+
+/* 診断結果パネル（下部シート） */
+.plan-diagnosis-panel {
+  padding: 12px 16px 16px;
+}
+
+.plan-diagnosis-panel-summary {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.plan-diagnosis-step {
+  border-top: 1px solid #e0e0e0;
+  padding: 6px 0;
+}
+
+.plan-diagnosis-step-heading {
+  font-size: 13px;
+}
+
+.plan-diagnosis-step-result {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.plan-diagnosis-step--danger .plan-diagnosis-step-result {
+  color: #c62828;
+}
+
+.plan-diagnosis-step--unknown .plan-diagnosis-step-result,
+.plan-diagnosis-step--blocked .plan-diagnosis-step-result {
+  color: #ef6c00;
+}

@@ -95,8 +95,13 @@
       ? arrays.isInbreedButtonClicked[index]
       : 0;
 
+    // 工程診断で危険と出た工程の種牡馬セル。診断結果の index 一覧を見るだけで、
+    // ここで危険判定はやり直さない（仕様 §16.2）。
+    var planDangerCellIndexes = arrays.planDangerCellIndexes || [];
+
     return {
       index: index,
+      planDanger: planDangerCellIndexes.indexOf(index) !== -1,
       selectedHorseName: selectedHorseName,
       factorLocked: !!(selectedEntry && selectedEntry.factorLocked),
       generationLabel: (arrays.indexGenerationAssignments || [])[index] || "",

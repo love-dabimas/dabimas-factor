@@ -107,6 +107,13 @@
           // 配合理論の表示で最優先（theory_08）になる。
           dangerousCombination: false,
 
+          // 工程診断（vue/logic/plan/plan-diagnosis.js）の結果。
+          // 画面セッション内だけの派生データで、保存も自動再計算もしない。
+          // 選択が変わった結果は snapshotHash の不一致で無効化される（仕様 §13）。
+          planDiagnosis: null,
+          planDiagnosisRunning: false,
+          planDiagnosisPanelVisible: false,
+
           // リストで選択された性別
           selectedSex: null,
 
