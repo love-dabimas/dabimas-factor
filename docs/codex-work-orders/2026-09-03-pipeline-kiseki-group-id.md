@@ -374,3 +374,53 @@ published       : true
 - 修正前の測定では、4 ペアが奇跡判定の対象位置に同時に立つ組合せは全 120 万通り中 0 件だった。
 - 修正後は 4 ペアが別 ID になったので、そもそも「別の実馬が同じグループ」という状態自体が消えた。**設計資料 §2.3 の「`pedigree_id` では代用不可」という主張は、この修正で根拠を失う。**
 - 段階6 の指示書を書くときに、新しい R2 データで「475 グループがすべて 1 pedigree か」を測り直し、そのうえで `kiseki` を使うか `pedigreeId` で足りるかを決めること。
+
+---
+
+## 追加修正（2026-09-03・Claude Code）: `run_lock.py` の Windows 対応
+
+上の検収記録で「別件として起票を勧める」と書いた `src/run_lock.py` の不具合を、依頼者の指示で修正した。
+
+### 症状
+
+パイプラインが異常終了すると `state/pipeline.lock` が残り、**最大 12 時間（`stale_hours`）再実行できない**。手で削除すれば回避できるが、毎回必要になる。
+
+### 原因
+
+`_remove_if_stale()` の PID 生存確認が `os.kill(pid, 0)` で、`ProcessLookupError` だけを stale として扱っていた。**Windows ではこの例外が送出されない。**
+
+| PID の状態 | Windows での `os.kill(pid, 0)` | 修正前の扱い |
+|---|---|---|
+| 生存中 | 例外なし | 生存（正しい） |
+| **存在しない** | **`OSError(errno=22, winerror=87)`** | **`except OSError: pass` に吸われて生存扱い（誤り）** |
+| アクセス拒否 | `PermissionError(winerror=5)` | 生存（正しい） |
+
+`OpenProcess` が存在しない PID に対して `ERROR_INVALID_PARAMETER (87)` を返すためである。`ProcessLookupError` は `OSError` の派生だが、Windows では発生しない。
+
+なお `os.kill(pid, 0)` が生存プロセスを `TerminateProcess` で終了させてしまう懸念も検証したが、**実測では終了しなかった**（使い捨ての子プロセスで確認）。
+
+### 修正
+
+`winerror == 87` を「プロセスなし」として扱う分岐を足した（`src/run_lock.py`、9 行）。**誤検知の余地は無い。** 生存中の PID は例外を投げず、アクセス拒否は `PermissionError` へ分岐するので、87 に到達するのは存在しない PID だけである。
+
+**12 時間の mtime フォールバックは残した。** Windows の PID 判定は完全ではなく、終了直後でも親がハンドルを保持している間は「例外なし」を返すため、最後の砦として要る。
+
+### 検証
+
+- `python -m pytest tests/ -q` → **39 passed / 1 skipped / 0 failed**（修正前は 38 passed / 1 failed）
+- 失敗していた `RunLockTest::test_orphan_process_lock_is_recovered` が通るようになった
+- 実挙動を確認した。
+
+```text
+クラッシュ後の残骸ロック（プロセス完全終了・ハンドル解放済み） → ロックを回収できた
+生存中プロセスのロック                                        → 回収せず「実行中」と判定（誤検知なし）
+```
+
+- `python -m py_compile src/run_lock.py` 成功
+- 編集前バックアップ `src/run_lock.py.bak.20260903` を残した（このリポジトリは git 管理外のため）
+
+### 変更していないもの
+
+- `stale_hours` の既定値（12 時間）
+- Linux の `/proc/{pid}/cmdline` によるコマンドライン照合
+- 同ファイルの `test_reused_pid_owned_by_other_command_is_recovered`（`/proc` の有無で skip される Linux 専用テスト）
