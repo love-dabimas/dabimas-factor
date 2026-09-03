@@ -102,18 +102,14 @@
       }
     });
 
-    // 空欄、数字、(で始まるものを除外する
-    const excludeString = /^$|^\d*$|^\(.+?\)/;
     let inbreedArray = [];
 
     workingInbreedList.map((value) => {
       if (value) {
-        // subNameが(で始まる場合(繫殖牝馬選択時)や数字の因名被りなのでそれは削除する
         inbreedArray.push({
+          nodeId: value.nodeId,
           name: value.name,
-          subName: excludeString.test(value.subName)
-            ? "dummy"
-            : value.subName,
+          subName: value.subName,
           factors: value.factors,
           selfInbreed: false,
         });
@@ -123,14 +119,21 @@
     const factorCd = Array.from(new Array(32), () =>
       new Array(3).fill("00")
     );
-    // 重複を削除する
-    const inbreedArraySimple = inbreedArray.filter(
-      ({ name, subName }, i) =>
-        i ===
-        inbreedArray.findIndex(
-          (e) => e?.name === name && e?.subName === subName
-        )
-    );
+    // nodeId is the identity of a game node. Name-based deduplication merges
+    // namesakes and year variants, causing their factors to be undercounted.
+    const dedupeKey = (entry) =>
+      typeof entry.nodeId === "string"
+        ? entry.nodeId
+        : `${entry.name}|${entry.subName ?? ""}`;
+    const seenDedupeKeys = new Set();
+    const inbreedArraySimple = inbreedArray.filter((entry) => {
+      const key = dedupeKey(entry);
+      if (seenDedupeKeys.has(key)) {
+        return false;
+      }
+      seenDedupeKeys.add(key);
+      return true;
+    });
 
     // 因子をコード変換する。Ex.速→02にさせる
     if (inbreedArraySimple) {
