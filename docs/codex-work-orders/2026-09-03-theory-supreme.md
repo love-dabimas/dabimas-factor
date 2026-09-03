@@ -222,28 +222,57 @@ git status --short
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/logic/inbreed/inbreed-detector.js`: 至高候補を `crosses` から評価し、世代包含、master牡馬の基準馬、同一 `pedigreeId`、node effects 6種類、血統全体30因子の全条件を実装した。nodeTableなしの旧判定と戻り値形は維持した。
+- `docs/codex-work-orders/2026-09-03-theory-supreme.md`: 本完了報告を追記した。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」>
+`cross.representativeNodeId` と一致する最初の occurrence を基準馬として扱った。群内の任意の男系セルを基準にすると、代表が牝馬枠・自家製馬・特殊牝馬ルートであるケースを別の occurrence によって通してしまうためである。基準馬以外の occurrence は、指示どおり同一nodeまたは同一 `pedigreeId` の場合だけ許可した。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 基準1: `verify-storage-boot-order.cjs`、`verify-horse-badges.cjs`、`verify-horse-candidate-lists.cjs` はすべて終了コード0、`OK`。
+- 基準2: `verify-index-exp .\index.html` は `[verify] OK`。
+- 基準3: `python -m pytest tests/ -q` は **52 passed**。
+- 基準4・5: 固定点との実データ30,000組比較は全項目不一致0件。詳細は次節。
+- 基準6〜11: `tmp/verify-theory-supreme.cjs` の合成盤面テストはすべて成功。詳細は後述。
+- 基準12: nodeTableなしで段階6の `judgeInbreed()` と戻り値全体が一致した。
+- 基準13: 製品コードの変更は指定された `inbreed-detector.js` のみで、これに本完了報告だけを加えた。pytest が生成・更新した `scripts/__pycache__` は検証後に除去・復元した。
+- 追加確認: `node --check vue/logic/inbreed/inbreed-detector.js`、`git diff --check` は成功した。
 
 ### 実データでの不変確認（基準4・5）
 
-<サンプル数・seed・PRNG・比較方法・食い違った件数>
+母集団は summary/detail の種牡馬2,415頭×特殊牝馬499頭。xorshift32（seed `0x51EED`）の符号なし32bit出力を各母集団サイズで剰余し、重複を許して30,000組を抽出した。実装の `setDataForPedigree()` で32セル盤面を作り、例外ルールと実 `pedigreeNodes.json` のnodeTableを渡した。
+
+比較対象は固定点 `29ce26e` から `git show` で直接ロードした段階6の `judgeInbreed()` と実装後の同 API であり、近似ロジックは使っていない。
+
+```text
+至高成立盤面: 旧 0 / 30000、 新 0 / 30000
+sameNameSpecialChecks の不一致: 0
+styleThoeryClass 相当の不一致: 0
+sameNameGroups の不一致: 0
+siblingGroups の不一致: 0
+inbreedColorIndexes の不一致: 0
+count の不一致: 0
+crosses の不一致: 0
+dangerous の不一致: 0
+```
 
 ### 条件 a〜e の合成盤面テスト（基準6〜10）
 
-<各条件の境界（成立/不成立）をどう作ってどう確認したか。§32.6 の非対称実装の確認を必ず含める>
+- a（世代包含）: `3×4×5`、`3×4×5×5`、`3×4×4×5`、`3×3×4×5` は成立し、`3×3×4×4` と `4×4×5×5` は不成立だった。完全一致ではなく `{3,4,5}` の包含であることを確認した。
+- b（因子種類）: effectsを `[1,1,2] + [2,3,3] + [4,5,5]` とした和集合5種類は不成立、`[1,1,2] + [2,3,4] + [4,5,6]` の6種類は成立した。同一effectsの反復を回数として数えていない。
+- c（基準馬）: 代表occurrenceが牝馬枠、`nodeId:null` の自家製馬、特殊牝馬ルートindex 16の各盤面は不成立。男系セルindex 2・nodeIdありを代表にした盤面は成立した。
+- d（同一グループ）: nodeIdが異なっても全occurrenceが `pedigreeId:"same"` なら成立し、同じ父母を持つ全兄妹として収集された1ノードだけを `pedigreeId:"sibling"` にすると不成立だった。
+- e（血統全体の因子延べ数）: index 0〜15と17〜31の合計29は不成立、30は成立した。合計29のまま**特殊牝馬ルートindex 16へ20因子を追加しても不成立**であり、§32.6の非対称実装を確認した。
+- 出力形: 牝馬枠の `index:null` は `sameNameSpecialChecks` に入らず、`sameNameSpecialChecksByIndex` は従来どおり32要素booleanのままである。
 
 ### 至高が成立する合成盤面（基準11）
 
-<どう組んだか。a〜e の各値>
+同じ `pedigreeId:"same-horse"` を持つvariant 3ノードをindex 2・5・25へ置いた。世代は `3×4×5`、node effectsの和集合は `{1,2,3,4,5,6}`、基準馬はindex 2のmaster由来男系ノード、別ノードはすべて同一pedigree、血統全体の因子延べ数は30である。
+
+`judgeInbreed()` は `sameNameSpecialChecks: [2,5,25]` を返し、その結果を `compatibility()` へ渡すと `styleThoeryClass` 相当は **`"theory_07"`** になった。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+なし。

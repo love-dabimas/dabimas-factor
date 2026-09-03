@@ -1153,13 +1153,13 @@
             });
           });
 
-          // sameNameGroupsFinalFilteredの特殊チェック
+          // nodeTable が無い場合に段階6の至高判定へ縮退するための世代表。
           const indexGroupAssignments = [
             1, 2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
             1, 2, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
           ];
 
-          const evaluateSameNameSpecialCheck = (group) => {
+          const evaluateLegacySameNameSpecialCheck = (group) => {
             if (!Array.isArray(group) || group.length === 0) {
               return false;
             }
@@ -1193,21 +1193,103 @@
             return factorSet.size >= 6;
           };
 
-          // sameNameGroupsFinalFilteredの各グループをチェック
           const specialCheckIndexes = [];
           const specialCheckSeen = Array.from(new Array(32).fill(false));
-          
-          sameNameGroupsFinalFiltered.forEach(group => {
-            if (evaluateSameNameSpecialCheck(group)) {
-              // 条件を満たすグループのindexを収集
-              group.forEach(node => {
-                if (node && node.index !== undefined && !specialCheckSeen[node.index]) {
-                  specialCheckSeen[node.index] = true;
-                  specialCheckIndexes.push(node.index);
-                }
+
+          const addSpecialCheckIndex = (index) => {
+            if (
+              Number.isInteger(index) &&
+              index >= 0 &&
+              index < 32 &&
+              !specialCheckSeen[index]
+            ) {
+              specialCheckSeen[index] = true;
+              specialCheckIndexes.push(index);
+            }
+          };
+
+          if (nodeTable && typeof nodeTable.getNode === "function") {
+            const pedigreeIdOf = (nodeId) => {
+              if (typeof nodeId !== "string") {
+                return null;
+              }
+              return nodeTable.getNode(nodeId)?.pedigreeId || null;
+            };
+            const evaluateSupremeCross = (cross) => {
+              const coveredGenerations = new Set(cross.generations);
+              if (
+                !coveredGenerations.has(3) ||
+                !coveredGenerations.has(4) ||
+                !coveredGenerations.has(5)
+              ) {
+                return false;
+              }
+
+              const baseOccurrence = cross.occurrences.find(
+                (occurrence) =>
+                  occurrence.nodeId === cross.representativeNodeId
+              );
+              if (
+                !baseOccurrence ||
+                !Number.isInteger(baseOccurrence.index) ||
+                baseOccurrence.index === 16 ||
+                typeof baseOccurrence.nodeId !== "string"
+              ) {
+                return false;
+              }
+
+              const basePedigreeId = pedigreeIdOf(baseOccurrence.nodeId);
+              const allSameHorse = cross.occurrences.every((occurrence) =>
+                occurrence.nodeId === baseOccurrence.nodeId ||
+                (
+                  basePedigreeId &&
+                  pedigreeIdOf(occurrence.nodeId) === basePedigreeId
+                )
+              );
+              if (!allSameHorse) {
+                return false;
+              }
+
+              const effectIds = new Set();
+              cross.occurrences.forEach((occurrence) => {
+                const node = typeof occurrence.nodeId === "string"
+                  ? nodeTable.getNode(occurrence.nodeId)
+                  : null;
+                (node?.effects || []).forEach((effectId) => {
+                  effectIds.add(effectId);
+                });
+              });
+              return effectIds.size >= 6;
+            };
+
+            const supremeCrosses = crosses.filter(evaluateSupremeCross);
+            const pedigreeFactorCount = selected.reduce((count, horse, index) => {
+              if (!horse || index === 16 || index > 31) {
+                return count;
+              }
+              const factors = Array.isArray(horse.factors) ? horse.factors : [];
+              return count + factors.filter((factor) => {
+                return (factor ?? "").trim().length > 0;
+              }).length;
+            }, 0);
+
+            if (supremeCrosses.length > 0 && pedigreeFactorCount >= 30) {
+              supremeCrosses.forEach((cross) => {
+                cross.occurrences.forEach((occurrence) => {
+                  addSpecialCheckIndex(occurrence.index);
+                });
               });
             }
-          });
+          } else {
+            // nodeTable が無ければ段階6の名前・セル因子による判定を維持する。
+            sameNameGroupsFinalFiltered.forEach((group) => {
+              if (evaluateLegacySameNameSpecialCheck(group)) {
+                group.forEach((node) => {
+                  addSpecialCheckIndex(node?.index);
+                });
+              }
+            });
+          }
 
           // 段階4bの count は表示出口の変更後も維持する。
           const legacyInbreedColorIndexes = [];
