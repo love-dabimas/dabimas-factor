@@ -1,6 +1,6 @@
 # 作業指示書: 配合理論の成立判定と表示判定を分離し、奇跡の照合を `nodeId` へ（段階6）
 
-- status: 依頼中
+- status: 完了（2026-09-03 検収済み。修正なし）
 - 作成日: 2026-09-03
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 設計資料: `docs/pedigree-master-integration-design.md` §7.2 / §7.2.2 / §7.2.4 / §7.2.5
@@ -276,24 +276,131 @@ git status --short
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/constants/breeding-theories.js`（新規）: master 実測値の優先度と内部理論名から CSS クラス名への対応を定義した。
+- `index.html`: 上記定数を `compatibility.js` より前に読み込む `<script>` を追加した。
+- `vue/logic/theory/compatibility.js`: 成立理論を列挙する `detectMatchedTheories()`、priority で表示対象を選ぶ `selectDisplayedTheory()`、従来 CSS クラスを返す `compatibility()` の3段へ分離した。奇跡照合は `nodeId` 優先・名前フォールバックへ変更した。
+- `service-worker.js`: 新規定数ファイルを `urlsToCache` へ追加した。`CACHE_NAME` は変更していない。
+- `docs/codex-work-orders/2026-09-03-theory-detect-and-display.md`: 本完了報告を追記した。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」>
+なし。見事・完璧・超完璧の成立式、至高条件、危険条件、既存 `compatibility()` の引数と戻り値は指示どおり維持した。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 基準1: `verify-storage-boot-order.cjs`、`verify-horse-badges.cjs`、`verify-horse-candidate-lists.cjs` はすべて終了コード0、`OK`。
+- 基準2: `verify-index-exp .\index.html` は `[verify] OK`。編集前には `backup-index-exp .\index.html` を実行し、バックアップを作成した。
+- 基準3: `python -m pytest tests/ -q` は **52 passed**。
+- 基準4・5: 固定点の実装との30,000組比較、および別seed 20,000組比較はいずれも不一致0件。詳細は次節。
+- 基準6・8〜10: 一時検証 `tmp/verify-theory-detect-and-display.cjs` で、複数成立、奇跡の同名別node／同node／nodeIdなし縮退、4×4×3非成立、危険最優先を確認し、すべて成功した。
+- 基準7: 8件すべて成功。詳細は次節。
+- 追加確認: `node --check` を新規定数、`compatibility.js`、`service-worker.js` に実行して成功した。
+- 基準11: 製品コードの差分は指定4ファイルのみ。これに本完了報告だけを加えた状態である。pytest が生成・更新した `scripts/__pycache__` の3ファイルは検証後に除去・復元した。
 
 ### 表示不変の実測（基準4・5）
 
-<サンプル数・seed・PRNG・比較方法・食い違った件数・表示の分布>
+母集団は summary/detail に存在する種牡馬2,415頭×特殊牝馬499頭。xorshift32（seed `0x51EED`）の符号なし32bit出力を各母集団サイズで剰余し、重複を許して30,000組を抽出した。各組は実装の `setDataForPedigree()` で32セルへ展開し、現行 `judgeInbreed()`（例外ルール・node table込み）で `sameNameSpecialChecks` と `dangerous` を作った。
+
+比較対象は、固定点 `4cad20e22f09c861069e57f944ecf688132a04c7` から `git show` で直接ロードした旧 `compatibility()` と、実装後の同 API である。同一の Sire / Dam / context を両実装へ渡した結果、**表示の不一致は 0 / 30,000**だった。
+
+表示分布も参考値と完全一致した。
+
+```text
+(なし) 20693 / theory_01 7874 / theory_03 789 / theory_08 587
+theory_02 41 / theory_04 14 / theory_05 2 / theory_06 0 / theory_07 0
+```
+
+別seed `0xC0FFEE` の20,000組でも不一致は **0 / 20,000**。分布は `(なし) 13660 / theory_01 5347 / theory_03 533 / theory_08 430 / theory_02 18 / theory_04 9 / theory_05 3 / theory_06 0 / theory_07 0` で、各理論の比率は同程度だった。
 
 ### 優先順位テストの結果（基準7）
 
-<TC-T01〜T08 に相当する 8 ケースの結果>
+一時検証から `selectDisplayedTheory(matched, PRIORITY)` を直接呼び、次の8ケースがすべて期待値と一致した。
+
+```text
+[SUPER_PERFECT, PERFECT, WONDERFUL, INTERESTING] -> SUPER_PERFECT
+[PERFECT, WONDERFUL, INTERESTING]                -> PERFECT
+[WELL, INTERESTING]                              -> WELL
+[INTERESTING, DANGEROUS]                         -> DANGEROUS
+[DANGEROUS]                                      -> DANGEROUS
+[SUPREME, MIRACLE, PERFECT]                      -> SUPREME
+[]                                               -> null
+master全8理論                                    -> DANGEROUS
+```
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+なし。
+
+---
+
+## 検収記録（2026-09-03・Claude Code）
+
+### 判定
+
+**合格。修正なし。** 受け入れ基準 1〜11 をすべて再実行・独立検証した。完了報告も正確で、報告と差分の食い違いは無かった。**この段階では検収側の数値も外していない**（指示書の期待値がそのまま再現した）。
+
+### 受け入れ基準の検証結果
+
+| # | 内容 | 結果 |
+|---|---|---|
+| 1 | 3 つの verify スクリプト | 合格 |
+| 2 | `verify-index-exp` | 合格。編集前に `backup-index-exp` も実行されている |
+| 3 | `pytest tests/ -q` | 合格（52 passed） |
+| 4 | 表示が 1 件も変わらない | **合格。30000 組で不一致 0 件**（下記） |
+| 5 | 表示の分布が現行と一致 | 合格（下記） |
+| 6 | `detectMatchedTheories()` が複数返す | 合格。3 件以上成立した盤面が 12 件 |
+| 7 | 優先順位テスト 8 ケース | 合格。全件期待どおり |
+| 8 | 奇跡の照合が `nodeId` | 合格（下記） |
+| 9 | `nodeId` なしで名前へ縮退 | 合格（下記） |
+| 10 | 危険が最優先 | 合格 |
+| 11 | 変更ファイル | 合格。指定 4 ファイルのみ |
+
+### 基準4・5 を独立に再測定した
+
+固定点 `4cad20e` の `compatibility()` と実装後の同 API へ、同じ盤面・同じ `context` を通して比較した。**検収側は完了報告とは別の seed を使った。**
+
+```text
+30000 組（xorshift32・seed 0xABCDEF・実装どうしの比較）
+  表示が食い違う盤面: 0 / 30000
+
+  表示分布:
+    (なし) 20555 / theory_01 7983 / theory_03 795 / theory_08 621
+    theory_02 34 / theory_04 11 / theory_05 1 / theory_06 0 / theory_07 0
+```
+
+完了報告の seed `0x51EED` / `0xC0FFEE` と合わせて、**3 つの独立した seed すべてで不一致 0 件**。分布の比率も一致した。
+
+段階4c・段階5 の検収で私が犯した「手で組んだ近似と比べる」誤りを避け、**固定点のコードを読み込んで実装どうしを比較**している。完了報告も同じ方法を取っており、指示書 基準4 の但し書きが機能した。
+
+### 基準8・9 を合成 context で確認した
+
+`common(S[1],D[0]) = 4` かつ `unique(S[0],D[0]) = 7` の S/D（＝面白＋見事＋完璧が成立し、超完璧は成立しない）を組み、特殊牝馬側 index 19 と種牡馬側 index 4 を差し替えて確認した。
+
+```text
+同名・nodeId 別      : [INTERESTING, WONDERFUL, PERFECT]         -> theory_04（奇跡にならない）
+同名・nodeId 同一    : [..., MIRACLE]                            -> theory_06（奇跡になる）
+両方 nodeId なし・同名: [..., MIRACLE]                            -> theory_06（名前へ縮退）
+片方だけ nodeId あり  : [..., MIRACLE]                            -> theory_06（名前へ縮退）
+4×4×3（一致2件）     : [INTERESTING, WONDERFUL, PERFECT]         -> theory_04（現行条件を維持）
+危険 + 奇跡 + 完璧    : [DANGEROUS, ..., MIRACLE]                 -> theory_08
+至高 + 奇跡 + 完璧    : [SUPREME, ..., MIRACLE]                   -> theory_07
+```
+
+1 行目が本段階の改善である。**同名別馬を奇跡の材料に取り違えなくなった**（仕様書 §40.1）。現行データではこの配置が存在しないため表示は変わらないが、将来データが増えたときの誤判定を防ぐ。
+
+### 実装の評価
+
+- `detectMatchedTheories()` の成立条件が指示書の表どおり。`perfect` を変数に持って `MIRACLE` と `PERFECT` の両方で使っており、旧コードの入れ子と同じ意味になっている。
+- `selectDisplayedTheory()` は priority の単純降順で、**危険を末尾へ送る例外分岐を持たない**（指示書どおり）。`priorityTable` に無い名前は無視するので、将来 master へ利根川系が増えても壊れない。
+- `compatibility()` をラッパとして残したので `vue/app/methods/pedigree-cells.js` が無変更。狙いどおり。
+- 「見事・完璧・超完璧の式は従来式と数学的に同値なため変更しない」というコメントが実装に残っている。次に読む人が式を触ろうとしたときの歯止めになる。
+- `service-worker.js` のファイル本数コメントが 42 → 43 へ更新されている。細かいが正しい。
+- `index.html` のバックアップ `index.bak.20260903-171723.html` が残っており、AGENTS.md の手順どおり。git の追跡外なのでコミットには入らない。
+
+### 残課題（変更なし・持ち越し）
+
+- 至高の条件 c/d/e の追加（段階7。**この移行で唯一、実挙動が変わる段階**）
+- 例外ルール 4〜6 の実機確認（段階4c から持ち越し）
+- `brosData` の 4 ペアの実機確認
+- 血量の数値表示
+- デプロイ前の `service-worker.js` `CACHE_NAME` 更新（段階2 以降の変更がまだ上がっていない）
