@@ -8,7 +8,7 @@ var APP_SHELL_URL = BASE_PATH + 'index.html';
 // - source map（*.map）と未リンクの vuetify.min.css は実行時に不要なので除外。
 // - js/css は cache-first（後述）で初回アクセス時に runtime cache されるため、
 //   ここに載せていないもの（factor-dialog.css 等）もオフライン対応される。
-// - vue/**/*.js は index.html が読み込む全ファイル（42本、index-split-completion-plan.md
+// - vue/**/*.js は index.html が読み込む全ファイル（43本、index-split-completion-plan.md
 //   Phase 5-1 の棚卸しで index.html の <script src> と Glob vue/**/*.js が完全一致することを
 //   確認済み）を index.html の読み込み順（＝依存順）のまま列挙する。
 var urlsToCache = [
@@ -40,6 +40,7 @@ var urlsToCache = [
   BASE_PATH + 'vue/constants/pedigree-indexes.js',
   BASE_PATH + 'vue/constants/parent-lines.js',
   BASE_PATH + 'vue/constants/factor-definitions.js',
+  BASE_PATH + 'vue/constants/breeding-theories.js',
   BASE_PATH + 'vue/logic/pedigree/pedigree-css.js',
   BASE_PATH + 'vue/logic/factor/factor-map.js',
   BASE_PATH + 'vue/logic/factor/factor-counts.js',
