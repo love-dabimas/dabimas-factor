@@ -330,7 +330,12 @@
 }
 
 .exp-mobile-layout .exp-mobile-text-btn {
-  background: rgba(255, 255, 255, 0.85);
+  /* 白背景＋枠線なしだと周囲の白いセルに紛れてボタンに見えないため、
+     塗り＋内側罫線（box-shadowのinsetなら幅を食わずheightに影響しない）
+     で「押せるボタン」だと分かる見た目にする。行高は変えないこと。 */
+  background: #eaf2fb;
+  box-shadow: inset 0 0 0 1px #185fa5;
+  color: #0c447c;
   font-size: clamp(8px, calc(var(--exp-mobile-row-height) * 0.65), 10px);
   letter-spacing: 0;
   font-weight: 700;

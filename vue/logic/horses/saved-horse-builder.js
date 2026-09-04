@@ -71,6 +71,7 @@
         nodeId: cell.nodeId ?? null,
         pedigreeId: cell.pedigreeId ?? null,
         parentLine: cell.parentLine || "",
+        son: cell.son || "",
         factors: Array.isArray(cell.factors)
           ? cell.factors.slice()
           : ["", "", ""],
