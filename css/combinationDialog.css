@@ -269,15 +269,17 @@
   border: 2px solid #e9ecef !important;
 }
 
-/* 固定の高さでリスト自身がスクロールする（PC・スマホ共通）。
-   件数に応じて伸び縮みさせない（＝ダイアログ全体の高さを可変にしない）。
-   復元する・削除するボタンは v-card-actions で外に固定済みなので、
-   ここが伸びても隠れない。 */
+/* 常に固定の高さでリスト自身がスクロールする（PC・スマホ共通）。
+   max-height だと0〜数件のときに箱ごと縮んでしまう（＝可変になる）ため、
+   height で常に420pxに固定する。件数に応じて伸び縮みさせない
+   （＝ダイアログ全体の高さを可変にしない）。復元する・削除するボタンは
+   v-card-actions で外に固定済みなので、ここが伸びても隠れない。 */
 .combination-saved-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 420px;
+  height: 420px;
+  flex-shrink: 0;
   overflow-y: auto;
 }
 
