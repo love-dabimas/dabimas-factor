@@ -78,12 +78,15 @@
       });
     });
 
-    // 保存する馬「本人」の親系統・子系統は、本人が乗っているセルから取る。
-    // 種牡馬保存なら cells[0]（種牡馬側の本馬）、繁殖牝馬保存なら cells[16]
-    // （繁殖牝馬側の本馬）。cells[0] は常に「今の盤面の種牡馬」であり、
-    // 繁殖牝馬保存時にそれを流用すると本人と無関係な種牡馬の系統が
-    // 入ってしまう（自家製牝馬の子系統欄が常に空／別馬の値になるバグの原因）。
-    var selfCell = cells[kind === "stallion" ? 0 : 16];
+    // 親系統・子系統は父系（直系父方向）でしか決まらない属性なので、保存する馬
+    // （＝ cells[0] の種牡馬 × cells[16] の繁殖牝馬から生まれる仔）の親系統・
+    // 子系統は、種牡馬保存か繁殖牝馬保存かに関わらず常に cells[0]（父）から
+    // 引き継ぐ。実データでも例えば母（メゾンフォルティー）の son は
+    // "ノーザンダンサー系" で父（ドリームジャーニー）の "ヘイルトゥリーズン系"
+    // とは無関係な値であり、cells[16] 側を見ると仔に無関係な母方の値が
+    // 入ってしまう（一度 cells[16] に変更したが、これは誤りだったので cells[0]
+    // に戻した）。
+    var sire = cells[0];
     var mares = MARE_SOURCE_IDS.map(function (source) {
       var side = source[0];
       var mareIndex = source[1];
@@ -104,8 +107,8 @@
       subName: "",
       ruby: "",
       nature: "",
-      parentLine: selfCell.parentLine || "",
-      son: selfCell.son || "",
+      parentLine: sire.parentLine || "",
+      son: sire.son || "",
       factors: ownFactors,
       factorLocked: true,
       descendants: descendants,
