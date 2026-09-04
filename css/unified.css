@@ -445,9 +445,11 @@
 }
 
 @media (max-width: 599px) {
+  /* 因子1〜3を縦積みにすると1画面に3行分の高さを食って窮屈になるうえ、
+     行間の余白のせいで2行目以降の見え方がちぐはぐになる。横3列のまま
+     詰めて収める（幅が狭い分だけ列間ギャップを縮める）。 */
   .edit-stallion-factor-selects {
-    grid-template-columns: 1fr;
-    gap: 0;
+    gap: 6px;
   }
 }
 
@@ -497,6 +499,18 @@
   font-size: 15px;
 }
 
+/* css/vuetify_compact.min.css の無スコープな
+   .v-input__slot{height:calc((100vh - …)/32または16)}
+   （血統表の行の高さをビューポートから逆算するためのルール）が
+   ページ全体の .v-input__slot に効いてしまい、このダイアログでは
+   実測22px前後まで潰れる。因子チップ（高さ26px）がその枠の上下に
+   はみ出す（因子1〜3の「ワッペンがオブジェクトを超える」原因）ので、
+   このダイアログ内だけ通常の高さに戻す。 */
+.edit-stallion-dialog .v-input__slot {
+  height: auto;
+  min-height: 40px;
+}
+
 /* ベース種牡馬名・因名など選択済みの値を大きめに */
 .edit-stallion-dialog .v-select__selection,
 .edit-stallion-dialog .v-select__selection--comma,
@@ -531,13 +545,21 @@
 /* ダイアログ外に描画されるドロップダウン候補も読める大きさに
    （.v-menu__content 側で当てる必要がある） */
 .edit-stallion-menu .v-list-item {
-  min-height: 40px;
+  min-height: 36px;
 }
 
 .edit-stallion-menu .v-list-item__title,
 .edit-stallion-menu .v-list-item__content {
   font-size: 15px;
   line-height: 1.5;
+}
+
+/* Vuetify標準の .v-list-item__content{padding:12px 0} のままだと、
+   中身（22px前後のバッジ・テキスト）に対して行が縦に間延びして
+   （実測46〜47px）1行目はまだしも2行目以降が間延びして見える。
+   詰めて中身の高さに近づける。 */
+.edit-stallion-menu .v-list-item__content {
+  padding: 6px 0;
 }
 
 /* ===== 子系統カラー ===== */

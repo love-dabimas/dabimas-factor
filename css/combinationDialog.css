@@ -163,10 +163,12 @@
   visibility: hidden;
 }
 
-/* 種牡馬/繁殖牝馬トグルと因子セレクトを横並びにする行 */
+/* 種牡馬/繁殖牝馬トグルと因子セレクトを横並びにする行。
+   常に同じ行に収める（折り返さない）。狭い画面ではトグルは
+   そのままの幅を保ち、因子セレクト側が縮んで収まる。 */
 .combination-save-kind-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
@@ -180,11 +182,12 @@
   height: 36px !important;
 }
 
-/* トグル右の余白に因子セレクトを配置（種牡馬選択時のみ表示）。
-   幅が足りないときは折り返して次行いっぱいに広がる。 */
+/* トグル右隣に因子セレクトを配置（種牡馬選択時のみ表示）。
+   min-width を固定せず、残り幅いっぱいまで縮められるようにして
+   狭い画面でもトグルと同じ行に収まるようにする。 */
 .combination-factor-inline {
-  flex: 1 1 160px;
-  min-width: 160px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* 左のトグルと同じ高さ（36px）に収める。
@@ -207,6 +210,15 @@
 
 .combination-factor-select .v-input__append-inner {
   margin-top: 6px !important;
+}
+
+/* トグルと同じ行に収めて幅が狭くなるため、ラベルは省略記号で切る
+   （はみ出して隣のトグルに重なるのを防ぐ）。 */
+.combination-factor-select .v-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: calc(100% - 24px);
 }
 
 /* 付与する因子のチップ。セレクト1行に2つ並ぶ大きさにする */
@@ -257,11 +269,15 @@
   border: 2px solid #e9ecef !important;
 }
 
+/* 固定の高さでリスト自身がスクロールする（PC・スマホ共通）。
+   件数に応じて伸び縮みさせない（＝ダイアログ全体の高さを可変にしない）。
+   復元する・削除するボタンは v-card-actions で外に固定済みなので、
+   ここが伸びても隠れない。 */
 .combination-saved-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 350px;  /* PC版は350px */
+  max-height: 420px;
   overflow-y: auto;
 }
 
@@ -415,6 +431,13 @@
     padding: 14px !important;
   }
 
+  /* スマホ幅では種牡馬/繁殖牝馬トグルのパディングとフォントを詰めて、
+     隣の因子セレクトが同じ行に収まる余白を確保する。 */
+  .combination-save-kind-toggle.v-btn-toggle > .v-btn.v-btn {
+    padding: 0 8px !important;
+    font-size: 13px !important;
+  }
+
   /* 警告ダイアログ - モバイル版 */
   .combination-warning-alert.v-alert {
     margin-bottom: 10px !important;
@@ -469,13 +492,6 @@
   /* 保存ボタンの上の余白（説明文との間隔・モバイル） */
   .combination-input-area .combination-save-btn.v-btn {
     margin-top: 8px !important;
-  }
-
-  /* スマホでは v-card-text のスクロールに統一し、二重スクロールを避ける */
-  .combination-saved-list {
-    max-height: none;
-    overflow-y: visible;
-    gap: 6px;
   }
 
   .combination-list-item {
