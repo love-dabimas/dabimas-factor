@@ -78,7 +78,12 @@
       });
     });
 
-    var sire = cells[0];
+    // 保存する馬「本人」の親系統・子系統は、本人が乗っているセルから取る。
+    // 種牡馬保存なら cells[0]（種牡馬側の本馬）、繁殖牝馬保存なら cells[16]
+    // （繁殖牝馬側の本馬）。cells[0] は常に「今の盤面の種牡馬」であり、
+    // 繁殖牝馬保存時にそれを流用すると本人と無関係な種牡馬の系統が
+    // 入ってしまう（自家製牝馬の子系統欄が常に空／別馬の値になるバグの原因）。
+    var selfCell = cells[kind === "stallion" ? 0 : 16];
     var mares = MARE_SOURCE_IDS.map(function (source) {
       var side = source[0];
       var mareIndex = source[1];
@@ -99,8 +104,8 @@
       subName: "",
       ruby: "",
       nature: "",
-      parentLine: sire.parentLine || "",
-      son: sire.son || "",
+      parentLine: selfCell.parentLine || "",
+      son: selfCell.son || "",
       factors: ownFactors,
       factorLocked: true,
       descendants: descendants,

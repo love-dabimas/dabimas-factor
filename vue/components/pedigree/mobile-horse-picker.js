@@ -113,26 +113,6 @@
             </div>
           </div>
           <div class="exp-mobile-picker-body">
-            <div class="exp-mobile-current-selection">
-              <div class="exp-mobile-current-selection-label">現在の選択</div>
-              <div class="exp-mobile-current-selection-context">
-                {{ mobileDialogContextLabel }}
-              </div>
-              <div class="exp-mobile-current-selection-value">
-                <span
-                  v-if="mobileCurrentSelectionBadges.length"
-                  class="exp-horse-badges"
-                >
-                  <span
-                    v-for="badge in mobileCurrentSelectionBadges"
-                    :key="badge.key"
-                    :class="['exp-horse-badge', badge.className]"
-                    :title="badge.title"
-                  >{{ badge.text }}</span>
-                </span>
-                <span>{{ mobileCurrentSelectionLabel }}</span>
-              </div>
-            </div>
             <label
               class="exp-mobile-search-label"
               :for="mobileInputId"
@@ -224,15 +204,13 @@
         const rowNumber = INDEX_TO_ROW_NUMBER[Number(this.index) || 0] || "";
         return rowNumber ? `${sideLabel} ${rowNumber}` : sideLabel;
       },
-      mobileCurrentSelectionLabel() {
+      // 選択済みの馬名。検索欄の初期値として使う（未選択なら空文字）。
+      mobileCurrentSelectionText() {
         const horse = this.selected[this.index];
         if (!horse) {
-          return "未選択";
+          return "";
         }
-        return this.getHorseSelectedText(horse) || "未選択";
-      },
-      mobileCurrentSelectionBadges() {
-        return this.getHorseBadges(this.selected[this.index]);
+        return this.getHorseSelectedText(horse) || "";
       },
       mobileInputId() {
         return `exp-mobile-search-${this.index}`;
@@ -359,15 +337,28 @@
           setTimeout(invoke, 0);
         });
       },
+      // 選択済みの馬名を検索欄の初期値に入れる（PCのv-autocompleteと同じ見せ方）。
+      // 候補一覧は全件見せたいのでmobileQuery（絞り込み条件）は空のままにし、
+      // 開いた直後は全選択して「そのまま打てば置き換わる」状態にする。
+      primeMobileQueryFromSelection() {
+        this.resetMobileQuery();
+        this.mobileQueryInput = this.mobileCurrentSelectionText;
+      },
       // horse-cell側のトリガーボタンから $refs 経由で呼ばれる（このコンポーネントの
-      // 公開エントリポイント）。中身は元の openMobileEditor と同一。
+      // 公開エントリポイント）。
       openMobileEditor() {
         this.mobileDialogVisible = true;
-        this.resetMobileQuery();
+        this.primeMobileQueryFromSelection();
         this.$nextTick(() => {
           const input = this.$refs.mobileSearchInput;
-          if (input && typeof input.focus === "function") {
+          if (!input) {
+            return;
+          }
+          if (typeof input.focus === "function") {
             input.focus();
+          }
+          if (this.mobileQueryInput && typeof input.select === "function") {
+            input.select();
           }
         });
       },
@@ -471,6 +462,11 @@
       selectFirstMobileHorse() {
         // 変換中の判定は呼び出し元(onMobileSearchEnter)で済んでいるため、ここでは
         // 合成フラグに依存しない（flick等でフラグが残っても選択できるようにする）。
+        // 検索欄には選択済みの馬名が初期表示されるため、絞り込みが未入力のまま
+        // Enterが来たとき（＝一覧の先頭が意図した馬とは限らないとき）は何もしない。
+        if (!this.mobileQuery) {
+          return;
+        }
         if (this.filteredMobileLists.length > 0) {
           this.selectMobileHorse(this.filteredMobileLists[0]);
         }
