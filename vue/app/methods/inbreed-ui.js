@@ -55,6 +55,7 @@
               new Array(32).fill(false)
             );
             this.dangerousCombination = false;
+            this.selfAncestorWarningIndexes = [];
           }
 
           if (window.Dabimas.debug) console.time('インブリード表示');
@@ -114,6 +115,7 @@
           this.sameNameSpecialChecksByIndex = result.sameNameSpecialChecksByIndex;
           // 危険な配合。dispTheory が theory_08 の表示に使う（最優先）。
           this.dangerousCombination = result.dangerous === true;
+          this.selfAncestorWarningIndexes = result.selfAncestorWarningIndexes || [];
           result.inbreedColorIndexes.forEach((index) => {
             this.$set(this.dispColor, index, "inbreed");
           });

@@ -46,6 +46,12 @@
           title="この工程は危険な配合"
           aria-label="危険な配合"
         >⚠</span>
+        <span
+          v-if="rowState.selfAncestorWarning"
+          class="plan-danger-mark"
+          title="この馬は自分自身の別バージョン（同一の実馬）を親に持つ近親配合です"
+          aria-label="自己重複の近親配合"
+        >⚠</span>
         <horse-cell
           :class="rowState.rowColorClass"
           :index="row.index"
