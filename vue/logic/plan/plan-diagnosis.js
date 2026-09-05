@@ -380,10 +380,31 @@
       }
 
       if (!sireBoard) {
-        // 血統マスターに無い種牡馬。判定は「判定不能」にしつつ、画面から切り出した
-        // 浅い血統で次工程の仮想繁殖牝馬だけは組み立てて診断を続ける（仕様 §15.1）。
+        // 血統マスターに無い種牡馬。完全な血統は組めないが、画面のセル情報（浅い血統）
+        // だけでも危険な配合は見逃したくないので、fallbackBoard で危険判定だけ試みる。
+        // 危険と分からなかった場合は「判定不能」のまま（安全とは断定しない）。
         var fallbackBoard = sliceSireBoard(selected, step.sireIndex);
-        steps.push(createStepResult(stepBase, { reasonCode: "MISSING_SIRE_DATA" }));
+        var fallbackDangerous = false;
+        if (fallbackBoard[0] && mareBoard && mareBoard[1]) {
+          try {
+            var fallbackStepSelected = buildStepSelected(fallbackBoard, mareBoard);
+            var fallbackCrossResult = judgeInbreed(
+              fallbackStepSelected,
+              input.inbreedExceptions || [],
+              input.nodeTable || null
+            );
+            fallbackDangerous = fallbackCrossResult.dangerous === true;
+          } catch (error) {
+            fallbackDangerous = false;
+          }
+        }
+        steps.push(
+          createStepResult(stepBase, {
+            status: fallbackDangerous ? "danger" : "unknown",
+            isDangerous: fallbackDangerous,
+            reasonCode: "MISSING_SIRE_DATA",
+          })
+        );
         if (!fallbackBoard[0] || step.isFinalStep) {
           appendBlockedLaterSteps(steps, plan, selected, i + 1);
           break;
