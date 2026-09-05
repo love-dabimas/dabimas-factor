@@ -98,10 +98,15 @@
     // 工程診断で危険と出た工程の種牡馬セル。診断結果の index 一覧を見るだけで、
     // ここで危険判定はやり直さない（仕様 §16.2）。
     var planDangerCellIndexes = arrays.planDangerCellIndexes || [];
+    // judgeInbreed が返す selfAncestorWarningIndexes（同一実馬の variant が自分の
+    // 直系祖先として重複しているセル）。血統表全体としては至高などが成立していても、
+    // その1点（配合を行った瞬間）は自己複製に近い近親なので個別に警告する。
+    var selfAncestorWarningIndexes = arrays.selfAncestorWarningIndexes || [];
 
     return {
       index: index,
       planDanger: planDangerCellIndexes.indexOf(index) !== -1,
+      selfAncestorWarning: selfAncestorWarningIndexes.indexOf(index) !== -1,
       selectedHorseName: selectedHorseName,
       factorLocked: !!(selectedEntry && selectedEntry.factorLocked),
       generationLabel: (arrays.indexGenerationAssignments || [])[index] || "",

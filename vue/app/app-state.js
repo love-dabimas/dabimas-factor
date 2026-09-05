@@ -106,6 +106,10 @@
           // 危険な配合（judgeInbreed が返す dangerous）。
           // 配合理論の表示で最優先（theory_08）になる。
           dangerousCombination: false,
+          // 同一実馬の variant が自分自身の直系祖先として重複しているセル
+          // （judgeInbreed が返す selfAncestorWarningIndexes）。理論表示・
+          // dangerousとは独立に、そのセルへの⚠表示だけに使う。
+          selfAncestorWarningIndexes: [],
 
           // 工程診断（vue/logic/plan/plan-diagnosis.js）の結果。
           // 画面セッション内だけの派生データで、保存も自動再計算もしない。

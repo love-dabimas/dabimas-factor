@@ -178,6 +178,7 @@
               inbreedColorIndexes: [],
               crosses: [],
               dangerous: false,
+              selfAncestorWarningIndexes: [],
             };
           }
 
@@ -976,6 +977,92 @@
           });
           const dangerous = crosses.some((cross) => cross.bloodVolume >= 50000);
 
+          // variant違い（nodeId は別だが同じ実馬 = 同じ pedigreeId）が、同じ側の
+          // 血統内で親子関係（cell(2k)/cell(2k+1) が cell(k) の親）として重複して
+          // いる場合を検出する。血統表全体を通しては至高などの理論が成立し得るが、
+          // 「自分自身の変異体を親に持つ」というその1点（子孫側のセル）は、その配合
+          // を行った瞬間として見れば自己複製に近い危険な近親である。そのセルにだけ
+          // 注意喚起の印をつける（dangerous・理論表示は変えない）。
+          const relativeIndex = (index) =>
+            Number.isInteger(index) ? (index < 16 ? index : index - 16) : null;
+          const pedigreeIdOfNodeId = (nodeId) =>
+            nodeTable && typeof nodeId === "string"
+              ? nodeTable.getNode(nodeId)?.pedigreeId || null
+              : null;
+          // cell0（本馬）の親は cell1 のみ。cell1〜7 は cell(2k)・cell(2k+1) が
+          // それぞれの親（2026-09 の実測: cell12 が cell6 の父であることを
+          // ナスルーラ×レッドゴッドの実血統で確認済み）。
+          const parentCellsOf = (relIndex) => {
+            if (relIndex === 0) return [1];
+            if (relIndex >= 1 && relIndex <= 7) {
+              return [2 * relIndex, 2 * relIndex + 1];
+            }
+            return [];
+          };
+          const isSameSideAncestor = (ancestorRelIndex, descendantRelIndex) => {
+            const visited = new Set([descendantRelIndex]);
+            let frontier = [descendantRelIndex];
+            while (frontier.length > 0) {
+              const next = [];
+              frontier.forEach((idx) => {
+                parentCellsOf(idx).forEach((parent) => {
+                  if (parent === ancestorRelIndex) {
+                    next.push(parent);
+                  } else if (!visited.has(parent)) {
+                    visited.add(parent);
+                    next.push(parent);
+                  }
+                });
+              });
+              if (next.includes(ancestorRelIndex)) {
+                return true;
+              }
+              frontier = next;
+            }
+            return false;
+          };
+          const selfAncestorWarningIndexes = [];
+          if (nodeTable) {
+            crosses.forEach((cross) => {
+              const occurrences = (cross.occurrences || []).filter(
+                (occurrence) =>
+                  Number.isInteger(occurrence.index) &&
+                  typeof occurrence.nodeId === "string"
+              );
+              if (occurrences.length < 2) {
+                return;
+              }
+              occurrences.forEach((descendant) => {
+                const descendantPedigreeId = pedigreeIdOfNodeId(
+                  descendant.nodeId
+                );
+                if (!descendantPedigreeId) {
+                  return;
+                }
+                const hasSelfAncestor = occurrences.some((ancestor) => {
+                  if (
+                    ancestor === descendant ||
+                    ancestor.side !== descendant.side ||
+                    pedigreeIdOfNodeId(ancestor.nodeId) !==
+                      descendantPedigreeId
+                  ) {
+                    return false;
+                  }
+                  return isSameSideAncestor(
+                    relativeIndex(ancestor.index),
+                    relativeIndex(descendant.index)
+                  );
+                });
+                if (
+                  hasSelfAncestor &&
+                  !selfAncestorWarningIndexes.includes(descendant.index)
+                ) {
+                  selfAncestorWarningIndexes.push(descendant.index);
+                }
+              });
+            });
+          }
+
 
           // sameNameGroupsとsiblingGroupsに分類
           const sameNameGroupsFinal = [];
@@ -1437,6 +1524,7 @@
             inbreedColorIndexes,
             crosses,
             dangerous,
+            selfAncestorWarningIndexes,
           };
         };
 
