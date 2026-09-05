@@ -42,8 +42,6 @@
         switch (this.planDiagnosisState) {
           case "DANGER":
             return "mdi-alert";
-          case "UNKNOWN":
-            return "mdi-help-circle-outline";
           case "RUNNING":
             return "mdi-progress-clock";
           default:

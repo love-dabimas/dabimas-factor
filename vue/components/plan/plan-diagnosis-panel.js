@@ -57,9 +57,6 @@
               : "危険なし"),
           "最終工程：" + (summary.finalStepDanger ? "危険な配合" : "危険なし"),
         ];
-        if (summary.unknownCount > 0) {
-          lines.push("判定不能：" + summary.unknownCount + "件");
-        }
         return lines;
       },
     },

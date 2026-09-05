@@ -93,9 +93,8 @@
           if (result.summary.totalDangerCount > 0) {
             return "DANGER";
           }
-          if (result.summary.unknownCount > 0) {
-            return "UNKNOWN";
-          }
+          // 判定不能（データ不足）は安全側にまとめる。安全と危険以外の状態は
+          // 出さない（危険が分かるところだけ拾えれば十分という運用判断）。
           return "SAFE";
         },
         // 色が判別できなくても状態が分かるよう、必ず文字を出す（仕様 UI-08）。
@@ -110,15 +109,8 @@
               return "未診断";
             case "SAFE":
               return "危険0";
-            case "UNKNOWN":
-              return "不明" + result.summary.unknownCount;
             case "DANGER":
-              return result.summary.unknownCount > 0
-                ? "危険" +
-                    result.summary.totalDangerCount +
-                    "／不明" +
-                    result.summary.unknownCount
-                : "危険" + result.summary.totalDangerCount;
+              return "危険" + result.summary.totalDangerCount;
             default:
               return "";
           }
