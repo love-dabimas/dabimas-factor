@@ -49,7 +49,7 @@
         <span
           v-if="rowState.selfAncestorWarning"
           class="plan-danger-mark"
-          title="この馬は自分自身の別バージョン（同一の実馬）を親に持つ近親配合です"
+          :title="'この馬は自分自身の別バージョン（同一の実馬）を親に持つ近親配合です（診断用: セル' + rowState.index + '）'"
           aria-label="自己重複の近親配合"
         >⚠</span>
         <horse-cell

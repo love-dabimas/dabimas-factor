@@ -116,6 +116,9 @@
           // 危険な配合。dispTheory が theory_08 の表示に使う（最優先）。
           this.dangerousCombination = result.dangerous === true;
           this.selfAncestorWarningIndexes = result.selfAncestorWarningIndexes || [];
+          // 診断用（一時）: ⚠の対象セルと、その根拠になった crosses をコンソールに出す。
+          console.log("[診断] selfAncestorWarningIndexes:", this.selfAncestorWarningIndexes);
+          console.log("[診断] crosses:", JSON.parse(JSON.stringify(result.crosses)));
           result.inbreedColorIndexes.forEach((index) => {
             this.$set(this.dispColor, index, "inbreed");
           });
