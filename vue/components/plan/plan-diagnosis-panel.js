@@ -34,6 +34,9 @@
     props: {
       value: { type: Boolean, default: false },
       result: { type: Object, default: null },
+      // 血統表のセルに ⚠ が付いた自己重複（同一実馬 variant）の件数。
+      // 工程ごとの判定ではないので、工程一覧とは別にサマリーへ出す。
+      selfAncestorWarningCount: { type: Number, default: 0 },
     },
     computed: {
       steps: function () {
@@ -57,6 +60,11 @@
               : "危険なし"),
           "最終工程：" + (summary.finalStepDanger ? "危険な配合" : "危険なし"),
         ];
+        if (this.selfAncestorWarningCount > 0) {
+          lines.push(
+            "血統内の自己重複：" + this.selfAncestorWarningCount + "件（⚠のセル）"
+          );
+        }
         return lines;
       },
     },
