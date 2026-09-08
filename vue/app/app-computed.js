@@ -125,6 +125,12 @@
           const result = this.planDiagnosisResult;
           return result ? result.summary.dangerCellIndexes : [];
         },
+        // 同一実馬 variant の自己重複セル。判定自体は judgeInbreed が血統表の更新
+        // ごとに行っているが、⚠ の出方を工程診断（planDangerCellIndexes）と揃える
+        // ため、工程診断を実行して結果が有効な間だけ表示する。
+        visibleSelfAncestorWarningIndexes() {
+          return this.planDiagnosisResult ? this.selfAncestorWarningIndexes : [];
+        },
         isCompactMobileLayout() {
           return this.$vuetify.breakpoint.smAndDown;
         },
@@ -153,7 +159,7 @@
             category: this.category,
             sireLineColors: this.sireLineColorSettings,
             planDangerCellIndexes: this.planDangerCellIndexes,
-            selfAncestorWarningIndexes: this.selfAncestorWarningIndexes,
+            selfAncestorWarningIndexes: this.visibleSelfAncestorWarningIndexes,
           };
         },
         // 種牡馬側16行ぶんの rowState。selected 等が変わるたびに作り直される
