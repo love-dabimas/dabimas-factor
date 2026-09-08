@@ -1,6 +1,6 @@
 # 作業指示書: 積み上げた自家製馬をクロス判定の対象にする（全兄妹対応フェーズ2b）
 
-- status: 依頼中
+- status: 完了
 - 作成日: 2026-09-09
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 上位仕様: `docs/full-sibling-stacking-spec.md` v1.1（§5・§5.1・§4.2）
@@ -296,16 +296,32 @@ git diff --check
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/logic/inbreed/inbreed-detector.js`: nodeTable経路の群と枝の比較をrefへ切り替え、同一馬と全兄妹を分離。男系セルの★☆除外を解除し、自家製だけの盤面でも判定する。非表示牝馬は明示refがあればnodeId無しでも出現を作り、非masterの明示配置には別馬のnodeIdを付けない。
+- `service-worker.js`: `CACHE_NAME` を `dabimas-factor-v20260909-01` へ更新。
+- 本指示書: ステータスと完了報告を更新。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」と書く>
+- 早期returnのセル有無判定はnodeTableの有無で分岐した。nodeTableがある場合のみ★☆除外前のセルを確認し、無い場合は既存の除外後配列による条件を維持する。縮退経路を変えない制約を満たすため。
+- その他は指示書どおり。既存の関係関数の定義、legacy経路、表示分類、自己祖先警告、至高の式、保存・読み込み処理には手を加えていない。`index.html` の編集もなし。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 基準1: `node tmp/verify-p2b-regression.cjs` — 成功。固定点 `46b126edfae26b8d4508f5411e511cb90b8a167d` のフェーズ2a判定と同じNode vmへ読み込み、seed `0x20260909` の実データ1,000組を比較。count・着色・dangerous・クロス件数/代表/血量・自己祖先警告・sameNameSpecialChecksは差分0件。例外ルール空配列と実際の例外ルールの両方で確認。nodeTable無しでは戻り値全体が全件一致。
+- 基準2〜8: `node tmp/verify-p2b-cases.cjs` — 成功。
+  - B01: 着色 `[1,16]`、ルドルフ1件・75000、出現 `[[1,"F"],[16,""]]`、dangerous=true。
+  - B03: 着色 `[2,17]`、パーソロン/スイートルナ各37500、ルドルフ無し、dangerous=false。
+  - C01: 着色 `[1,17]`、キンカメ1件・50000。C02: 着色 `[0,16]`、ドゥラメンテ1件・100000。双方dangerous=true。
+  - E01: 同一customをcell0/16、0/17、4/20へ配置した群の血量は100000、75000、12500。自家製2セル以外空の盤面でも判定が走る。各盤面のnodeTable無しの結果は旧実装と一致。
+  - A05: ディープ75000、出現 `[[0,""],[null,"M"]]`、セル0が着色。非表示custom牝馬のnodeIdはnull、refはch_Aを保持。
+  - D08: editとディープのクロス75000、出現 `[[0,""],[17,"F"]]`。editの親キーは `edit:edit_1` でベース馬とは不一致。
+  - D07: 同名★薄め馬、親不明の別customに偽クロス無し。F01: パーソロン1971/覇煌のクロス75000を維持。resolver=null時はクロス0件。
+- 基準9: detectorとService Workerの `node --check` — 成功。`powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-index-exp .\index.html` — `[verify] OK`。`python -m pytest tests/ -q` — `52 passed`。`git diff --check` — 指摘なし。変更JSのBOM無し・LFをバイト検査で確認。
+- 基準10: ポート8767のリポジトリ配信に対し、`scripts/codex-powershell.ps1 dump-dom` / `screenshot` と一時ハーネス `tmp/verify-p2b-ui.html` を使用。確認前にService Workerの登録解除・Cache Storage削除を実行し、登録0件・キャッシュ0件・controller無しを記録。新しいref判定コードの読み込みを確認後、ダンスインザダーク通常版×ダンスパートナーを選択し、両ルートの着色、クロス1件、theory_08（危険な配合）を確認。コンソールエラー0件。`tmp/p2b-ui.png` を目視確認済み。
+- `code-review`: 独立エージェントによるStandards（規約）・Spec（仕様）の両レビューで指摘0件。
+- 検証用スクリプト・旧判定コピー・DOMログ・画像は `tmp/` に保存し、コミット対象外。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+- 牝馬本人の表示抑制、sameNameGroups/siblingGroupsの分類、工程診断の一時registry、共有の再帰収集は予定どおりフェーズ2cに残る。
+- 旧保存の父母refは推測補完していない。今回の非表示牝馬ref対応は指示された明示配置の出現拡張であり、保存済みmareRefsからの全面的な牝馬枠再構築は行っていない。

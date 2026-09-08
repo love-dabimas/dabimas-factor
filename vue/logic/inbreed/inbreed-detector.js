@@ -123,6 +123,18 @@
           // createIdentityRef は identityRef があればそれをそのまま返す。
           const cellRef = (horse) =>
             window.Dabimas.logic.pedigree.createIdentityRef(horse || {});
+          const sameCrossHorseRef = (a, b) =>
+            !!resolver && resolver.sameCrossHorse(a, b);
+          const isFullSiblingRef = (a, b) => {
+            if (!resolver || sameCrossHorseRef(a, b)) return false;
+            const pa = resolver.parentsOf(a);
+            const pb = resolver.parentsOf(b);
+            if (!pa || !pb) return false;
+            return resolver.sameKnownParent(pa.father, pb.father)
+              && resolver.sameKnownParent(pa.mother, pb.mother);
+          };
+          const isRefCrossRelated = (a, b) =>
+            sameCrossHorseRef(a?.ref, b?.ref) || isFullSiblingRef(a?.ref, b?.ref);
           const BLOOD_VOLUME = {
             1: 50000,
             2: 25000,
@@ -165,17 +177,22 @@
                   nodeTable.parentsOf(parentNodeId).mother
                 ) ?? ids[slot];
               nodesByPath.set(path, nodeId);
-              if (typeof nodeId !== "string") {
+              const explicitRef = explicitMareRefsByPath.get(path);
+              const ref = explicitRef ??
+                (typeof nodeId === "string" ? { kind: "master", nodeId } : null);
+              if (!ref) {
                 return;
               }
               occurrences.push({
-                nodeId,
+                nodeId: explicitRef && explicitRef.kind !== "master"
+                  ? null
+                  : (typeof nodeId === "string" ? nodeId : null),
                 side,
                 generation: MARE_GENERATIONS[slot],
                 index: null,
                 mareSlot: slot,
                 path,
-                ref: explicitMareRefsByPath.get(path) ?? { kind: "master", nodeId },
+                ref,
                 sexKind: "female",
               });
             });
@@ -202,7 +219,11 @@
           }
 
           // 片側しか埋まっていない場合は何も判定せず終了
-          if (stallionsArray.length === 0 || broodmaresArray.length === 0) {
+          const hasBothSides = nodeTable
+            ? selected.slice(0, 16).some((cell) => cell?.name)
+              && selected.slice(16).some((cell) => cell?.name)
+            : stallionsArray.length > 0 && broodmaresArray.length > 0;
+          if (!hasBothSides) {
             return {
               count: 0,
               sameNameGroups: [],
@@ -809,11 +830,11 @@
           const isMareOccurrence = (occurrence) =>
             occurrence && occurrence.index === null;
           const isMasterCrossRelated = (a, b) =>
-            isExactSameNode(a, b) || isFullSiblingByMaster(a, b);
+            isRefCrossRelated(a, b);
           const buildSideOccurrences = (sideOffset, side, mareOccurrences) => {
             const occurrences = [];
             const root = selected[sideOffset];
-            if (root?.name && !isInbreedExcludedHorse(root)) {
+            if (root?.name) {
               occurrences.push({
                 ...root,
                 ref: cellRef(root),
@@ -827,7 +848,7 @@
               const horse = selected[
                 sideOffset + DESCENDANT_SLOTS[pathIndex]
               ];
-              if (!horse?.name || isInbreedExcludedHorse(horse)) {
+              if (!horse?.name) {
                 return;
               }
               occurrences.push({
@@ -846,21 +867,23 @@
               occurrences.map((occurrence) => [occurrence.path, occurrence])
             );
             occurrences.forEach((occurrence) => {
-              occurrence.branchParentNodeId = occurrence.path
-                ? byPath.get(occurrence.path.slice(0, -1))?.nodeId ?? null
+              const parent = occurrence.path
+                ? byPath.get(occurrence.path.slice(0, -1))
                 : null;
+              occurrence.branchParentNodeId = parent?.nodeId ?? null;
+              occurrence.branchParentRef = parent?.ref ?? null;
             });
             return occurrences;
           };
           const isSameBranch = (a, b) => {
-            const parentA = a?.branchParentNodeId;
-            const parentB = b?.branchParentNodeId;
+            const parentA = a?.branchParentRef;
+            const parentB = b?.branchParentRef;
             if (!parentA || !parentB) {
               return false;
             }
             return (
-              parentA === parentB ||
-              isFullSiblingByMasterNodeIds(parentA, parentB)
+              sameCrossHorseRef(parentA, parentB) ||
+              isFullSiblingRef(parentA, parentB)
             );
           };
 
