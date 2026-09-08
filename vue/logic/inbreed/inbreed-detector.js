@@ -1489,8 +1489,17 @@
               ) {
                 return;
               }
+              // 全兄妹だけを理由にした牝馬の表示は外し、同一馬クロスは残す。
+              const hasSameHorsePartner = (occurrence) =>
+                cross.occurrences.some(
+                  (other) => other !== occurrence &&
+                    sameCrossHorseRef(occurrence.ref, other.ref)
+                );
               const displayNodes = cross.occurrences
-                .filter((occurrence) => occurrence.index !== null)
+                .filter(
+                  (occurrence) => occurrence.index !== null &&
+                    (occurrence.sexKind !== "female" || hasSameHorsePartner(occurrence))
+                )
                 .map((occurrence) => selected[occurrence.index])
                 .filter(Boolean);
               if (displayNodes.length === 0) {
@@ -1532,16 +1541,25 @@
                 return;
               }
 
-              const hasCompleteNodeIds = displayNodes.every(
-                (node) => typeof node.nodeId === "string"
+              // 表示が片側1セルでも、分類は非表示の出現を含む群全体で決める。
+              const crossHorseKeys = new Set(
+                cross.occurrences
+                  .map((occurrence) => resolver?.crossHorseKey(occurrence.ref))
+                  .filter((key) => key)
               );
-              const identityValues = hasCompleteNodeIds
-                ? displayNodes.map((node) => node.nodeId)
-                : displayNodes.map((node) => node.name);
-              addDisplayGroup(
-                displayNodes,
-                new Set(identityValues).size === 1
-              );
+              let sameHorse;
+              if (crossHorseKeys.size > 0) {
+                sameHorse = crossHorseKeys.size === 1;
+              } else {
+                const hasCompleteNodeIds = displayNodes.every(
+                  (node) => typeof node.nodeId === "string"
+                );
+                const identityValues = hasCompleteNodeIds
+                  ? displayNodes.map((node) => node.nodeId)
+                  : displayNodes.map((node) => node.name);
+                sameHorse = new Set(identityValues).size === 1;
+              }
+              addDisplayGroup(displayNodes, sameHorse);
             });
 
             recognizedCrosses
