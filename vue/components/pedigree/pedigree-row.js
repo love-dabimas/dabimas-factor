@@ -39,9 +39,10 @@
       <td
         :class="[row.autoClass, rowState.categoryColorClass, rowState.planDanger ? 'plan-danger-cell' : '']"
         :colspan="row.autoColspan"
+        style="position:relative;"
       >
         <!-- 診断用（一時）: このtdが実際に受け取っているrowStateの値を直接表示する。 -->
-        <span style="position:absolute;left:0;top:0;font-size:9px;color:red;background:#fff;z-index:99;">{{ rowState.index }}:{{ rowState.selfAncestorWarning }}</span>
+        <span style="position:absolute;left:0;top:0;font-size:9px;color:red;background:#fff;z-index:99;line-height:1;">{{ rowState.index }}:{{ rowState.selfAncestorWarning }}</span>
         <span
           v-if="rowState.planDanger"
           class="plan-danger-mark"
