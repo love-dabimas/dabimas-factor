@@ -118,6 +118,11 @@
           ];
           const DESCENDANT_SLOTS =
             window.Dabimas.logic.pedigree.DESCENDANT_SLOTS;
+          // セルから個体refを引く。localStorage から復元した旧スナップショットには
+          // identityRef が無いので、その場合は nodeId 等から作り直す。
+          // createIdentityRef は identityRef があればそれをそのまま返す。
+          const cellRef = (horse) =>
+            window.Dabimas.logic.pedigree.createIdentityRef(horse || {});
           const BLOOD_VOLUME = {
             1: 50000,
             2: 25000,
@@ -811,8 +816,8 @@
             if (root?.name && !isInbreedExcludedHorse(root)) {
               occurrences.push({
                 ...root,
-                ref: root.identityRef,
-                sexKind: root.sexKind,
+                ref: cellRef(root),
+                sexKind: root.sex === "1" ? "female" : "male",
                 side,
                 path: "",
                 generation: 1,
@@ -827,8 +832,9 @@
               }
               occurrences.push({
                 ...horse,
-                ref: horse.identityRef,
-                sexKind: horse.sexKind,
+                ref: cellRef(horse),
+                // 男系15枠は位置で牡と決まる。セルの値には依存しない。
+                sexKind: "male",
                 side,
                 path,
                 generation: generationMap[horse.index],

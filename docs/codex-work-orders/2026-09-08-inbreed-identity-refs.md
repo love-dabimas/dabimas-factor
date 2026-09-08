@@ -350,3 +350,66 @@ git diff --check
 
 - 本フェーズではresolverを判定規則へ適用していない。custom/unknownを含む判定切り替え、名前照合禁止、★☆除外解除はフェーズ2bに残る。
 - 盤面編集後の牝馬枠保存との整合、工程診断の一時registry、共有の再帰収集、表示抑制・分類変更は後続フェーズで扱う。今回は旧保存のマイグレーションを行っていない。
+
+---
+
+## 検収記録（Claude / 2026-09-09）
+
+### 再実行した受け入れ基準
+
+依頼側が独立に書いた検証スクリプトで全基準を再実行した。基準2は Codex とは**別の seed（`0x20260909`）**を使い、
+比較項目も指示書より広く取った（`count` / `inbreedColorIndexes` / `dangerous` / `crosses.length` /
+`bloodVolume` / `generations` / occurrence の index・path・side・generation・nodeId /
+`sameNameGroups` / `siblingGroups` / `selfAncestorWarningIndexes` / `sameNameSpecialChecks`）。
+
+| 基準 | 結果 |
+|---|---|
+| 1. resolver のキー | OK。指定した全キーが文字列一致。unknown 同士・null 同士が不一致、edit の crossHorseKey がベース馬と一致し親キーは不一致、旧 custom の父母が未解決、まで確認（34項目） |
+| 2. 判定結果が変わらない | OK。通常盤面1000組で差分0。祖先牝馬配置を **localIndex 3/5/7/9/11/13/15 × 父側・母側の14通り**で差分0。nodeTable 不在経路も一致 |
+| 3. 保存レコードの ref | OK。schema 2 / identityRef / fatherRef / motherRef / mareRefs 15件 / descendants 全件の ref を確認。自家製の父が `{kind:"custom"}` で残ること、既存フィールドが旧 builder と完全一致することも確認（10項目） |
+| 4. 既存ガード | OK。変更・新規 JS 9件の `node --check`、`verify-index-exp` → `[verify] OK`、`pytest` → 52 passed、`git diff --check` 指摘なし、BOM なし・LF |
+| 5. 画面 | OK（下記の注記あり）。script 読み込み順は node-table → identity-resolver → pedigree-builder で正しい。SW のプリキャッシュ追加と CACHE_NAME bump も確認 |
+
+### 検収側で直した点
+
+**`ref` と `sexKind` をセルから読むのではなく、判定時に導出するようにした。**
+
+指示書の「男系セル由来 → セルの `identityRef` と `sexKind`」という書き方が literal すぎた。
+localStorage から復元した**フェーズ2a以前のスナップショット**にはこれらのフィールドが無く、
+実機で確認したところ `identityRef` を持つセルが 0/32、occurrence の `ref` も欠落していた。
+
+そこで `inbreed-detector.js` に `cellRef()` を足し、`createIdentityRef(cell)` で導出するようにした。
+同関数は `identityRef` があればそれをそのまま返すので、新しい盤面の挙動は変わらない。
+`sexKind` も同様に位置から決める（ルートは `sex === "1"` で判定、男系15枠は常に male）。
+
+修正後に基準1〜3を再実行し、同じ結果（差分0・44項目 OK）であることを確認した。
+実機でも復元済み盤面の occurrence が `ref` 2/2 になり、判定結果は `[0]` / `dangerous=true` のまま変わらなかった。
+
+### 画面確認の注記
+
+`.claude/launch.json` の `static-verify`（ポート8767）で確認した。全リソースが 200/304 で読み込まれ、
+クロス着色・理論表示・セルの `identityRef` / `sexKind` は期待どおり。
+
+ただしコンソールに ServiceWorker 登録エラーが出る。
+**これは本変更とは無関係の環境要因である。** `service-worker.js` 自体は 200 で取得でき構文も正常で、
+**無改造の旧コピーを配信しているポート8766でも同一のエラーが再現する**（対照実験で確認）。
+埋め込みブラウザ側の制約と判断した。
+
+なお検収の途中、ポート8767 にフェーズ1時点のキャッシュ（`dabimas-factor-v20260908-07`）を持つ
+ServiceWorker が残っており、古い JS が配信されて一度誤った測定をした。
+**画面確認の前に SW とキャッシュを消すこと。**
+
+### フェーズ2bへの申し送り
+
+**自家製の繁殖牝馬を祖先セルへ置くと、本人の出現が作られない。** 実測で確認した。
+
+```
+cell19 placeholderMareNodeId = null
+cell19 placeholderMareRef    = {"kind":"custom","id":"ch_A"}
+牝馬枠の出現                  = []        ← 本人がどこにも現れない
+```
+
+`buildMareOccurrences` は `if (typeof nodeId !== "string") return;` で出現を捨てるため、
+nodeId を持たない custom 牝馬は ref を持っていても判定へ届かない。
+フェーズ2bでは**この門を「ref が解決できる、または nodeId が文字列」へ広げる**必要がある。
+本フェーズは挙動不変が要件なので、ここは意図的に直していない。
