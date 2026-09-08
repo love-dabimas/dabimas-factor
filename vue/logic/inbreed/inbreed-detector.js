@@ -26,7 +26,8 @@
   window.Dabimas.logic.inbreed.judgeInbreed = function (
     selected,
     inbreedExceptions,
-    nodeTable
+    nodeTable,
+    resolver
   ) {
           // nodeTable が無いときは nodeId 判定へ進まない。
           // nodeId は summary/details 由来なので pedigreeNodes.json の取得に
@@ -134,11 +135,15 @@
               : [];
             const nodesByPath = new Map([["", rootCell?.nodeId]]);
             const explicitMaresByPath = new Map();
+            const explicitMareRefsByPath = new Map();
             SIRE_PATHS.forEach((path, pathIndex) => {
               const horse = selected[
                 sideOffset + DESCENDANT_SLOTS[pathIndex]
               ];
               nodesByPath.set(path, horse?.nodeId);
+              if (horse?.placeholderMareRef) {
+                explicitMareRefsByPath.set(path.slice(0, -1), horse.placeholderMareRef);
+              }
               if (typeof horse?.placeholderMareNodeId === "string") {
                 explicitMaresByPath.set(
                   path.slice(0, -1),
@@ -165,6 +170,8 @@
                 index: null,
                 mareSlot: slot,
                 path,
+                ref: explicitMareRefsByPath.get(path) ?? { kind: "master", nodeId },
+                sexKind: "female",
               });
             });
             return occurrences;
@@ -804,6 +811,8 @@
             if (root?.name && !isInbreedExcludedHorse(root)) {
               occurrences.push({
                 ...root,
+                ref: root.identityRef,
+                sexKind: root.sexKind,
                 side,
                 path: "",
                 generation: 1,
@@ -818,6 +827,8 @@
               }
               occurrences.push({
                 ...horse,
+                ref: horse.identityRef,
+                sexKind: horse.sexKind,
                 side,
                 path,
                 generation: generationMap[horse.index],
@@ -959,6 +970,8 @@
               };
               if (nodeTable) {
                 occurrence.path = horse.path;
+                occurrence.ref = horse.ref;
+                occurrence.sexKind = horse.sexKind;
                 occurrence.branchParentNodeId =
                   horse.branchParentNodeId ?? null;
               }

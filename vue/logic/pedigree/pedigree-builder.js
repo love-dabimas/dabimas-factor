@@ -101,6 +101,12 @@
                 mareNodeIds: Array.isArray(horseData.mares)
                   ? horseData.mares.slice()
                   : null,
+                mareRefs: Array.from({ length: 15 }, (_, index) =>
+                  horseData.mareRefs?.[index] ??
+                  window.Dabimas.logic.pedigree.createIdentityRef({
+                    nodeId: horseData.mares?.[index],
+                  })
+                ),
                 selectedHorse: horseData.name,
                 uuid: myId,
                 selfSelected: true,
@@ -455,6 +461,7 @@
               retDataForPedigree[0] = {
                 ...horseData.descendants[0],
                 placeholderMareNodeId: horseData.nodeId ?? null,
+                placeholderMareRef: window.Dabimas.logic.pedigree.createIdentityRef(horseData),
                 subName: `(${horseData.name})`,
                 factors: [...horseData.descendants[0].factors],
                 disabled: true,
@@ -810,6 +817,11 @@
           // オブジェクトのときだけ処理する。
           for (var normIdx = 0; normIdx < retDataForPedigree.length; normIdx++) {
             var normEntry = retDataForPedigree[normIdx];
+            if (normEntry && typeof normEntry === "object") {
+              normEntry.identityRef = window.Dabimas.logic.pedigree.createIdentityRef(normEntry);
+              normEntry.sexKind = normIdx === 0 && id === 0 && horseData.sex === "1"
+                ? "female" : "male";
+            }
             if (
               normEntry &&
               typeof normEntry === "object" &&

@@ -104,7 +104,8 @@
           const result = window.Dabimas.logic.inbreed.judgeInbreed(
             this.selected,
             this.inbreedExceptions,
-            window.Dabimas.pedigreeNodes || null
+            window.Dabimas.pedigreeNodes || null,
+            this.identityResolver
           );
 
           // 結果を Vue state へ反映する（旧実装が this へ直接代入していた分）。

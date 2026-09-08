@@ -391,7 +391,8 @@
             var fallbackCrossResult = judgeInbreed(
               fallbackStepSelected,
               input.inbreedExceptions || [],
-              input.nodeTable || null
+              input.nodeTable || null,
+              input.resolver || null
             );
             fallbackDangerous = fallbackCrossResult.dangerous === true;
           } catch (error) {
@@ -424,7 +425,8 @@
         var crossResult = judgeInbreed(
           stepSelected,
           input.inbreedExceptions || [],
-          input.nodeTable || null
+          input.nodeTable || null,
+          input.resolver || null
         );
         var operands = buildTheoryOperands(stepSelected);
         var matched = theory.detectMatchedTheories(operands.sire, operands.dam, {

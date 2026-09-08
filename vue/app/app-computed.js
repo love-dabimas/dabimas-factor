@@ -21,6 +21,18 @@
   window.Dabimas.app = window.Dabimas.app || {};
 
   window.Dabimas.app.computed = {
+        identityResolver() {
+          return window.Dabimas.logic.pedigree.buildIdentityResolver({
+            nodeTable: window.Dabimas.pedigreeNodes || null,
+            customRecordsById: this.customHorseDetails,
+            editRecordsById: new Map((this.editStallions || []).map(
+              (record) => [record.id, record]
+            )),
+            baseHorseNodeIdById: new Map((this.horsesBase || []).map(
+              (horse) => [horse.id, horse.nodeId]
+            )),
+          });
+        },
         // 頻繁に使用される計算をキャッシュ
         rowConfigsOptimized() {
           // rowConfigsは変更されないのでフリーズ
