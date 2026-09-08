@@ -90,7 +90,7 @@
           if (!result) {
             return "READY";
           }
-          if (result.summary.totalDangerCount > 0) {
+          if (this.warningCellIndexes.length > 0) {
             return "DANGER";
           }
           // 判定不能（データ不足）は安全側にまとめる。安全と危険以外の状態は
@@ -99,7 +99,6 @@
         },
         // 色が判別できなくても状態が分かるよう、必ず文字を出す（仕様 UI-08）。
         planDiagnosisBadgeText() {
-          const result = this.planDiagnosisResult;
           switch (this.planDiagnosisState) {
             case "RUNNING":
               return "診断中";
@@ -110,7 +109,7 @@
             case "SAFE":
               return "危険0";
             case "DANGER":
-              return "危険" + result.summary.totalDangerCount;
+              return "危険" + this.warningCellIndexes.length;
             default:
               return "";
           }
@@ -130,6 +129,17 @@
         // ため、工程診断を実行して結果が有効な間だけ表示する。
         visibleSelfAncestorWarningIndexes() {
           return this.planDiagnosisResult ? this.selfAncestorWarningIndexes : [];
+        },
+        // 血統表で ⚠ が付くセルの一覧。バッジの件数を画面の ⚠ の数と一致させる
+        // ため、工程診断の危険工程セルと自己重複セルをここでまとめて数える。
+        warningCellIndexes() {
+          return Array.from(
+            new Set(
+              this.planDangerCellIndexes.concat(
+                this.visibleSelfAncestorWarningIndexes
+              )
+            )
+          );
         },
         isCompactMobileLayout() {
           return this.$vuetify.breakpoint.smAndDown;

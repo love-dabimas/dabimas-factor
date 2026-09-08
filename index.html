@@ -93,6 +93,7 @@
       <plan-diagnosis-panel
         v-model="planDiagnosisPanelVisible"
         :result="planDiagnosisResult"
+        :self-ancestor-warning-count="visibleSelfAncestorWarningIndexes.length"
       ></plan-diagnosis-panel>
 
       <!-- detail（血統）取得失敗時の再試行メッセージ -->
