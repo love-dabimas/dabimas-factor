@@ -99,6 +99,15 @@
       variantsOf(pedigreeId) {
         return (variantsByPedigree.get(pedigreeId) || []).slice();
       },
+      canonicalNodeOf(pedigreeId) {
+        const list = variantsByPedigree.get(pedigreeId);
+        if (!list || list.length === 0) {
+          return null;
+        }
+        return list.indexOf(pedigreeId + "-00") >= 0
+          ? pedigreeId + "-00"
+          : list[0];
+      },
       findByName(name) {
         const result = [];
         (pedigreeIdsByName.get(name) || []).forEach((pedigreeId) => {

@@ -124,6 +124,8 @@
           return {
             id: record.id,
             customHorseId: record.id,
+            identityRef: record.identityRef ?? { kind: "custom", id: record.id },
+            pedigreeSchemaVersion: record.pedigreeSchemaVersion ?? null,
             source: "custom",
             name: record.name,
             ruby: "",
@@ -149,6 +151,7 @@
             id: record.id,
             source: "edit",
             baseHorseId: record.baseHorseId,
+            identityRef: { kind: "edit", id: record.id, baseHorseId: record.baseHorseId },
             detailChunk: baseHorse.detailChunk,
             name: baseHorse.name,
             ruby: baseHorse.ruby,
@@ -357,11 +360,14 @@
           return promise;
         },
         // freeze 済み summary を mutate せず、descendants を載せた新オブジェクトを返す（指摘 G）。
-        hydrateHorseWithDetail(horse, descendants, mares = null) {
+        hydrateHorseWithDetail(horse, descendants, mares = null, detail = {}) {
           return {
             ...horse,
             descendants,
             mares: Array.isArray(mares) ? mares : null,
+            fatherRef: detail.fatherRef ?? null,
+            motherRef: detail.motherRef ?? null,
+            mareRefs: Array.isArray(detail.mareRefs) ? detail.mareRefs : null,
           };
         },
         // 保存済み配合の descendants[0] にバッジ用フィールド（天性・非凡・因名祭）を補う。
@@ -482,7 +488,8 @@
                       return this.hydrateHorseWithDetail(
                         horse,
                         retryDetail.descendants,
-                        retryDetail.mares
+                        retryDetail.mares,
+                        retryDetail
                       );
                     }
                     return Promise.reject(
@@ -503,7 +510,8 @@
                   return this.hydrateHorseWithDetail(
                     horse,
                     detail.descendants,
-                    detail.mares
+                    detail.mares,
+                    detail
                   );
                 }
                 return retryFromSummary();
@@ -523,7 +531,8 @@
                 return this.hydrateHorseWithDetail(
                   horse,
                   this.restoreDescendantBadgeFields(detail.descendants),
-                  detail.mares
+                  detail.mares,
+                  detail
                 );
               }
               return Promise.reject(
@@ -552,7 +561,8 @@
               return this.hydrateHorseWithDetail(
                 horse,
                 detail.descendants,
-                detail.mares
+                detail.mares,
+                detail
               );
             }
             // id が chunk に無い → 名前等で 1 回だけ再解決を試す（指摘 G）
@@ -570,7 +580,8 @@
                     return this.hydrateHorseWithDetail(
                       horse,
                       retryDetail.descendants,
-                      retryDetail.mares
+                      retryDetail.mares,
+                      retryDetail
                     );
                   }
                   return Promise.reject(

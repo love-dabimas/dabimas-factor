@@ -90,6 +90,7 @@
               selected: this.selected,
               brosData: this.brosData,
               nodeTable: window.Dabimas.pedigreeNodes || null,
+              resolver: this.identityResolver,
               inbreedExceptions: this.inbreedExceptions,
               resolveHorse: (entry) =>
                 entry ? horsesByKey.get(this.planHorseKey(entry)) || null : null,

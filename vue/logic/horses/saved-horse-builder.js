@@ -69,6 +69,7 @@
         name: cell.name,
         subName: cell.subName || "",
         nodeId: cell.nodeId ?? null,
+        identityRef: cell.identityRef ?? { kind: "unknown" },
         pedigreeId: cell.pedigreeId ?? null,
         parentLine: cell.parentLine || "",
         son: cell.son || "",
@@ -100,8 +101,21 @@
         : [];
       return mareNodeIds[mareIndex] ?? null;
     });
+    var mareRefs = MARE_SOURCE_IDS.map(function (source) {
+      if (source[1] === null) {
+        return cells[16]?.identityRef ?? { kind: "unknown" };
+      }
+      return cells[source[0] === "sire" ? 0 : 16]?.mareRefs?.[source[1]]
+        ?? { kind: "unknown" };
+    });
+    var id = "ch_" + window.Dabimas.logic.pedigree.generateUuid();
     return {
-      id: "ch_" + window.Dabimas.logic.pedigree.generateUuid(),
+      id: id,
+      pedigreeSchemaVersion: 2,
+      identityRef: { kind: "custom", id: id },
+      fatherRef: cells[0]?.identityRef ?? null,
+      motherRef: cells[16]?.identityRef ?? null,
+      mareRefs: mareRefs,
       kind: kind,
       name: "☆" + String(title || "").trim(),
       sex: kind === "stallion" ? "0" : "1",

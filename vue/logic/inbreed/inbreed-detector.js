@@ -26,7 +26,8 @@
   window.Dabimas.logic.inbreed.judgeInbreed = function (
     selected,
     inbreedExceptions,
-    nodeTable
+    nodeTable,
+    resolver
   ) {
           // nodeTable が無いときは nodeId 判定へ進まない。
           // nodeId は summary/details 由来なので pedigreeNodes.json の取得に
@@ -117,6 +118,23 @@
           ];
           const DESCENDANT_SLOTS =
             window.Dabimas.logic.pedigree.DESCENDANT_SLOTS;
+          // セルから個体refを引く。localStorage から復元した旧スナップショットには
+          // identityRef が無いので、その場合は nodeId 等から作り直す。
+          // createIdentityRef は identityRef があればそれをそのまま返す。
+          const cellRef = (horse) =>
+            window.Dabimas.logic.pedigree.createIdentityRef(horse || {});
+          const sameCrossHorseRef = (a, b) =>
+            !!resolver && resolver.sameCrossHorse(a, b);
+          const isFullSiblingRef = (a, b) => {
+            if (!resolver || sameCrossHorseRef(a, b)) return false;
+            const pa = resolver.parentsOf(a);
+            const pb = resolver.parentsOf(b);
+            if (!pa || !pb) return false;
+            return resolver.sameKnownParent(pa.father, pb.father)
+              && resolver.sameKnownParent(pa.mother, pb.mother);
+          };
+          const isRefCrossRelated = (a, b) =>
+            sameCrossHorseRef(a?.ref, b?.ref) || isFullSiblingRef(a?.ref, b?.ref);
           const BLOOD_VOLUME = {
             1: 50000,
             2: 25000,
@@ -124,25 +142,58 @@
             4: 6250,
             5: 3125,
           };
-          const buildMareOccurrences = (rootCell, side) => {
+          const buildMareOccurrences = (sideOffset, side) => {
             if (!nodeTable) {
               return [];
             }
+            const rootCell = selected[sideOffset];
             const ids = Array.isArray(rootCell?.mareNodeIds)
               ? rootCell.mareNodeIds
               : [];
+            const nodesByPath = new Map([["", rootCell?.nodeId]]);
+            const explicitMaresByPath = new Map();
+            const explicitMareRefsByPath = new Map();
+            SIRE_PATHS.forEach((path, pathIndex) => {
+              const horse = selected[
+                sideOffset + DESCENDANT_SLOTS[pathIndex]
+              ];
+              nodesByPath.set(path, horse?.nodeId);
+              if (horse?.placeholderMareRef) {
+                explicitMareRefsByPath.set(path.slice(0, -1), horse.placeholderMareRef);
+              }
+              if (typeof horse?.placeholderMareNodeId === "string") {
+                explicitMaresByPath.set(
+                  path.slice(0, -1),
+                  horse.placeholderMareNodeId
+                );
+              }
+            });
             const occurrences = [];
-            ids.forEach((nodeId, slot) => {
-              if (typeof nodeId !== "string") {
+            // 母の枠は親の path より後に並ぶため、盤面から順に解決できる。
+            MARE_PATHS.forEach((path, slot) => {
+              const parentNodeId = nodesByPath.get(path.slice(0, -1));
+              const nodeId = explicitMaresByPath.get(path) ??
+                nodeTable.canonicalNodeOf(
+                  nodeTable.parentsOf(parentNodeId).mother
+                ) ?? ids[slot];
+              nodesByPath.set(path, nodeId);
+              const explicitRef = explicitMareRefsByPath.get(path);
+              const ref = explicitRef ??
+                (typeof nodeId === "string" ? { kind: "master", nodeId } : null);
+              if (!ref) {
                 return;
               }
               occurrences.push({
-                nodeId,
+                nodeId: explicitRef && explicitRef.kind !== "master"
+                  ? null
+                  : (typeof nodeId === "string" ? nodeId : null),
                 side,
                 generation: MARE_GENERATIONS[slot],
                 index: null,
                 mareSlot: slot,
-                path: MARE_PATHS[slot],
+                path,
+                ref,
+                sexKind: "female",
               });
             });
             return occurrences;
@@ -168,7 +219,11 @@
           }
 
           // 片側しか埋まっていない場合は何も判定せず終了
-          if (stallionsArray.length === 0 || broodmaresArray.length === 0) {
+          const hasBothSides = nodeTable
+            ? selected.slice(0, 16).some((cell) => cell?.name)
+              && selected.slice(16).some((cell) => cell?.name)
+            : stallionsArray.length > 0 && broodmaresArray.length > 0;
+          if (!hasBothSides) {
             return {
               count: 0,
               sameNameGroups: [],
@@ -770,28 +825,20 @@
             crossGroups.push(merged);
           };
 
-          const stallionMares = buildMareOccurrences(
-            selected[0],
-            "stallion"
-          );
-          const broodmareMares = buildMareOccurrences(
-            selected[16],
-            "broodmare"
-          );
+          const stallionMares = buildMareOccurrences(0, "stallion");
+          const broodmareMares = buildMareOccurrences(16, "broodmare");
           const isMareOccurrence = (occurrence) =>
             occurrence && occurrence.index === null;
           const isMasterCrossRelated = (a, b) =>
-            isExactSameNode(a, b) || isFullSiblingByMaster(a, b);
+            isRefCrossRelated(a, b);
           const buildSideOccurrences = (sideOffset, side, mareOccurrences) => {
             const occurrences = [];
             const root = selected[sideOffset];
-            if (
-              root?.name &&
-              !isInbreedExcludedHorse(root) &&
-              !isBroodmarePlaceholderHorse(root)
-            ) {
+            if (root?.name) {
               occurrences.push({
                 ...root,
+                ref: cellRef(root),
+                sexKind: root.sex === "1" ? "female" : "male",
                 side,
                 path: "",
                 generation: 1,
@@ -801,15 +848,14 @@
               const horse = selected[
                 sideOffset + DESCENDANT_SLOTS[pathIndex]
               ];
-              if (
-                !horse?.name ||
-                isInbreedExcludedHorse(horse) ||
-                isBroodmarePlaceholderHorse(horse)
-              ) {
+              if (!horse?.name) {
                 return;
               }
               occurrences.push({
                 ...horse,
+                ref: cellRef(horse),
+                // 男系15枠は位置で牡と決まる。セルの値には依存しない。
+                sexKind: "male",
                 side,
                 path,
                 generation: generationMap[horse.index],
@@ -821,21 +867,23 @@
               occurrences.map((occurrence) => [occurrence.path, occurrence])
             );
             occurrences.forEach((occurrence) => {
-              occurrence.branchParentNodeId = occurrence.path
-                ? byPath.get(occurrence.path.slice(0, -1))?.nodeId ?? null
+              const parent = occurrence.path
+                ? byPath.get(occurrence.path.slice(0, -1))
                 : null;
+              occurrence.branchParentNodeId = parent?.nodeId ?? null;
+              occurrence.branchParentRef = parent?.ref ?? null;
             });
             return occurrences;
           };
           const isSameBranch = (a, b) => {
-            const parentA = a?.branchParentNodeId;
-            const parentB = b?.branchParentNodeId;
+            const parentA = a?.branchParentRef;
+            const parentB = b?.branchParentRef;
             if (!parentA || !parentB) {
               return false;
             }
             return (
-              parentA === parentB ||
-              isFullSiblingByMasterNodeIds(parentA, parentB)
+              sameCrossHorseRef(parentA, parentB) ||
+              isFullSiblingRef(parentA, parentB)
             );
           };
 
@@ -951,6 +999,8 @@
               };
               if (nodeTable) {
                 occurrence.path = horse.path;
+                occurrence.ref = horse.ref;
+                occurrence.sexKind = horse.sexKind;
                 occurrence.branchParentNodeId =
                   horse.branchParentNodeId ?? null;
               }
@@ -1439,8 +1489,17 @@
               ) {
                 return;
               }
+              // 全兄妹だけを理由にした牝馬の表示は外し、同一馬クロスは残す。
+              const hasSameHorsePartner = (occurrence) =>
+                cross.occurrences.some(
+                  (other) => other !== occurrence &&
+                    sameCrossHorseRef(occurrence.ref, other.ref)
+                );
               const displayNodes = cross.occurrences
-                .filter((occurrence) => occurrence.index !== null)
+                .filter(
+                  (occurrence) => occurrence.index !== null &&
+                    (occurrence.sexKind !== "female" || hasSameHorsePartner(occurrence))
+                )
                 .map((occurrence) => selected[occurrence.index])
                 .filter(Boolean);
               if (displayNodes.length === 0) {
@@ -1482,16 +1541,25 @@
                 return;
               }
 
-              const hasCompleteNodeIds = displayNodes.every(
-                (node) => typeof node.nodeId === "string"
+              // 表示が片側1セルでも、分類は非表示の出現を含む群全体で決める。
+              const crossHorseKeys = new Set(
+                cross.occurrences
+                  .map((occurrence) => resolver?.crossHorseKey(occurrence.ref))
+                  .filter((key) => key)
               );
-              const identityValues = hasCompleteNodeIds
-                ? displayNodes.map((node) => node.nodeId)
-                : displayNodes.map((node) => node.name);
-              addDisplayGroup(
-                displayNodes,
-                new Set(identityValues).size === 1
-              );
+              let sameHorse;
+              if (crossHorseKeys.size > 0) {
+                sameHorse = crossHorseKeys.size === 1;
+              } else {
+                const hasCompleteNodeIds = displayNodes.every(
+                  (node) => typeof node.nodeId === "string"
+                );
+                const identityValues = hasCompleteNodeIds
+                  ? displayNodes.map((node) => node.nodeId)
+                  : displayNodes.map((node) => node.name);
+                sameHorse = new Set(identityValues).size === 1;
+              }
+              addDisplayGroup(displayNodes, sameHorse);
             });
 
             recognizedCrosses
