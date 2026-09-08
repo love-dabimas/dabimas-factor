@@ -124,14 +124,14 @@
             4: 6250,
             5: 3125,
           };
-          const buildMareOccurrences = (rootCell, side) => {
+          const buildMareOccurrences = (sideOffset, side) => {
             if (!nodeTable) {
               return [];
             }
+            const rootCell = selected[sideOffset];
             const ids = Array.isArray(rootCell?.mareNodeIds)
               ? rootCell.mareNodeIds
               : [];
-            const sideOffset = side === "stallion" ? 0 : 16;
             const nodesByPath = new Map([["", rootCell?.nodeId]]);
             const explicitMaresByPath = new Map();
             SIRE_PATHS.forEach((path, pathIndex) => {
@@ -164,7 +164,7 @@
                 generation: MARE_GENERATIONS[slot],
                 index: null,
                 mareSlot: slot,
-                path: MARE_PATHS[slot],
+                path,
               });
             });
             return occurrences;
@@ -792,14 +792,8 @@
             crossGroups.push(merged);
           };
 
-          const stallionMares = buildMareOccurrences(
-            selected[0],
-            "stallion"
-          );
-          const broodmareMares = buildMareOccurrences(
-            selected[16],
-            "broodmare"
-          );
+          const stallionMares = buildMareOccurrences(0, "stallion");
+          const broodmareMares = buildMareOccurrences(16, "broodmare");
           const isMareOccurrence = (occurrence) =>
             occurrence && occurrence.index === null;
           const isMasterCrossRelated = (a, b) =>
@@ -807,10 +801,7 @@
           const buildSideOccurrences = (sideOffset, side, mareOccurrences) => {
             const occurrences = [];
             const root = selected[sideOffset];
-            if (
-              root?.name &&
-              !isInbreedExcludedHorse(root)
-            ) {
+            if (root?.name && !isInbreedExcludedHorse(root)) {
               occurrences.push({
                 ...root,
                 side,
@@ -822,10 +813,7 @@
               const horse = selected[
                 sideOffset + DESCENDANT_SLOTS[pathIndex]
               ];
-              if (
-                !horse?.name ||
-                isInbreedExcludedHorse(horse)
-              ) {
+              if (!horse?.name || isInbreedExcludedHorse(horse)) {
                 return;
               }
               occurrences.push({

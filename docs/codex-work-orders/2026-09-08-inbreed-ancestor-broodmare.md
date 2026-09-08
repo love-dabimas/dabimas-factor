@@ -228,3 +228,32 @@ git diff --check
 ### 残課題・気づき
 
 - 指示書記載の既知の制限は継続する。祖先セルを差し替えた盤面から保存馬を作る際の `mares` は、依然としてルートの `mareNodeIds` に由来する。フェーズ2で対応するため、今回は変更していない。
+
+---
+
+## 検収記録（Claude / 2026-09-08）
+
+### 再実行した受け入れ基準
+
+依頼側が独立に書いた検証スクリプトで全基準を再実行した（Codex の報告を鵜呑みにせず、修正前のファイルは `git show 5f2f16c:` で取り出して比較）。
+
+| 基準 | 結果 |
+|---|---|
+| 1. 対象シナリオ | OK。`inbreedColorIndexes=[0]` / crosses 1件 / 代表=ダンスインザダーク / 血量75000 / occurrences `[[0,""],[null,"M"]]` / `dangerous=true` — 6項目すべて期待値どおり |
+| 2. 通常盤面の回帰 | OK。1000組で差分0件。指示書より広く `count` / `sameNameGroups` / `siblingGroups` / `selfAncestorWarningIndexes` も比較したが全一致 |
+| 3. 牝馬15枠の再現 | OK。43,710枠一致・不一致0件 |
+| 4. 既存ガード | OK。`verify-index-exp` → `[verify] OK`、`pytest` → 52 passed、3ファイルの `node --check` 成功、`git diff --check` 指摘なし、BOM なし |
+| 5. 差分の範囲 | OK。指定3ファイル＋`service-worker.js` の CACHE_NAME 1行＋本指示書のみ |
+
+### 検収側で直した軽微な点
+
+差し戻すほどではないので検収側で修正した。動作は変わらない（上記の基準1〜3を修正後に再実行し、同じ結果を確認済み）。
+
+- `buildMareOccurrences` の引数を `(rootCell, side)` から `(sideOffset, side)` へ戻し、`side === "stallion" ? 0 : 16` の再導出を削除した。指示書の指定どおりの形。`rootCell` と `sideOffset` という同じ位置を指す情報が2つあると、呼び出し側が食い違ったときに黙って別のセルを読むため
+- `path: MARE_PATHS[slot]` を `path,` にした。`path` は同じ `forEach` のループ変数で同値
+- 条件が1つ減って2条件になった `if` 2箇所を1行に畳んだ
+
+### 気づき（スコープ外）
+
+- `python -m pytest tests/ -q` を実行すると、追跡対象の `scripts/__pycache__/build_dabimas_stream.cpython-312.pyc` が書き換わって作業ツリーが汚れる。`.pyc` が追跡されているのが原因。別途 `.gitignore` へ移すのが望ましい
+- 指示書に記載した既知の制限（保存経路の `mares` がルートの `mareNodeIds` 由来のまま）は継続。フェーズ2で対応する
