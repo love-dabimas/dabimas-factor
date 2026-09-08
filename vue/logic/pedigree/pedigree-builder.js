@@ -454,6 +454,7 @@
               bros = getValueByKey(brosData, horseData.descendants[0].name);
               retDataForPedigree[0] = {
                 ...horseData.descendants[0],
+                placeholderMareNodeId: horseData.nodeId ?? null,
                 subName: `(${horseData.name})`,
                 factors: [...horseData.descendants[0].factors],
                 disabled: true,

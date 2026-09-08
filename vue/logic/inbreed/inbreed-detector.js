@@ -131,8 +131,30 @@
             const ids = Array.isArray(rootCell?.mareNodeIds)
               ? rootCell.mareNodeIds
               : [];
+            const sideOffset = side === "stallion" ? 0 : 16;
+            const nodesByPath = new Map([["", rootCell?.nodeId]]);
+            const explicitMaresByPath = new Map();
+            SIRE_PATHS.forEach((path, pathIndex) => {
+              const horse = selected[
+                sideOffset + DESCENDANT_SLOTS[pathIndex]
+              ];
+              nodesByPath.set(path, horse?.nodeId);
+              if (typeof horse?.placeholderMareNodeId === "string") {
+                explicitMaresByPath.set(
+                  path.slice(0, -1),
+                  horse.placeholderMareNodeId
+                );
+              }
+            });
             const occurrences = [];
-            ids.forEach((nodeId, slot) => {
+            // 母の枠は親の path より後に並ぶため、盤面から順に解決できる。
+            MARE_PATHS.forEach((path, slot) => {
+              const parentNodeId = nodesByPath.get(path.slice(0, -1));
+              const nodeId = explicitMaresByPath.get(path) ??
+                nodeTable.canonicalNodeOf(
+                  nodeTable.parentsOf(parentNodeId).mother
+                ) ?? ids[slot];
+              nodesByPath.set(path, nodeId);
               if (typeof nodeId !== "string") {
                 return;
               }
@@ -787,8 +809,7 @@
             const root = selected[sideOffset];
             if (
               root?.name &&
-              !isInbreedExcludedHorse(root) &&
-              !isBroodmarePlaceholderHorse(root)
+              !isInbreedExcludedHorse(root)
             ) {
               occurrences.push({
                 ...root,
@@ -803,8 +824,7 @@
               ];
               if (
                 !horse?.name ||
-                isInbreedExcludedHorse(horse) ||
-                isBroodmarePlaceholderHorse(horse)
+                isInbreedExcludedHorse(horse)
               ) {
                 return;
               }
