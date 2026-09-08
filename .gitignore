@@ -13,3 +13,6 @@ tests
 tmp
 
 index.*.html
+
+__pycache__/
+*.pyc
