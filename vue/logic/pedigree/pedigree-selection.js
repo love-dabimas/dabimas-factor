@@ -126,6 +126,11 @@
 
   // rows（rowConfigs か rowConfigsBloodmare）と同じ順番・同じ長さで rowState の配列を作る。
   function buildRowStates(rows, arrays) {
+    // 診断用（一時）: このrowStates再計算が呼ばれた時点でarraysが何を持っているか出す。
+    console.log(
+      "[診断] buildRowStates side(先頭index)=" + (rows[0] && rows[0].index) +
+        " selfAncestorWarningIndexes=" + JSON.stringify(arrays.selfAncestorWarningIndexes)
+    );
     return rows.map(function (row) {
       return buildRowState(row.index, arrays);
     });
