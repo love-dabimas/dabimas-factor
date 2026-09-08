@@ -66,40 +66,56 @@
 （既存の分岐は `master` / `custom` / `edit` / `masterPedigree` しか見ていないので変更不要）。
 暗黙の個体は「誰とも同一ではない」が「父母は分かる」という位置づけである。
 
-#### 1-2. 牝馬15枠へ暗黙の個体を作る（`vue/logic/inbreed/inbreed-detector.js`）
+#### 1-2. 牝馬15枠の解決を ref ベースにする（`vue/logic/inbreed/inbreed-detector.js`）
 
-`buildMareOccurrences` を2パスにする。1パス目は現行どおり解決し、
-2パス目で未解決の枠に暗黙の個体を作る。
+**ユーザー報告2件目の原因はここにある。**
 
-**母の枠のほうが path が長いので、2パス目は slot の大きいほうから回すこと。**
-（`"M"` の母は `"MM"`、`"MM"` の母は `"MMM"`。降順なら先に解決済みになる）
+自家製繁殖牝馬を祖先セルへ置くと、彼女は牝馬枠 `"M"` に入る。しかし現行の牝馬枠の解決は
+`nodeTable.parentsOf(nodeId)` しか使わないため、**nodeId を持たない自家製馬の下の枠
+（`"MM"` = 彼女の母 など）が解決できない**。
+
+その結果、彼女の母（スイートルナ）が盤面に現れず、`isSameBranch` が効かなくなり、
+**ルドルフと彼女の共通祖先（スピードシンボリ・Palestine 等）が別々のクロスとして誤検出される**。
+
+牝馬枠の解決を「ある個体の母を ref で引く」形に統一する。
 
 ```javascript
-// 1パス目: 現行の解決結果を refBySlot / nodeIdBySlot へ貯める（出現はまだ作らない）
-
-// 2パス目: 未解決の枠を、盤面の父母から組み立てる
-const slotByPath = new Map(MARE_PATHS.map((p, i) => [p, i]));
-const cellByPath = new Map();
-SIRE_PATHS.forEach((p, i) => {
-  cellByPath.set(p, selected[sideOffset + DESCENDANT_SLOTS[i]]);
-});
-for (let slot = MARE_PATHS.length - 1; slot >= 0; slot--) {
-  if (refBySlot[slot]) continue;
-  const path = MARE_PATHS[slot];
-  const fatherRef = cellByPath.has(path + "F")
-    ? cellRef(cellByPath.get(path + "F")) : null;
-  const motherSlot = slotByPath.get(path + "M");
-  const motherRef = motherSlot === undefined ? null : refBySlot[motherSlot];
-  const known = (r) => r && r.kind !== "unknown";
-  if (!known(fatherRef) && !known(motherRef)) continue;
-  refBySlot[slot] = {
-    kind: "implied",
-    fatherRef: known(fatherRef) ? fatherRef : null,
-    motherRef: known(motherRef) ? motherRef : null,
-  };
-}
-// 3パス目: refBySlot から出現を作る（nodeId は1パス目で決めた値）
+const canonicalMasterRef = (pedigreeId) => {
+  const nodeId = nodeTable && pedigreeId ? nodeTable.canonicalNodeOf(pedigreeId) : null;
+  return typeof nodeId === "string" ? { kind: "master", nodeId } : null;
+};
+const motherRefOf = (ref) => {
+  if (!ref || ref.kind === "unknown") return null;
+  if (ref.kind === "implied") return ref.motherRef ?? null;
+  if (resolver) {
+    const parents = resolver.parentsOf(ref);
+    const mother = parents && parents.mother;
+    if (mother) {
+      return mother.kind === "masterPedigree"
+        ? canonicalMasterRef(mother.pedigreeId) : mother;
+    }
+  }
+  if (nodeTable && typeof ref.nodeId === "string") {
+    return canonicalMasterRef(nodeTable.parentsOf(ref.nodeId).mother);
+  }
+  return null;
+};
 ```
+
+`buildMareOccurrences` を3パスにする。位置→ref の対応表 `refByPath` を持ち、
+男系セルとルートは `cellRef()` で埋めておく。
+
+1. **1パス目（`MARE_PATHS` 順）**: 各枠を次の優先順で解決する
+   1. その位置に明示配置された繁殖牝馬の ref（`placeholderMareRef`。無ければ `placeholderMareNodeId` から master ref）
+   2. `motherRefOf(refByPath.get(path.slice(0, -1)))` ← **親位置の個体の母**
+   3. ルートセルの `mareRefs[slot]`、無ければ `mareNodeIds[slot]` から master ref
+2. **2パス目（slot の大きいほうから）**: まだ決まらない枠を、盤面の父母から
+   `{kind:"implied", fatherRef, motherRef}` として組み立てる。
+   父は男系セル `path + "F"`、母は牝馬枠 `path + "M"`
+3. **3パス目**: `refBySlot` から出現を作る。`nodeId` は `ref.kind === "master"` のときだけ入れる
+
+母の枠は親の path より後に並ぶので、1パス目・3パス目は配列順のままでよい。
+2パス目だけ降順（`"M"` の母は `"MM"`、`"MM"` の母は `"MMM"` のため）。
 
 #### 1-3. ルートセルにも暗黙の個体を作る
 
@@ -131,19 +147,34 @@ for (let slot = MARE_PATHS.length - 1; slot >= 0; slot--) {
 パーソロンとスイートルナのクロスが消えるのが正しい。ルドルフと母の母が全兄妹なので、
 その共通祖先は同一家系枝として二重計上しない（既存の §11 ルール）。
 
-#### 2. 通常の盤面が変わらない
+#### 2. ユーザー報告2件目（自家製で試した盤面）が直る
+
+「☆ルドルフ牝馬」（父＝パーソロン1971・母＝スイートルナ）を**繁殖牝馬として保存**し、
+母側の localIndex 3 へ置く。父側ルート＝トウカイテイオー覇魂。母の父＝アイアンリージ巌瓏。
+
+| 項目 | 現行 | 期待 |
+|---|---|---|
+| `inbreedColorIndexes` | `[1,5,23,11,31]` | **`[1]`** |
+| `crosses` | シンボリルドルフ50000／**スピードシンボリ12500**／**Palestine6250** の3件 | **シンボリルドルフ 血量50000 の1件** |
+
+スピードシンボリと Palestine が消えるのが正しい。ルドルフと☆ルドルフ牝馬は全兄妹なので、
+その共通祖先は同一家系枝として二重計上しない。
+現行はスイートルナが牝馬枠 `"MM"` に現れないため、この除外が効いていない。
+
+#### 3. 通常の盤面が変わらない
 
 固定 seed で種牡馬×繁殖牝馬 **1000組以上**を生成し、フェーズ2c（`HEAD`）と比較する。
+依頼側は1500組で差分0件を確認している。
 `count` / `inbreedColorIndexes` / `dangerous` / `crosses.length` / `bloodVolume` /
 `selfAncestorWarningIndexes` / `sameNameSpecialChecks` の**差分0件**であること。
 （通常の盤面では牝馬15枠がすべて解決済みなので、暗黙の個体は作られない）
 
-#### 3. ★薄め馬に暗黙の個体を作らない
+#### 4. ★薄め馬に暗黙の個体を作らない
 
 `★1薄め…` のセルを含む盤面で、そのセルの ref が `unknown` のままであること。
 盤面の父母から組み立てないこと。
 
-#### 4. 前フェーズの受入が壊れていない
+#### 5. 前フェーズの受入が壊れていない
 
 フェーズ2b・2cの受入基準（B01・B03・C01・C02・E01・F01・D07・D08・A01・A05）を再実行し、
 すべて従来どおりの値になること。
