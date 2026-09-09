@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>Phase 2d UI verification</title>
+<style>html,body,iframe{margin:0;width:100%;height:100%;border:0}#result{display:none}</style></head>
+<body><iframe id="app"></iframe><pre id="result">PENDING</pre>
+<script>
+(async () => {
+  const result = { errors: [] };
+  const heartbeat = setInterval(() => {
+    document.querySelector('#result').textContent = JSON.stringify(result);
+  }, 100);
+  const frame = document.querySelector('iframe');
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const check = (ok, message) => { if (!ok) throw Error(message); };
+  try {
+    result.stage = 'unregister';
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map(registration => registration.unregister()));
+    result.stage = 'caches';
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map(name => caches.delete(name)));
+    if (navigator.serviceWorker.controller) {
+      location.replace(location.pathname + '?clean=' + Date.now());
+      return;
+    }
+    result.cleanStart = { registrations: (await navigator.serviceWorker.getRegistrations()).length, caches: (await caches.keys()).length, controller: !!navigator.serviceWorker.controller };
+    check(result.cleanStart.registrations === 0 && result.cleanStart.caches === 0 && !result.cleanStart.controller, 'SW cleanup failed');
+    const html = await (await fetch('../index.html')).text();
+    const capture = '<base href="http://127.0.0.1:8767/"><script>window.__p2dErrors=[];const originalError=console.error;console.error=(...args)=>{window.__p2dErrors.push(args.map(String).join(" "));originalError.apply(console,args)};window.addEventListener("error",e=>window.__p2dErrors.push(e.message||"resource error"));window.addEventListener("unhandledrejection",e=>window.__p2dErrors.push(String(e.reason)));<\/script>';
+    frame.srcdoc = html.replace('<head>', '<head>' + capture);
+    let app;
+    for (let i = 0; i < 200; i++) {
+      app = frame.contentWindow.__debugAppInstance;
+      if (app?.horseSummaryLoaded && app.horsesBase?.length && frame.contentWindow.Dabimas.pedigreeNodes && app.inbreedExceptions?.length) break;
+      await wait(100);
+    }
+    result.boot = { app: !!app, screen: app?.currentScreen, loaded: app?.horseSummaryLoaded, horseCount: app?.horsesBase?.length, text: frame.contentDocument.body.innerText.slice(0,1000) };
+    check(app?.horsesBase?.length, 'app did not load');
+    const win = frame.contentWindow;
+    check(win.Dabimas.logic.inbreed.judgeInbreed.toString().includes('canonicalMasterRef'), 'old detector loaded');
+    app.currentScreen = 'category';
+    app.dispCategory = 0;
+    const sire = app.horsesBase.find(h => h.name === 'ダンスインザダーク' && h.subName === '');
+    const dam = app.horsesBase.find(h => h.name === 'ダンスパートナー');
+    check(sire && dam, 'horses missing');
+    await app.onChangeMain(0, 0, sire);
+    await app.onChangeMain(1, 0, dam);
+    await app.$nextTick();
+    await wait(400);
+    result.roots = [app.selected[0], app.selected[16]].map(h => ({name:h.name,identityRef:h.identityRef,sexKind:h.sexKind}));
+    result.colors = Array.from(app.dispColor);
+    result.theory = app.styleThoeryClass;
+    result.crosses = win.Dabimas.logic.inbreed.judgeInbreed(app.selected, app.inbreedExceptions, win.Dabimas.pedigreeNodes, app.identityResolver).crosses.length;
+    check(result.roots[0].identityRef.kind === 'master' && result.roots[0].sexKind === 'male', 'sire metadata');
+    check(result.roots[1].identityRef.kind === 'master' && result.roots[1].sexKind === 'female', 'dam metadata');
+    check(JSON.stringify(result.colors.map((c,i)=>c?i:null).filter(i=>i!==null)) === '[0]', 'female color was not suppressed');
+    check(result.theory === 'theory_08', 'danger theory missing: ' + result.theory);
+    check(app.selected.every(h => h?.identityRef && h.sexKind), 'cell metadata missing');
+    const teio = app.horsesBase.find(h => h.name === 'トウカイテイオー' && h.subName === '央獅');
+    const iron = app.horsesBase.find(h => h.name === 'アイアンリージ' && h.subName === '巌瓏');
+    const partholon = app.horsesBase.find(h => h.name === 'パーソロン' && h.subName === '1971');
+    const luna = app.horsesBase.find(h => h.name === 'スイートルナ');
+    check(teio && iron && partholon && luna, 'report horses missing');
+    await app.onChangeMain(0, 0, teio);
+    await app.onChangeMain(1, 1, iron);
+    await app.onChangeMain(1, 3, partholon);
+    await app.onChangeMain(1, 7, luna);
+    app.$set(app.selected, 16, {name:'ワタシノヒンバ', index:16, sex:'1', sexKind:'female', identityRef:{kind:'unknown'}, factors:['','','']});
+    await app.dispInbreed(); app.dispTheory(); await app.$nextTick();
+    const report = win.Dabimas.logic.inbreed.judgeInbreed(app.selected, app.inbreedExceptions, win.Dabimas.pedigreeNodes, app.identityResolver);
+    result.report1 = {colors:report.inbreedColorIndexes, crosses:report.crosses, dangerous:report.dangerous};
+    check(JSON.stringify(report.inbreedColorIndexes) === '[1]', 'report colors');
+    check(report.crosses.length === 1 && report.crosses[0].bloodVolume === 50000 && report.dangerous, 'report cross');
+    result.errors = win.__p2dErrors;
+    check(result.errors.length === 0, 'console errors');
+    result.status = 'OK';
+  } catch (error) {
+    result.status = 'FAILED'; result.message = String(error.stack || error);
+    result.errors = frame.contentWindow.__p2dErrors || result.errors;
+  }
+  document.querySelector('#result').textContent = JSON.stringify(result);
+  clearInterval(heartbeat);
+  document.body.dataset.status = result.status;
+})();
+</script></body></html>

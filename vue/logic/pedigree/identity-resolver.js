@@ -61,6 +61,11 @@
         : "master-variant:" + ref.nodeId;
     };
     const parentsOf = (ref) => {
+      // 暗黙の個体は同一性を持たず、父母だけを全兄妹判定へ渡す。
+      if (ref?.kind === "implied") {
+        if (!ref.fatherRef && !ref.motherRef) return null;
+        return { father: ref.fatherRef ?? null, mother: ref.motherRef ?? null };
+      }
       if (ref?.kind === "custom") {
         const record = lookup(customRecordsById, ref.id);
         if (!record?.fatherRef && !record?.motherRef) return null;

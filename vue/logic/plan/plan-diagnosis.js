@@ -124,9 +124,19 @@
   }
 
   // 仮想繁殖牝馬（前工程の産駒）の血統。父側が前工程の種牡馬、母側が前工程の繁殖牝馬。
-  function composeVirtualMareBoard(sireBoard, mareBoard) {
+  function composeVirtualMareBoard(sireBoard, mareBoard, identityRef, mareLabel) {
     var board = new Array(ROWS_PER_SIDE).fill(null);
-    // 仮想繁殖牝馬そのものは血統マスターに無いので 0 は空のままにする。
+    var createRef = window.Dabimas.logic.pedigree.createIdentityRef;
+    board[0] = {
+      name: mareLabel || "仮想繁殖牝馬",
+      sexKind: "female",
+      sex: "1",
+      identityRef: identityRef || {
+        kind: "implied",
+        fatherRef: createRef(sireBoard[0]),
+        motherRef: createRef(mareBoard[0]),
+      },
+    };
     board[1] = sireBoard[0] || null;
 
     for (var cell = 2; cell < ROWS_PER_SIDE; cell += 1) {
@@ -339,6 +349,25 @@
     var steps = [];
     var mareBoard = null;
     var mareLabel = plan.baseMareName || "基礎繁殖牝馬";
+    // 診断内だけの個体台帳。保存ストアと入力 resolver は変更しない。
+    var registry = new Map();
+    var baseResolver = input.resolver || null;
+    var diagnosisResolver = baseResolver && Object.freeze(Object.assign({}, baseResolver, {
+      parentsOf: function (ref) {
+        return ref && ref.kind === "custom" && registry.has(ref.id)
+          ? registry.get(ref.id) : baseResolver.parentsOf(ref);
+      },
+    }));
+    function composeStepMare(sireBoard, previousMareBoard, stepNo) {
+      var ref = { kind: "custom", id: "plan:step:" + stepNo };
+      var createRef = window.Dabimas.logic.pedigree.createIdentityRef;
+      registry.set(ref.id, {
+        father: createRef(sireBoard[0]),
+        mother: createRef(previousMareBoard[0]),
+      });
+      return composeVirtualMareBoard(sireBoard, previousMareBoard, ref,
+        "工程" + stepNo + "産駒（仮想繁殖牝馬）");
+    }
 
     if (plan.baseMareName && input.resolveMare) {
       var baseMareRecord = input.resolveMare(plan.baseMareName);
@@ -392,7 +421,7 @@
               fallbackStepSelected,
               input.inbreedExceptions || [],
               input.nodeTable || null,
-              input.resolver || null
+              diagnosisResolver
             );
             fallbackDangerous = fallbackCrossResult.dangerous === true;
           } catch (error) {
@@ -410,7 +439,7 @@
           appendBlockedLaterSteps(steps, plan, selected, i + 1);
           break;
         }
-        mareBoard = composeVirtualMareBoard(fallbackBoard, mareBoard);
+        mareBoard = composeStepMare(fallbackBoard, mareBoard, step.stepNo);
         mareLabel = "工程" + step.stepNo + "産駒（仮想繁殖牝馬）";
         continue;
       }
@@ -426,7 +455,7 @@
           stepSelected,
           input.inbreedExceptions || [],
           input.nodeTable || null,
-          input.resolver || null
+          diagnosisResolver
         );
         var operands = buildTheoryOperands(stepSelected);
         var matched = theory.detectMatchedTheories(operands.sire, operands.dam, {
@@ -455,7 +484,7 @@
       }
 
       if (!step.isFinalStep) {
-        mareBoard = composeVirtualMareBoard(sireBoard, mareBoard);
+        mareBoard = composeStepMare(sireBoard, mareBoard, step.stepNo);
         mareLabel = "工程" + step.stepNo + "産駒（仮想繁殖牝馬）";
       }
     }

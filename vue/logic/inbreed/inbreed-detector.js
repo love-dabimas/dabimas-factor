@@ -29,6 +29,9 @@
     nodeTable,
     resolver
   ) {
+          if (nodeTable && !resolver) {
+            console.warn("judgeInbreed: nodeTable is present but resolver is missing");
+          }
           // nodeTable が無いときは nodeId 判定へ進まない。
           // nodeId は summary/details 由来なので pedigreeNodes.json の取得に
           // 失敗しても各セルには残っており、ここで nodeId を見てしまうと
@@ -150,14 +153,14 @@
             const ids = Array.isArray(rootCell?.mareNodeIds)
               ? rootCell.mareNodeIds
               : [];
-            const nodesByPath = new Map([["", rootCell?.nodeId]]);
+            const refByPath = new Map([["", cellRef(rootCell)]]);
             const explicitMaresByPath = new Map();
             const explicitMareRefsByPath = new Map();
             SIRE_PATHS.forEach((path, pathIndex) => {
               const horse = selected[
                 sideOffset + DESCENDANT_SLOTS[pathIndex]
               ];
-              nodesByPath.set(path, horse?.nodeId);
+              refByPath.set(path, cellRef(horse));
               if (horse?.placeholderMareRef) {
                 explicitMareRefsByPath.set(path.slice(0, -1), horse.placeholderMareRef);
               }
@@ -168,25 +171,46 @@
                 );
               }
             });
-            const occurrences = [];
+            const canonicalMasterRef = (pedigreeId) => {
+              const nodeId = pedigreeId ? nodeTable.canonicalNodeOf(pedigreeId) : null;
+              return typeof nodeId === "string" ? { kind: "master", nodeId } : null;
+            };
+            const motherRefOf = (ref) => {
+              if (!ref || ref.kind === "unknown") return null;
+              if (ref.kind === "implied") return ref.motherRef ?? null;
+              const mother = resolver?.parentsOf(ref)?.mother;
+              if (mother) return mother.kind === "masterPedigree"
+                ? canonicalMasterRef(mother.pedigreeId) : mother;
+              return typeof ref.nodeId === "string"
+                ? canonicalMasterRef(nodeTable.parentsOf(ref.nodeId).mother) : null;
+            };
+            const masterRef = (nodeId) => typeof nodeId === "string"
+              ? { kind: "master", nodeId } : null;
             // 母の枠は親の path より後に並ぶため、盤面から順に解決できる。
             MARE_PATHS.forEach((path, slot) => {
-              const parentNodeId = nodesByPath.get(path.slice(0, -1));
-              const nodeId = explicitMaresByPath.get(path) ??
-                nodeTable.canonicalNodeOf(
-                  nodeTable.parentsOf(parentNodeId).mother
-                ) ?? ids[slot];
-              nodesByPath.set(path, nodeId);
-              const explicitRef = explicitMareRefsByPath.get(path);
-              const ref = explicitRef ??
-                (typeof nodeId === "string" ? { kind: "master", nodeId } : null);
+              const ref = explicitMareRefsByPath.get(path)
+                ?? masterRef(explicitMaresByPath.get(path))
+                ?? motherRefOf(refByPath.get(path.slice(0, -1)))
+                ?? rootCell?.mareRefs?.[slot] ?? masterRef(ids[slot]);
+              refByPath.set(path, ref);
+            });
+            for (let slot = MARE_PATHS.length - 1; slot >= 0; slot -= 1) {
+              const path = MARE_PATHS[slot];
+              if (refByPath.get(path) && refByPath.get(path).kind !== "unknown") continue;
+              const fatherRef = refByPath.get(path + "F");
+              const motherRef = refByPath.get(path + "M");
+              if (fatherRef && fatherRef.kind !== "unknown" && motherRef && motherRef.kind !== "unknown") {
+                refByPath.set(path, { kind: "implied", fatherRef, motherRef });
+              }
+            }
+            const occurrences = [];
+            MARE_PATHS.forEach((path, slot) => {
+              const ref = refByPath.get(path);
               if (!ref) {
                 return;
               }
               occurrences.push({
-                nodeId: explicitRef && explicitRef.kind !== "master"
-                  ? null
-                  : (typeof nodeId === "string" ? nodeId : null),
+                nodeId: ref.kind === "master" ? ref.nodeId : null,
                 side,
                 generation: MARE_GENERATIONS[slot],
                 index: null,
@@ -835,10 +859,16 @@
             const occurrences = [];
             const root = selected[sideOffset];
             if (root?.name) {
+              let ref = cellRef(root);
+              const fatherRef = cellRef(selected[sideOffset + DESCENDANT_SLOTS[0]]);
+              const motherRef = mareOccurrences.find((occurrence) => occurrence.path === "M")?.ref;
+              if (ref.kind === "unknown" && fatherRef.kind !== "unknown" && motherRef && motherRef.kind !== "unknown") {
+                ref = { kind: "implied", fatherRef, motherRef };
+              }
               occurrences.push({
                 ...root,
-                ref: cellRef(root),
-                sexKind: root.sex === "1" ? "female" : "male",
+                ref,
+                sexKind: root.sexKind || (root.sex === "1" ? "female" : "male"),
                 side,
                 path: "",
                 generation: 1,

@@ -1,6 +1,6 @@
 # 作業指示書: 盤面から組み立てる個体・工程診断・共有（全兄妹対応フェーズ2d）
 
-- status: 依頼中
+- status: 実装完了（C01の旧期待値との不整合は完了報告参照）
 - 作成日: 2026-09-09
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 上位仕様: `docs/full-sibling-stacking-spec.md` v1.1（§5.2・§8）
@@ -338,16 +338,44 @@ git diff --check
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/logic/pedigree/identity-resolver.js`: `implied` の父母解決を追加。同一性のキーは従来どおり null。
+- `vue/logic/inbreed/inbreed-detector.js`: 牝馬15枠をrefで3パス解決し、盤面から牝馬枠・unknownルートの個体を補完。resolver未指定の警告を追加。
+- `vue/logic/plan/plan-diagnosis.js`: 工程別の一時個体台帳と読み取り専用resolverラッパ、仮想牝馬のルートセルを追加。
+- `vue/CombinationDialog.js`: 祖先・牝馬枠・父母の参照を再帰収集し、自家製馬とエディット馬を同梱。edit repository経由で復元。不要になった旧ID収集メソッドを削除。
+- `vue/app/methods/combination.js`: 復元した両ストアのキャッシュ読込完了後に画面を再判定。
+- `scripts/verify-p2d-common.cjs`: 実データ読込と変更前判定の共通ハーネス。
+- `scripts/verify-p2d-implied.cjs`: 報告3件・unknownルート・希釈用祖先・警告の検証。
+- `scripts/verify-p2d-regression.cjs`: 固定seedの1,500組と縮退経路の変更前比較。
+- `scripts/verify-p2d-prior-cases.cjs`: 前フェーズ受入の再検証。C01のみ、新しく解決される牝馬クロスを期待値に含める。
+- `scripts/verify-p2d-plan.cjs`: 工程診断と画面の一致、再現性、非永続性、実牝馬1工程の出力比較。
+- `scripts/verify-p2d-sharing.cjs`: 循環・重複・欠落参照、空の復元先、edit復元、画面キャッシュ読込順を検証。
+- `scripts/verify-p2d-ui.html`: SW・キャッシュ消去後、実画面でA01と報告1を検証するハーネス。
+- 本指示書: 完了報告を記入。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」と書く>
+- 一時IDは診断内の `plan:step:<工程番号>`。`ch_` と衝突せず、同じ診断を再実行しても安定する。
+- `composeVirtualMareBoard` を単独利用した場合も個体情報を残すため、第3引数のref省略時は父母を持つ `implied` を使う。
+- 共有復元はDBへの書込みだけでは既存の `identityResolver` に反映されないため、両キャッシュの再読込を待ってから `restoreInputData` を実行する。
+- 復元先が無い参照は名前で補完しない。既存resolverの同一性規則は変更せず、父母解決不能として扱う。
+- 検証は再利用できるよう `scripts/` に保存。指示された `tmp/verify-p2d-{implied,regression,plan}.cjs` にも呼出し用ファイルを作成した（tmpはgit管理外）。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 変更したJavaScript 5ファイルの `node --check`: すべて成功。
+- `node scripts/verify-p2d-implied.cjs`: 成功（パート1基準1～3・5、パート4基準1～3）。報告1・2は色 `[1]`、ルドルフ50000のみ、dangerous=true。報告3は5代目 `MMMM` にcustom Aが現れ、ルドルフ28125と既存2クロス。報告3の未指定の他枝には、報告にある既存ニアークティック・プリンスリーギフトのセルを明示配置している。
+- `node scripts/verify-p2d-regression.cjs`: 成功（パート1基準4）。変更前 `abccc16c89d6cec9eb8ba413f39f794a1fe29fa1` と固定seed `0x20260909` の1,500組を比較。例外ルールあり・なし計3,000判定で、count・色・dangerous・crosses全体（血量含む）・自己祖先警告・同名特殊チェックの差分0件。nodeTableなしの戻り値全体も差分0件。
+- `node scripts/verify-p2d-prior-cases.cjs`: 成功（パート1基準6、ただしC01の内部クロス期待値は下記の理由で更新）。B01/B03/C01/C02/E01/F01/D07/D08/A01/A05を確認。
+- `node tmp/verify-p2c-cases.cjs`: 旧C01の内部クロス不変比較で失敗。修正で初めて解決される牝馬枠が原因であり、表示色・dangerousは不変。旧テストは変更していない。
+- `node scripts/verify-p2d-plan.cjs`: 成功（パート2基準1～4）。B01相当のルドルフ75000・dangerous=trueが画面と一致。2回の診断でref・内部クロス・出力が一致し、元resolverと保存レコードは不変。仮想牝馬なしの出力も変更前と一致。
+- `node scripts/verify-p2d-sharing.cjs`: 成功（パート3基準1～4）。空の受信側レコード集合へ復元し、父母ref・判定全体が作者側と一致。2段の父参照・循環・重複・mareRefs・欠落ID・edit repositoryへの保存を確認。DB境界はインメモリのテストダブルで検証。
+- `powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-index-exp .\index.html`: `[verify] OK`。indexファイルは未編集。
+- `python -m pytest tests/ -q`: 52 passed。
+- `git diff --check`: 成功。
+- ポート8767で `codex-powershell.ps1 dump-dom ... 1280 1000 30000` と `screenshot ...` を実行。SW登録0・キャッシュ0・controllerなしで開始。A01および報告1の色・内部クロス・危険判定が成功、捕捉した画面エラー0件。`tmp/p2d-ui-dom.txt` と `tmp/p2d-ui.png` に保存し、スクリーンショットも目視確認。
+- `code-review` の並列レビュー: Standardsの確定違反0件、Specの修正必須指摘0件。Standardsの軽微な旧メソッド削除提案1件は反映済み。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+- **パート1基準6の「C01も内部クロスまで従来値」は、本修正と両立しない。** C01ではcustom母Aとマスタ母の全兄妹関係が、新たに解決される牝馬枠 `M` 同士で成立する。従来の父クロス50000に牝馬同士のクロス50000が1件加わる。色 `[1,17]`・dangerous=true、および「母Aをマスタの全兄妹と同一個体に昇格しない」というC01の本来の判定は維持する。既存の判定規則を変えて有効なクロスを抑制することはせず、この差を検収事項として残す。
+- 別端末の実IndexedDBを用いた共有往復のブラウザE2Eは未実施。共有については実コンポーネントの収集・復元処理と空の受信側データを使ったNode検証まで実施した。

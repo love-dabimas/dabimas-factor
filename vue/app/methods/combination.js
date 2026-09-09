@@ -45,10 +45,11 @@
           // 常にダイアログを開く（中身の活性/非活性はallHorsesSetで制御）
           this.combinationDialog();
         },
-        onCombinationRestore: function (configData) {
+        onCombinationRestore: async function (configData) {
           // localStorageには既にコンポーネント内で復元済み
           // 画面を再読み込み
-          this.restoreInputData();
+          await Promise.all([this.loadCustomHorseDetails(), this.loadEditStallions()]);
+          await this.restoreInputData();
           
           if (configData.dabimasMemo) {
             const parseArray = JSON.parse(configData.dabimasMemo);

@@ -198,10 +198,7 @@ Vue.component('combination-dialog', {
 
         // 指摘 D: この配合が参照する自家製馬レコードを config に同梱して
         // 自己完結させる（別端末・サイトデータ削除後でも復元できるように）。
-        const customIds = this.collectCustomHorseIds(dabimasFactor);
-        if (customIds.length > 0) {
-          configData.customHorses = await this.readCustomHorses(customIds);
-        }
+        Object.assign(configData, await this.collectReferencedHorseRecords(dabimasFactor));
 
         const configDataCopy = JSON.parse(JSON.stringify(configData));
 
@@ -259,33 +256,45 @@ Vue.component('combination-dialog', {
       }
     },
 
-    // dabimasFactor snapshot から、参照している自家製馬の id を集める。
-    collectCustomHorseIds(dabimasFactorStr) {
-      if (!dabimasFactorStr) {
-        return [];
-      }
-      let parsed;
-      try {
-        parsed = JSON.parse(dabimasFactorStr);
-      } catch (error) {
-        return [];
-      }
-      if (!Array.isArray(parsed)) {
-        return [];
-      }
-      const ids = new Set();
-      parsed.forEach((cell) => {
-        if (!cell) {
-          return;
-        }
-        if (cell.source === 'custom' || cell.customHorseId) {
-          const id = cell.customHorseId || cell.id;
-          if (id) {
-            ids.add(id);
-          }
+    // 盤面と保存レコードの個体参照から、復元に必要なレコードを集める。
+    async collectReferencedHorseRecords(dabimasFactorStr) {
+      let cells;
+      try { cells = JSON.parse(dabimasFactorStr); } catch (error) { return {}; }
+      if (!Array.isArray(cells)) return {};
+      const pending = [];
+      const addRefs = (record) => {
+        if (!record) return;
+        pending.push(record.identityRef, record.placeholderMareRef,
+          record.fatherRef, record.motherRef, ...(record.mareRefs || []));
+      };
+      cells.forEach((cell) => {
+        addRefs(cell);
+        if (cell && !cell.identityRef) {
+          pending.push(window.Dabimas.logic.pedigree.createIdentityRef(cell));
         }
       });
-      return [...ids];
+      const visited = new Set();
+      const customHorses = [];
+      const editStallions = [];
+      let edits;
+      for (let i = 0; i < pending.length; i += 1) {
+        const ref = pending[i];
+        if (!ref?.id || (ref.kind !== 'custom' && ref.kind !== 'edit')) continue;
+        const key = ref.kind + ':' + ref.id;
+        if (visited.has(key)) continue;
+        visited.add(key);
+        let record;
+        if (ref.kind === 'custom') {
+          [record] = await this.readCustomHorses([ref.id]);
+          if (record) customHorses.push(record);
+        } else {
+          if (!edits) edits = new Map((await window.Dabimas.repositories.editStallions.loadAll()).map((item) => [item.id, item]));
+          record = edits.get(ref.id);
+          if (record) editStallions.push(record);
+        }
+        addRefs(record);
+      }
+      return { customHorses, editStallions };
     },
 
     // customHorses store から指定 id のレコードをまとめて取得する。
@@ -394,6 +403,12 @@ Vue.component('combination-dialog', {
             await this.writeCustomHorses(configData.customHorses);
           } catch (error) {
             console.warn('custom horse の復元に失敗しました', error);
+          }
+        }
+
+        if (Array.isArray(configData.editStallions)) {
+          for (const record of configData.editStallions) {
+            await window.Dabimas.repositories.editStallions.save(record);
           }
         }
 
