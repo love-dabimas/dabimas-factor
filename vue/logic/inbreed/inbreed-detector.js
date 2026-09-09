@@ -149,63 +149,10 @@
             if (!nodeTable) {
               return [];
             }
-            const rootCell = selected[sideOffset];
-            const ids = Array.isArray(rootCell?.mareNodeIds)
-              ? rootCell.mareNodeIds
-              : [];
-            const refByPath = new Map([["", cellRef(rootCell)]]);
-            const explicitMaresByPath = new Map();
-            const explicitMareRefsByPath = new Map();
-            SIRE_PATHS.forEach((path, pathIndex) => {
-              const horse = selected[
-                sideOffset + DESCENDANT_SLOTS[pathIndex]
-              ];
-              refByPath.set(path, cellRef(horse));
-              if (horse?.placeholderMareRef) {
-                explicitMareRefsByPath.set(path.slice(0, -1), horse.placeholderMareRef);
-              }
-              if (typeof horse?.placeholderMareNodeId === "string") {
-                explicitMaresByPath.set(
-                  path.slice(0, -1),
-                  horse.placeholderMareNodeId
-                );
-              }
-            });
-            const canonicalMasterRef = (pedigreeId) => {
-              const nodeId = pedigreeId ? nodeTable.canonicalNodeOf(pedigreeId) : null;
-              return typeof nodeId === "string" ? { kind: "master", nodeId } : null;
-            };
-            const motherRefOf = (ref) => {
-              if (!ref || ref.kind === "unknown") return null;
-              if (ref.kind === "implied") return ref.motherRef ?? null;
-              const mother = resolver?.parentsOf(ref)?.mother;
-              if (mother) return mother.kind === "masterPedigree"
-                ? canonicalMasterRef(mother.pedigreeId) : mother;
-              return typeof ref.nodeId === "string"
-                ? canonicalMasterRef(nodeTable.parentsOf(ref.nodeId).mother) : null;
-            };
-            const masterRef = (nodeId) => typeof nodeId === "string"
-              ? { kind: "master", nodeId } : null;
-            // 母の枠は親の path より後に並ぶため、盤面から順に解決できる。
-            MARE_PATHS.forEach((path, slot) => {
-              const ref = explicitMareRefsByPath.get(path)
-                ?? masterRef(explicitMaresByPath.get(path))
-                ?? motherRefOf(refByPath.get(path.slice(0, -1)))
-                ?? rootCell?.mareRefs?.[slot] ?? masterRef(ids[slot]);
-              refByPath.set(path, ref);
-            });
-            for (let slot = MARE_PATHS.length - 1; slot >= 0; slot -= 1) {
-              const path = MARE_PATHS[slot];
-              if (refByPath.get(path) && refByPath.get(path).kind !== "unknown") continue;
-              const fatherRef = refByPath.get(path + "F");
-              const motherRef = refByPath.get(path + "M");
-              if (fatherRef && fatherRef.kind !== "unknown" && motherRef && motherRef.kind !== "unknown") {
-                refByPath.set(path, { kind: "implied", fatherRef, motherRef });
-              }
-            }
+            const { mareRefs } = boardRefsFor(sideOffset);
             const occurrences = [];
             MARE_PATHS.forEach((path, slot) => {
-              const ref = refByPath.get(path);
+              const ref = mareRefs[slot];
               if (!ref) {
                 return;
               }
@@ -849,6 +796,14 @@
             crossGroups.push(merged);
           };
 
+          const boardRefsBySide = new Map();
+          const boardRefsFor = (sideOffset) => {
+            if (!boardRefsBySide.has(sideOffset)) {
+              boardRefsBySide.set(sideOffset,
+                window.Dabimas.logic.pedigree.resolveBoardRefs(selected, sideOffset, { nodeTable, resolver }));
+            }
+            return boardRefsBySide.get(sideOffset);
+          };
           const stallionMares = buildMareOccurrences(0, "stallion");
           const broodmareMares = buildMareOccurrences(16, "broodmare");
           const isMareOccurrence = (occurrence) =>
@@ -859,12 +814,7 @@
             const occurrences = [];
             const root = selected[sideOffset];
             if (root?.name) {
-              let ref = cellRef(root);
-              const fatherRef = cellRef(selected[sideOffset + DESCENDANT_SLOTS[0]]);
-              const motherRef = mareOccurrences.find((occurrence) => occurrence.path === "M")?.ref;
-              if (ref.kind === "unknown" && fatherRef.kind !== "unknown" && motherRef && motherRef.kind !== "unknown") {
-                ref = { kind: "implied", fatherRef, motherRef };
-              }
+              const ref = boardRefsFor(sideOffset).rootRef;
               occurrences.push({
                 ...root,
                 ref,

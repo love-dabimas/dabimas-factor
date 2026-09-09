@@ -19,7 +19,7 @@ old('vue/logic/inbreed/inbreed-detector.js');
 const oldBuilder = window.Dabimas.logic.pedigree.setDataForPedigree;
 const oldSave = window.Dabimas.logic.horses.buildSavedHorseRecord;
 const oldJudge = window.Dabimas.logic.inbreed.judgeInbreed;
-for (const p of ['pedigree/pedigree-node-table', 'pedigree/identity-resolver', 'pedigree/pedigree-builder', 'horses/saved-horse-builder', 'inbreed/inbreed-detector']) run('vue/logic/' + p + '.js');
+for (const p of ['pedigree/pedigree-node-table', 'pedigree/identity-resolver', 'pedigree/pedigree-builder', 'pedigree/board-refs', 'horses/saved-horse-builder', 'inbreed/inbreed-detector']) run('vue/logic/' + p + '.js');
 run('vue/app/methods/horse-loading.js');
 run('vue/app/app-computed.js');
 const pedigree = window.Dabimas.logic.pedigree;

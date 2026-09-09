@@ -1,5 +1,5 @@
 // cache name, cache files
-var CACHE_NAME = 'dabimas-factor-v20260909-03';
+var CACHE_NAME = 'dabimas-factor-v20260910-01';
 var BASE_PATH = self.location.pathname.replace(/\/service-worker\.js$/, '/');
 var APP_SHELL_URL = BASE_PATH + 'index.html';
 // プリキャッシュは「実行時に実際に使われるもの」だけに絞る。
@@ -57,6 +57,7 @@ var urlsToCache = [
   BASE_PATH + 'vue/logic/nicks/nicks-boot.js',
   BASE_PATH + 'vue/logic/nicks/nicksCalculator.js',
   BASE_PATH + 'vue/logic/pedigree/pedigree-builder.js',
+  BASE_PATH + 'vue/logic/pedigree/board-refs.js',
   BASE_PATH + 'vue/logic/horses/saved-horse-builder.js',
   BASE_PATH + 'vue/logic/inbreed/inbreed-exceptions.js',
   BASE_PATH + 'vue/logic/inbreed/inbreed-detector.js',
