@@ -2,6 +2,10 @@
 
 Vue.component('combination-dialog', {
   props: {
+    identityResolver: {
+      type: Object,
+      default: null
+    },
     value: {
       type: Boolean,
       default: false
@@ -207,7 +211,8 @@ Vue.component('combination-dialog', {
           this.saveKind,
           this.newTitle.trim(),
           cells,
-          this.saveKind === 'stallion' ? this.stallionFactors : []
+          this.saveKind === 'stallion' ? this.stallionFactors : [],
+          { nodeTable: window.Dabimas.pedigreeNodes || null, resolver: this.identityResolver }
         );
         const combinationStorage = window.Dabimas.logic.storage.combinationStorage;
         const savedHorseRecord = await combinationStorage.saveCustomHorse(

@@ -34,7 +34,7 @@
   // ownFactorsInput: 保存する馬「本人」に付与する因子名の配列（最大2つ）。
   // 種牡馬保存時に配合保存ダイアログから渡される（因子付与ダイアログと同じ
   // 短速底長堅難）。省略・空配列なら従来どおり因子なし。
-  function buildSavedHorseRecord(kind, title, cells, ownFactorsInput) {
+  function buildSavedHorseRecord(kind, title, cells, ownFactorsInput, context) {
     if (kind !== "stallion" && kind !== "broodmare") {
       throw new Error("保存種別が不正です");
     }
@@ -108,13 +108,32 @@
       return cells[source[0] === "sire" ? 0 : 16]?.mareRefs?.[source[1]]
         ?? { kind: "unknown" };
     });
+    var fatherRef = cells[0]?.identityRef ?? null;
+    var motherRef = cells[16]?.identityRef ?? null;
+    // 既存の参照は維持し、盤面から解決できる欠損だけを補完する。
+    // context/nodeTable がない呼出しでは unknown も含めて旧値をそのまま返す。
+    if (context?.nodeTable) {
+      var usable = function (ref) {
+        return ref && ref.kind && ref.kind !== "unknown" ? ref : null;
+      };
+      var sireBoard = window.Dabimas.logic.pedigree.resolveBoardRefs(cells, 0, context);
+      var damBoard = window.Dabimas.logic.pedigree.resolveBoardRefs(cells, 16, context);
+      fatherRef = usable(fatherRef) ?? usable(sireBoard.rootRef) ?? null;
+      motherRef = usable(motherRef) ?? usable(damBoard.rootRef) ?? null;
+      mareRefs = mareRefs.map(function (ref, slot) {
+        var source = MARE_SOURCE_IDS[slot];
+        var resolved = source[1] === null ? damBoard.rootRef
+          : (source[0] === "sire" ? sireBoard : damBoard).mareRefs[source[1]];
+        return usable(ref) ?? usable(resolved) ?? { kind: "unknown" };
+      });
+    }
     var id = "ch_" + window.Dabimas.logic.pedigree.generateUuid();
     return {
       id: id,
       pedigreeSchemaVersion: 2,
       identityRef: { kind: "custom", id: id },
-      fatherRef: cells[0]?.identityRef ?? null,
-      motherRef: cells[16]?.identityRef ?? null,
+      fatherRef: fatherRef,
+      motherRef: motherRef,
       mareRefs: mareRefs,
       kind: kind,
       name: "☆" + String(title || "").trim(),

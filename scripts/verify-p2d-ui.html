@@ -24,7 +24,8 @@
     }
     result.cleanStart = { registrations: (await navigator.serviceWorker.getRegistrations()).length, caches: (await caches.keys()).length, controller: !!navigator.serviceWorker.controller };
     check(result.cleanStart.registrations === 0 && result.cleanStart.caches === 0 && !result.cleanStart.controller, 'SW cleanup failed');
-    const html = await (await fetch('../index.html')).text();
+    const html = (await (await fetch('../index.html', {cache:'reload'})).text())
+      .replace(/(<script src="\.\/[^"?]+\.js)(")/g, '$1?verify=' + Date.now() + '$2');
     const capture = '<base href="http://127.0.0.1:8767/"><script>window.__p2dErrors=[];const originalError=console.error;console.error=(...args)=>{window.__p2dErrors.push(args.map(String).join(" "));originalError.apply(console,args)};window.addEventListener("error",e=>window.__p2dErrors.push(e.message||"resource error"));window.addEventListener("unhandledrejection",e=>window.__p2dErrors.push(String(e.reason)));<\/script>';
     frame.srcdoc = html.replace('<head>', '<head>' + capture);
     let app;
@@ -36,7 +37,7 @@
     result.boot = { app: !!app, screen: app?.currentScreen, loaded: app?.horseSummaryLoaded, horseCount: app?.horsesBase?.length, text: frame.contentDocument.body.innerText.slice(0,1000) };
     check(app?.horsesBase?.length, 'app did not load');
     const win = frame.contentWindow;
-    check(win.Dabimas.logic.inbreed.judgeInbreed.toString().includes('canonicalMasterRef'), 'old detector loaded');
+    check(win.Dabimas.logic.inbreed.judgeInbreed.toString().includes('resolveBoardRefs'), 'old detector loaded');
     app.currentScreen = 'category';
     app.dispCategory = 0;
     const sire = app.horsesBase.find(h => h.name === 'ダンスインザダーク' && h.subName === '');
