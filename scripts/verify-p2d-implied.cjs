@@ -46,13 +46,13 @@ for (const mode of [1, 2, 3]) {
   if (mode === 1) assert.deepEqual(plain(cross.occurrences[1].ref), { kind:'implied', fatherRef:master('0000333257-01'), motherRef:master('0000050973-00') });
   if (mode === 3) assert.deepEqual(plain(cross.occurrences[1].ref), custom('ch_A'));
 }
-// Root inference, and no inference at an unknown male ancestor with the same parents.
+// Root inference, and inference at an unknown male ancestor with the same parents.
 const rootBoard = board(teio, unknown); place(rootBoard,1,1,partholon); place(rootBoard,1,3,luna);
 assert.equal(rudolf(judge(rootBoard,[],table,resolver)).bloodVolume,75000);
 const dummyBoard = board(teio,unknown);
 place(dummyBoard,1,1,partholon); place(dummyBoard,1,2,partholon); place(dummyBoard,1,5,luna);
 dummyBoard[17] = {name:'★1薄めパーソロン', index:17, factors:['','','']};
-assert.equal(rudolf(judge(dummyBoard,[],table,resolver)),undefined);
+assert.equal(rudolf(judge(dummyBoard,[],table,resolver)).bloodVolume,50000);
 assert.equal(pedigree.createIdentityRef(dummyBoard[17]).kind,'unknown');
 const implied = {kind:'implied',fatherRef:A.fatherRef,motherRef:A.motherRef};
 for(const key of ['identityKey','crossHorseKey','parentComparisonKey']) assert.equal(resolver[key](implied),null);
@@ -62,5 +62,5 @@ try {
   assert.equal(judge(rootBoard,[],table,null).crosses.length,0); assert.equal(warnings,1);
   judge(rootBoard,[],null,null); judge(rootBoard,[],table,resolver); assert.equal(warnings,1);
 } finally {console.warn=originalWarn;}
-console.log('OK: reports 1–3, root implied, unknown male ancestor, resolver keys, missing-resolver warnings');
+console.log('OK: reports 1–3, root and male-line implied, resolver keys, missing-resolver warnings');
 module.exports = { find, place, board, A, B, resolver, teio, partholon, luna, iron };

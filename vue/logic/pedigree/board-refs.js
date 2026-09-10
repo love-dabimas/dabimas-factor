@@ -67,9 +67,11 @@
         refByPath.set(path, { kind: "implied", fatherRef, motherRef });
       }
     };
-    // 深い母から補完し、最後にルートへ適用する。男系祖先には適用しない。
-    for (let slot = MARE_PATHS.length - 1; slot >= 0; slot -= 1) fillImplied(MARE_PATHS[slot]);
-    fillImplied("");
+    // 位置 p の父は p+"F"、母は p+"M"。どちらも p より深いので、
+    // パスの長い順に処理すれば依存関係が解決済みになる。
+    const ALL_PATHS = ["", ...SIRE_PATHS, ...MARE_PATHS]
+      .sort((a, b) => b.length - a.length);
+    ALL_PATHS.forEach(fillImplied);
     const mareRefs = MARE_PATHS.map((path) => {
       const ref = refByPath.get(path);
       return ref?.kind === "unknown" ? null : ref ?? null;
