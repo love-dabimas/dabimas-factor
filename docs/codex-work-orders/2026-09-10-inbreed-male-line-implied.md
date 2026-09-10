@@ -1,6 +1,6 @@
 # 作業指示書: 男系セルにも暗黙の個体を作る（全兄妹対応フェーズ2f）
 
-- status: 未着手
+- status: 完了（2026-09-10 検収済み）
 - 作成日: 2026-09-10
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 上位仕様: `docs/full-sibling-stacking-spec.md` v1.1（§4.1・§5.2）
@@ -204,4 +204,59 @@
 
 ## 検収記録
 
-（実装後に Claude 側で記入する）
+- 検収日: 2026-09-10
+- 検収者: Claude Code セッション（指示書の書き手。Codex の検証スクリプトとは別に、独立の harness で再測した）
+- 実装コミット: `b5b5227 Handle implied male-line pedigree identities`
+- 比較の基準: `6083d2a`（2f直前。コード内容は `918e55e` と同一）
+
+### 結果
+
+| 基準 | 結果 | 実測値 |
+|---|---|---|
+| 1. ケースAが直る | **合格** | 2f前 `colored=[4,18,10,28]` クロスなし → 2f後 `colored=[2,17,10,28]` シンボリルドルフ 血量37500 `["FF","F"]` `dangerous=false` |
+| 2. ケースBが直る | **合格** | 2f前 `colored=[16]` クロスなし → 2f後 `colored=[14,17,16]` シンボリルドルフ 血量28125 `["MMFF","F"]`。父側⑮セルの ref が `unknown` → `implied` に変わったことも確認 |
+| 3. 既存の判定が動かない | **合格** | 3000盤面（通常800・母側積み上げ600・父側積み上げ600・中間セル積み上げ600・自家製400）で **差分0件** |
+| 4. 通常盤面の保存レコードが動かない | **合格** | 通常盤面800件で `fatherRef`/`motherRef`/`mareRefs`/`mares`/`descendants` の **差分0件** |
+| 5. フェーズ2eの基準がそのまま通る | **合格** | `verify-p2e-refactor.cjs` / `verify-p2e-saved.cjs` が通る。ユーザー報告4件目の盤面は 2f前後で完全に同一（`colored=[1,12,30,14,26]` `count=5` シンボリルドルフ 28125 `["F","MMMM"]`） |
+| 6. resolver が無いときに壊れない | **合格** | 第5引数なし / `{nodeTable:null}` / `{}` のいずれでも 2f前の無context と同一 |
+
+実機のブラウザ（まっさらな Chrome プロファイル）でユーザー報告4件目の手順を保存ダイアログまで通し、
+2eのときと同じ結果になることも確認した。
+
+### Codex がフェーズ2dの検証スクリプトを書き換えた件（正当と判断）
+
+`scripts/verify-p2d-implied.cjs` の次の表明が反転している。
+
+```javascript
+- // Root inference, and no inference at an unknown male ancestor with the same parents.
+- assert.equal(rudolf(judge(dummyBoard,[],table,resolver)),undefined);
++ // Root inference, and inference at an unknown male ancestor with the same parents.
++ assert.equal(rudolf(judge(dummyBoard,[],table,resolver)).bloodVolume,50000);
+```
+
+この表明は「男系の unknown な祖先には推論しない」という**2dの設計そのもの**を固定していたもので、
+2fが意図的に変える対象である。反転は正しい。
+
+血量50000という新しい期待値も、Codex の数字を信用せず自分で計算し直した。
+盤面は 父側①トウカイテイオー（父側②＝シンボリルドルフ、2代目 25000）に対し、
+母側②へ手置きした `★1薄めパーソロン` が implied（父=母側③のパーソロン / 母=牝馬枠"FM"のスイートルナ）
+＝ルドルフの全兄妹で2代目 25000。合計 50000、`dangerous=true`。実測も一致した。
+
+副作用として、2f前に出ていた パーソロン のクロス（`[2,18]`）が消えて
+シンボリルドルフのクロス（`[1,17]`）に置き換わる。これは §11 同一家系枝の重複除外が
+全兄妹の共通祖先を二重に数えないよう抑制した結果で、正しい挙動である
+（ユーザー報告2件目「スピードシンボリとかPalestineとか余計なクロスが入っている」と同じ仕組み）。
+
+### 記録: 2eの厳密比較のカバー範囲が少し狭まった
+
+`verify-p2e-refactor.cjs` は 28ef75e の検出器と現行を1件ずつ突き合わせる仕組みだが、
+`verify-p2d-implied.cjs` はその包みの**外**へ移された。男系推論を含む以上、
+28ef75e との厳密一致はもう成立しないので移動自体は必要である。
+
+ただし厳密比較の件数が **6037 → 6029** に減っている。
+2eの「純粋な切り出し」保証は2eの検収時点で確定しているうえ、
+今回は別途3000盤面の 2f前後比較で差分0件を確認したので、実害は無いと判断した。
+
+### 積み残しなし
+
+2eの検収で挙げた男系の穴は、ケースA・Bとも塞がった。
