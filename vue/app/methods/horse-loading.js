@@ -424,6 +424,16 @@
               return byId;
             }
           }
+          // 牝馬を置いたセルの父は subName が "(牝馬名)" に差し替わるので、
+          // 名前＋馬名補足では引けない。nodeId は個体を一意に指すので先に見る。
+          if (typeof horse.nodeId === "string" && horse.nodeId) {
+            const byNodeId = this.horsesBase.find(
+              (h) => h.nodeId === horse.nodeId
+            );
+            if (byNodeId) {
+              return byNodeId;
+            }
+          }
           const name = horse.name || "";
           const subName = horse.subName || "";
           const sex = horse.sex;
