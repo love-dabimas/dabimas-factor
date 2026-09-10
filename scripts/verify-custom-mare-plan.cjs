@@ -87,6 +87,52 @@ assert.deepEqual(
   }
 );
 
+// runPlanDiagnosis の配線をそのまま通す。resolveMareByRef をテスト側で自作すると、
+// 実アプリで maresByRef が空のままでも通ってしまう（一度これを見落とした）。
+run("vue/app/methods/plan-diagnosis-ui.js");
+const summaryOf = (horse) => ({
+  id: horse.id, nodeId: horse.nodeId ?? null, name: horse.name,
+  subName: horse.subName || "", sex: horse.sex, parentLine: horse.parentLine || "",
+  son: horse.son || "", factors: horse.factors, source: "base",
+});
+const app = {
+  selected, brosData: bros, inbreedExceptions: exceptions,
+  identityResolver: resolver,
+  horsesBase: horses.map(summaryOf),
+  customHorseDetails: { [customMare.id]: customMare },
+  planDiagnosisRunning: false, planDiagnosis: null, planDiagnosisPanelVisible: false,
+};
+// horse-loading.js の本物の ensureHorseDetail は fetch を使うので、
+// methods を載せたあとで差し替える（先に置くと Object.assign に潰される）。
+Object.assign(app, window.Dabimas.app.methods, {
+  findSummaryHorse(horse) {
+    return this.horsesBase.find((item) => item.name === horse.name && item.sex === horse.sex) || null;
+  },
+  // hydrateHorseWithDetail と同じく identityRef は付けない。
+  ensureHorseDetail(entry) {
+    if (Array.isArray(entry.descendants) && entry.descendants.length === 15) {
+      return Promise.resolve(entry);
+    }
+    const full = horses.find(
+      (item) => item.name === entry.name && (item.subName || "") === (entry.subName || "")
+    );
+    return full ? Promise.resolve({ ...entry, descendants: full.descendants, mares: full.mares })
+      : Promise.reject(new Error("detail not found"));
+  },
+});
+window.Dabimas.pedigreeNodes = table;
+
+app.runPlanDiagnosis().then(() => {
+  assert.equal(app.planDiagnosis.planDepth, 2, "実配線でも2工程");
+  assert.equal(
+    app.planDiagnosis.baseMareName,
+    "メゾンフォルティー",
+    "基礎繁殖牝馬が ref から解決されてパネル見出しに出る"
+  );
+  assert.equal(app.planDiagnosis.steps[0].displayedTheory, "PERFECT");
+  console.log("OK: runPlanDiagnosis の配線でも基礎繁殖牝馬が解決される");
+});
+
 const ordinary = board(finalSire, baseMare);
 ordinary[0].selfSelected = true;
 ordinary[16].selfSelected = true;

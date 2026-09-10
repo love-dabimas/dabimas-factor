@@ -398,8 +398,6 @@
     if (baseMareRecord) {
       mareLabel = baseMareRecord.name || mareLabel;
       plan.baseMareName = baseMareRecord.name || plan.baseMareName;
-    }
-    if (baseMareRecord) {
       try {
         mareBoard = expandHorseBoard(baseMareRecord, input.brosData);
       } catch (error) {

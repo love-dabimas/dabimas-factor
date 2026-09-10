@@ -61,7 +61,7 @@
               );
             } else if (detected.baseMareRef?.kind === "master") {
               targets.push(
-                this.horsesBase.find(
+                (this.horsesBase || []).find(
                   (horse) =>
                     horse.nodeId === detected.baseMareRef.nodeId &&
                     horse.sex === "1"
@@ -89,8 +89,12 @@
                     horsesByKey.set(this.planHorseKey(entry), detail);
                     if (detail.sex === "1") {
                       maresByName.set(detail.name, detail);
-                      const detailRef = detail.identityRef || entry.identityRef;
-                      if (detailRef) {
+                      // summary 由来の馬（horsesBase）も hydrate 後の detail も
+                      // identityRef を持たない。nodeId から組み立てないと master の
+                      // 基礎繁殖牝馬が maresByRef に載らない。
+                      const detailRef =
+                        window.Dabimas.logic.pedigree.createIdentityRef(detail);
+                      if (detailRef && detailRef.kind !== "unknown") {
                         maresByRef.set(refKey(detailRef), detail);
                       }
                     }

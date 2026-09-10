@@ -1,6 +1,6 @@
 # 作業指示書: 自家製馬の子系統の欠落と、工程診断の工程漏れ
 
-- status: 未着手
+- status: 完了（2026-09-10 検収）
 - 作成日: 2026-09-10
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 前提: `origin/main` は 8936a9c（`feature/dabifaku-unified` をマージ済み）
@@ -283,4 +283,52 @@ IndexedDB を書き換えずに再読込しても直ること。
 
 ## 検収記録
 
-（実装後に Claude 側で記入する）
+- 実装: Codex（コミット `9175f2d` "fix custom horse lineage and plan diagnosis"）。完了報告節は未記入だったので差分から読んだ
+- 検収: 2026-09-10 / Claude Code
+
+### 受け入れ基準の結果
+
+| 基準 | 結果 |
+|---|---|
+| 1. 報告1の盤面が直る | OK（`selected[0].son` / `record.son` / `descendants[0].son` すべて「マイバブー系」。置き直した盤面の `category[0,1,2,4,8]` も全て「マイバブー系」、系統数2 / 出現数6） |
+| 2. 保存済みレコードも直る | OK（`fillMissingSon` で復元。二度呼んでも同結果、既存値は書き換えない） |
+| 3. 報告2の盤面が直る | **一部NG → 検収時に修正**（下記） |
+| 4. 通常盤面の工程診断が動かない | OK（通常盤面200件・段階配合盤面200件を `9175f2d^` と比較して差分0件） |
+| 5. 判定・保存の既存挙動が動かない | OK（`verify-p2d-*` / `verify-p2e-*` の8本すべて通過。`son` は `inbreed` / `theory` のどこからも読まれていないことを確認） |
+| 6. resolver が無くても壊れない | OK（`detectPlan(selected)` は planDepth 1、`nodeTable` null でも診断が完走） |
+
+### 検収時に直した問題
+
+**パート2-2 が実アプリでは効いていなかった。**
+
+`plan-diagnosis-ui.js` は基礎繁殖牝馬を
+
+```javascript
+const detailRef = detail.identityRef || entry.identityRef;
+```
+
+で `maresByRef` へ登録していた。しかし `horsesBase` の馬は `normalizeHorseSummary` の出力で
+`identityRef` を持たず、`hydrateHorseWithDetail` も付けない。結果 `maresByRef` は常に空で、
+`resolveMareByRef` は null を返していた。報告2の盤面では `baseMareName` も null
+（母側ルートに置いた牝馬の名前は `subName` に残らない＝この指示書の「検証時の注意」に書いたとおり）
+なので、基礎繁殖牝馬は `sliceMareBoard` の切り出しに落ちていた。
+
+実測: `maresByRef` のキー数 0 / `baseMareName` null（受け入れ基準3は「メゾンフォルティー」）/
+メゾンフォルティーの5代目8頭（ニアークティック・ボールドルーラー等）が盤面から丸ごと欠落。
+工程1の理論はたまたま `PERFECT` で一致していたが、**5代目のクロスを見られない状態**だった。
+
+`window.Dabimas.logic.pedigree.createIdentityRef(detail)` で ref を組み立てる形に修正。
+
+`scripts/verify-custom-mare-plan.cjs` がこれを検出できなかったのは、テストが
+`resolveMareByRef` を自前で用意して実アプリの配線を迂回していたため。
+`runPlanDiagnosis` をそのまま呼ぶ検証を追加した（修正を戻すと落ちることを確認済み）。
+
+### そのほか検収時に直した点
+
+- `this.horsesBase.find(...)` を `(this.horsesBase || []).find(...)` へ（同ファイルの他の箇所に合わせた）
+- `plan-diagnosis.js` の連続する2つの `if (baseMareRecord)` を1つにまとめた
+
+### 残課題
+
+- `CACHE_NAME` は `v20260910-03` のまま。`9175f2d` は未 push で配信されていないため再bumpは不要
+- スコープ外として据え置き: 父側①に自家製種牡馬を置いた場合の工程展開（指示書 2-3）
