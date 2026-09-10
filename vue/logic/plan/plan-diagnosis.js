@@ -130,7 +130,13 @@
   function expandHorseBoard(record, brosData) {
     var pedigree = window.Dabimas.logic.pedigree;
     var side = record && record.sex === "1" ? 1 : 0;
-    var list = pedigree.setDataForPedigree(side, 0, record, brosData);
+    // 牝馬を置いたセルの父は subName が "(牝馬名)" に差し替わっている。その形のまま
+    // セル0として展開すると getCellIdQue が「繁殖牝馬を選んだ」経路に入り、
+    // セル0を積み続けて戻ってこない。血統を展開するだけならこの飾りは要らない。
+    var source = readMareNameFromCell(record)
+      ? Object.assign({}, record, { subName: "" })
+      : record;
+    var list = pedigree.setDataForPedigree(side, 0, source, brosData);
     var que = pedigree.getCellIdQue(0, list);
     var board = new Array(ROWS_PER_SIDE).fill(null);
 
@@ -431,6 +437,13 @@
         } catch (error) {
           sireBoard = null;
         }
+      }
+
+      if (!sireBoard && step.sireIndex === 0) {
+        // 種牡馬側の16マスは、画面の種牡馬（★N薄めのようにマスターに無い馬を含む）の
+        // 5代血統そのもの。全枠が埋まっていることは冒頭で確かめてあるので、
+        // マスターから組んだ血統と同じように通常判定に使える。
+        sireBoard = sliceSireBoard(selected, 0);
       }
 
       if (!sireBoard) {
