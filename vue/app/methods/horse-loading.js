@@ -669,6 +669,7 @@
                 const request = store.get(customHorseId);
                 request.onsuccess = () => {
                   if (request.result) {
+                    window.Dabimas.logic.horses.fillMissingSon(request.result);
                     this.$set(
                       this.customHorseDetails,
                       customHorseId,
@@ -793,6 +794,7 @@
               return storage.loadCustomHorses(db).then((records) => {
                 const customRecords = records || [];
                 customRecords.forEach((record) => {
+                  window.Dabimas.logic.horses.fillMissingSon(record);
                   this.$set(this.customHorseDetails, record.id, record);
                 });
 

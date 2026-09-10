@@ -44,11 +44,30 @@
           const snapshotHash = planLogic.createSnapshotHash(this.selected);
 
           try {
-            const detected = planLogic.detectPlan(this.selected);
+            const detected = planLogic.detectPlan(
+              this.selected,
+              this.identityResolver
+            );
             const horsesByKey = new Map();
             const maresByName = new Map();
+            const maresByRef = new Map();
+            const refKey = (ref) =>
+              this.identityResolver?.identityKey(ref) || "";
 
             const targets = detected.steps.map((step) => this.selected[step.sireIndex]);
+            if (detected.baseMareRef?.kind === "custom") {
+              targets.push(
+                this.customHorseDetails[detected.baseMareRef.id] || null
+              );
+            } else if (detected.baseMareRef?.kind === "master") {
+              targets.push(
+                this.horsesBase.find(
+                  (horse) =>
+                    horse.nodeId === detected.baseMareRef.nodeId &&
+                    horse.sex === "1"
+                ) || null
+              );
+            }
             if (detected.baseMareName) {
               targets.push(
                 this.findSummaryHorse({ name: detected.baseMareName, sex: "1" })
@@ -70,6 +89,10 @@
                     horsesByKey.set(this.planHorseKey(entry), detail);
                     if (detail.sex === "1") {
                       maresByName.set(detail.name, detail);
+                      const detailRef = detail.identityRef || entry.identityRef;
+                      if (detailRef) {
+                        maresByRef.set(refKey(detailRef), detail);
+                      }
                     }
                   }
                 } catch (error) {
@@ -95,6 +118,7 @@
               resolveHorse: (entry) =>
                 entry ? horsesByKey.get(this.planHorseKey(entry)) || null : null,
               resolveMare: (name) => maresByName.get(name) || null,
+              resolveMareByRef: (ref) => maresByRef.get(refKey(ref)) || null,
             });
 
             if (result.status !== "completed") {
