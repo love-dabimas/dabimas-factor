@@ -833,7 +833,7 @@
               }
               occurrences.push({
                 ...horse,
-                ref: cellRef(horse),
+                ref: boardRefsFor(sideOffset).refByPath.get(path) ?? cellRef(horse),
                 // 男系15枠は位置で牡と決まる。セルの値には依存しない。
                 sexKind: "male",
                 side,

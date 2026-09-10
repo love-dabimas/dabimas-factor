@@ -3,7 +3,14 @@
   window.Dabimas.logic = window.Dabimas.logic || {};
   window.Dabimas.logic.horses = window.Dabimas.logic.horses || {};
 
-  var DESCENDANT_CELL_IDS = [0, 1, 2, 4, 5, 3, 6, 7, 17, 18, 20, 21, 19, 22, 23];
+  var DESCENDANT_SOURCES = [
+    [0, "sire", ""], [1, "sire", "F"], [2, "sire", "FF"],
+    [4, "sire", "FFF"], [5, "sire", "FMF"], [3, "sire", "MF"],
+    [6, "sire", "MFF"], [7, "sire", "MMF"], [17, "dam", "F"],
+    [18, "dam", "FF"], [20, "dam", "FFF"], [21, "dam", "FMF"],
+    [19, "dam", "MF"], [22, "dam", "MFF"], [23, "dam", "MMF"],
+  ];
+  var DESCENDANT_CELL_IDS = DESCENDANT_SOURCES.map(function (source) { return source[0]; });
   var MARE_SOURCE_IDS = [
     ["dam", null], ["sire", 0], ["dam", 0], ["sire", 1], ["sire", 2],
     ["dam", 1], ["dam", 2], ["sire", 3], ["sire", 4], ["sire", 5],
@@ -125,6 +132,17 @@
         var resolved = source[1] === null ? damBoard.rootRef
           : (source[0] === "sire" ? sireBoard : damBoard).mareRefs[source[1]];
         return usable(ref) ?? usable(resolved) ?? { kind: "unknown" };
+      });
+      descendants.forEach(function (descendant, index) {
+        if (descendant.identityRef?.kind !== "unknown") {
+          return;
+        }
+        var source = DESCENDANT_SOURCES[index];
+        var board = source[1] === "sire" ? sireBoard : damBoard;
+        var resolved = usable(board.refByPath.get(source[2]));
+        if (resolved) {
+          descendant.identityRef = resolved;
+        }
       });
     }
     var id = "ch_" + window.Dabimas.logic.pedigree.generateUuid();
