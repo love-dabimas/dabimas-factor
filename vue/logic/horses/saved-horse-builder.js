@@ -11,6 +11,7 @@
     [19, "dam", "MF"], [22, "dam", "MFF"], [23, "dam", "MMF"],
   ];
   var DESCENDANT_CELL_IDS = DESCENDANT_SOURCES.map(function (source) { return source[0]; });
+  var DESCENDANT_SLOTS = window.Dabimas.logic.pedigree.DESCENDANT_SLOTS;
   var MARE_SOURCE_IDS = [
     ["dam", null], ["sire", 0], ["dam", 0], ["sire", 1], ["sire", 2],
     ["dam", 1], ["dam", 2], ["sire", 3], ["sire", 4], ["sire", 5],
@@ -36,6 +37,37 @@
       }
     }
     return picked;
+  }
+
+  // 旧レコードで欠落した子系統を、直系父方の最初の値から補う。
+  function fillMissingSon(record) {
+    if (!record || !Array.isArray(record.descendants)) {
+      return record;
+    }
+    var bySlot = new Map();
+    for (var i = 0; i < DESCENDANT_SLOTS.length; i += 1) {
+      if (record.descendants[i]) {
+        bySlot.set(DESCENDANT_SLOTS[i], record.descendants[i]);
+      }
+    }
+    function sonFromSireLine(slot) {
+      for (var current = slot; current < 16; current *= 2) {
+        var ancestor = bySlot.get(current);
+        if (ancestor && ancestor.son) {
+          return ancestor.son;
+        }
+      }
+      return "";
+    }
+    if (!record.son) {
+      record.son = sonFromSireLine(1);
+    }
+    bySlot.forEach(function (descendant, slot) {
+      if (!descendant.son) {
+        descendant.son = sonFromSireLine(slot);
+      }
+    });
+    return record;
   }
 
   // ownFactorsInput: 保存する馬「本人」に付与する因子名の配列（最大2つ）。
@@ -169,6 +201,7 @@
   }
 
   window.Dabimas.logic.horses.buildSavedHorseRecord = buildSavedHorseRecord;
+  window.Dabimas.logic.horses.fillMissingSon = fillMissingSon;
   window.Dabimas.logic.horses.DESCENDANT_CELL_IDS = DESCENDANT_CELL_IDS;
   window.Dabimas.logic.horses.MARE_SOURCE_IDS = MARE_SOURCE_IDS;
 })(window);

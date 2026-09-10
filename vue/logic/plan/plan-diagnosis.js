@@ -77,10 +77,29 @@
     return MAX_BASE_DEPTH;
   }
 
+  function mareRefAtDepth(selected, depth) {
+    if (depth === 0) {
+      return selected[ROWS_PER_SIDE]?.identityRef || null;
+    }
+    return selected[ROWS_PER_SIDE + maternalSireCell(depth)]?.placeholderMareRef || null;
+  }
+
   // 計画の工程一覧を作る。工程の種牡馬は「一つ浅い牝馬の父」セルで、
   // 最終工程だけは種牡馬側のセル 0（画面左側の種牡馬）になる。
-  function detectPlan(selected) {
+  function detectPlan(selected, resolver) {
     var baseDepth = detectBaseDepth(selected);
+    var baseMareRef = mareRefAtDepth(selected, baseDepth);
+    while (
+      baseDepth < MAX_BASE_DEPTH &&
+      resolver &&
+      resolver.parentsOf &&
+      baseMareRef &&
+      baseMareRef.kind === "custom"
+    ) {
+      baseDepth += 1;
+      var parents = resolver.parentsOf(baseMareRef);
+      baseMareRef = parents ? parents.mother : null;
+    }
     var baseCellIndex =
       baseDepth > 0
         ? ROWS_PER_SIDE + maternalSireCell(baseDepth)
@@ -101,6 +120,7 @@
       baseDepth: baseDepth,
       baseCellIndex: baseCellIndex,
       baseMareName: readMareNameFromCell(selected[baseCellIndex]),
+      baseMareRef: baseDepth > 0 ? baseMareRef : null,
       planDepth: steps.length,
       steps: steps,
     };
@@ -345,7 +365,7 @@
       return { status: "incomplete", planDepth: 0, steps: [], summary: null };
     }
 
-    var plan = detectPlan(selected);
+    var plan = detectPlan(selected, input.resolver);
     var steps = [];
     var mareBoard = null;
     var mareLabel = plan.baseMareName || "基礎繁殖牝馬";
@@ -369,14 +389,19 @@
         "工程" + stepNo + "産駒（仮想繁殖牝馬）");
     }
 
-    if (plan.baseMareName && input.resolveMare) {
-      var baseMareRecord = input.resolveMare(plan.baseMareName);
-      if (baseMareRecord) {
-        try {
-          mareBoard = expandHorseBoard(baseMareRecord, input.brosData);
-        } catch (error) {
-          mareBoard = null;
-        }
+    var baseMareRecord = plan.baseMareRef && input.resolveMareByRef
+      ? input.resolveMareByRef(plan.baseMareRef)
+      : null;
+    if (!baseMareRecord && plan.baseMareName && input.resolveMare) {
+      baseMareRecord = input.resolveMare(plan.baseMareName);
+    }
+    if (baseMareRecord) {
+      mareLabel = baseMareRecord.name || mareLabel;
+      plan.baseMareName = baseMareRecord.name || plan.baseMareName;
+      try {
+        mareBoard = expandHorseBoard(baseMareRecord, input.brosData);
+      } catch (error) {
+        mareBoard = null;
       }
     }
     if (!mareBoard) {

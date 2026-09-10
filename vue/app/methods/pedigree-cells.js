@@ -392,6 +392,7 @@
                 const broodmareData = {
                   name: "ワタシノヒンバ",
                   subName: "",
+                  son: son,
                   disabled: true,
                   factors: [...emptyFactors],
                   fullBrothers: [...emptyFullSiblings],
@@ -414,6 +415,7 @@
                   name: handMadeName,
                   subName: "",
                   parentLine: parentLine,
+                  son: son,
                   factors: [...emptyFactors],
                   fullBrothers: [...emptyFullSiblings],
                   fullSisters: [...emptyFullSiblings],
