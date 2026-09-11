@@ -807,3 +807,72 @@
 .plan-diagnosis-step--blocked .plan-diagnosis-step-result {
   color: #ef6c00;
 }
+.dabimas-home-section-title {
+  margin: 16px 12px 6px;
+  color: #5b4b8a;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.dabimas-musume-tile-wrap { margin: 0 12px; }
+.dabimas-musume-tile {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border-radius: 12px !important;
+  cursor: pointer;
+}
+.dabimas-musume-tile__text { flex: 1 1 auto; min-width: 0; }
+.dabimas-musume-tile__title { font-size: 15px; font-weight: 600; color: #33324a; }
+.dabimas-musume-tile__sub { font-size: 12px; color: #757575; margin-top: 2px; }
+.dabimas-home .dabimas-category-grid { padding: 4px 12px 12px; }
+.exp-mobile-layout .dabimas-home {
+  max-height: var(--exp-mobile-app-height);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.musume-screen {
+  display: flex;
+  flex-direction: column;
+  height: var(--exp-mobile-app-height, 100svh);
+  min-height: 100svh;
+  background: white;
+}
+.musume-frame-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px;
+  border-bottom: 1px solid #ddd;
+  background: white;
+}
+.musume-frame-back {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  font-weight: bold;
+}
+.musume-frame-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: bold; }
+.musume-frame-title small { margin-left: 6px; color: #666; font-weight: normal; }
+.musume-iframe { display: block; width: 100%; border: none; background: #f8fafc; }
+.musume-iframe--fill { flex: 1 1 auto; height: 0; min-height: 0; }
+.musume-sheet { overflow: hidden; border-radius: 14px 14px 0 0 !important; }
+.musume-sheet-grip { width: 40px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: #ccc; }
+.musume-iframe--sheet { height: calc(90svh - 61px); }
+.exp-mobile-picker-action--musume { background: #1e6bd6; color: white; }
+.exp-mobile-fav-only-row { display: flex; justify-content: flex-end; }
+.exp-mobile-fav-only-chip { min-height: 34px; padding: 0 12px; border: 1px solid #cfd8e3; border-radius: 999px; background: white; color: #374151; font-size: 13px; }
+.exp-mobile-fav-only-chip.is-on { border-color: #e0245e; background: #fff0f5; color: #e0245e; font-weight: bold; }
+.exp-fav-only-item .v-list-item__title { font-size: 13px; color: #374151; }
+.exp-fav-only-item.is-on .v-list-item__title,
+.exp-fav-only-item.is-on .exp-fav-only-icon { color: #e0245e; font-weight: bold; }

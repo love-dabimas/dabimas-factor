@@ -99,6 +99,7 @@
               <div class="exp-mobile-picker-subtitle">{{ mobileDialogContextLabel }}</div>
             </div>
             <div class="exp-mobile-picker-actions">
+              <button type="button" class="exp-mobile-picker-action exp-mobile-picker-action--musume" @click="openMusumeSearch">条件で探す</button>
               <button
                 v-if="selected[index]"
                 type="button"
@@ -113,6 +114,12 @@
             </div>
           </div>
           <div class="exp-mobile-picker-body">
+            <div class="exp-mobile-fav-only-row">
+              <button type="button" class="exp-mobile-fav-only-chip"
+                :class="{ 'is-on': favoritesOnly }" :aria-pressed="favoritesOnly ? 'true' : 'false'"
+                @click="toggleFavoritesOnly"
+              ><i :class="['mdi', favoritesOnly ? 'mdi-heart' : 'mdi-heart-outline']"></i> お気に入りのみ（{{ favoriteCount }}）</button>
+            </div>
             <label
               class="exp-mobile-search-label"
               :for="mobileInputId"
@@ -190,6 +197,8 @@
       </v-dialog>
     `,
     computed: {
+      favoritesOnly() { return window.Dabimas.favorites.state.only; },
+      favoriteCount() { return window.Dabimas.favorites.state.count; },
       mobileDialogTitle() {
         if (this.sex === 1 && this.index % 16 === 0) {
           return "繁殖牝馬を選択";
@@ -216,14 +225,20 @@
         return `exp-mobile-search-${this.index}`;
       },
       filteredMobileLists() {
+        const favorites = window.Dabimas.favorites;
+        const only = favorites.state.only;
+        void favorites.state.version;
         const source = Array.isArray(this.lists) ? this.lists : [];
         const normalizedQuery = this.normalizeSearchText(this.mobileQuery);
-        const limit = normalizedQuery ? 80 : 60;
+        const limit = only ? Infinity : (normalizedQuery ? 80 : 60);
         const filtered = [];
 
         for (let i = 0; i < source.length; i++) {
           const horse = source[i];
           if (!horse || horse.disabled) {
+            continue;
+          }
+          if (only && !favorites.passesFavoritesOnly(horse)) {
             continue;
           }
           if (
@@ -242,6 +257,13 @@
       },
     },
     methods: {
+      openMusumeSearch() {
+        this.$root.$emit("musume:open-search", { index: this.index, label: this.mobileDialogContextLabel, select: this.selectMobileHorse });
+      },
+      toggleFavoritesOnly() {
+        const favorites = window.Dabimas.favorites;
+        return favorites.setOnly(!favorites.state.only);
+      },
       normalizeSearchText(text) {
         return window.Dabimas.logic.horses.normalizeSearchText(text);
       },

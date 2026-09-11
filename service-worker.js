@@ -1,5 +1,5 @@
 // cache name, cache files
-var CACHE_NAME = 'dabimas-factor-v20260910-04';
+var CACHE_NAME = 'dabimas-factor-v20260911-02';
 var BASE_PATH = self.location.pathname.replace(/\/service-worker\.js$/, '/');
 var APP_SHELL_URL = BASE_PATH + 'index.html';
 // プリキャッシュは「実行時に実際に使われるもの」だけに絞る。
@@ -78,12 +78,16 @@ var urlsToCache = [
   BASE_PATH + 'vue/logic/storage/app-meta-repository.js',
   BASE_PATH + 'vue/logic/workspace-sync.js',
   BASE_PATH + 'vue/logic/storage/edit-stallion-repository.js',
+  BASE_PATH + 'vue/logic/storage/favorite-repository.js',
   BASE_PATH + 'vue/components/settings/edit-stallion-manager.js',
   BASE_PATH + 'vue/components/settings/sire-line-color-manager.js',
   BASE_PATH + 'vue/components/settings/settings-page.js',
   BASE_PATH + 'vue/components/home/category-dialog.js',
   BASE_PATH + 'vue/components/home/home-page.js',
   BASE_PATH + 'vue/components/workspace/workspace-tab-bar.js',
+  BASE_PATH + 'vue/logic/musume-link.js',
+  BASE_PATH + 'vue/logic/favorites.js',
+  BASE_PATH + 'vue/components/musume/musume-host.js',
   BASE_PATH + 'vue/app/app-state.js',
   BASE_PATH + 'vue/app/app-computed.js',
   BASE_PATH + 'vue/app/app-lifecycle.js',
@@ -174,6 +178,11 @@ self.addEventListener('install', function (event) {
 // online: network first / offline: cache only
 self.addEventListener('fetch', function (event) {
   if (!isSameOriginGetRequest(event.request)) {
+    return;
+  }
+  // ダビ娘は自前の SW を持つ別アプリ。ローカルの scope / でも介入せず、
+  // iframe の navigation で本アプリの index.html キャッシュを上書きさせない。
+  if (new URL(event.request.url).pathname.startsWith('/dabimas-data/')) {
     return;
   }
 

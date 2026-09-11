@@ -327,6 +327,10 @@
             return loadCategoryIntoState(activeCategory).then(function () {
               return "category";
             });
+          }).then(function (screen) {
+            return appMetaRepo.get("lastScreen").then(function (lastScreen) {
+              return lastScreen === "musume" ? "musume" : screen;
+            });
           });
         });
       })
@@ -380,6 +384,13 @@
         setRootScreen("home");
         return loadHomeState();
       });
+  }
+
+  function rememberScreen(screen) {
+    if (state.dbUnavailable || !["home", "category", "settings", "musume"].includes(screen)) return;
+    return appMetaRepo.set("lastScreen", screen).catch(function (error) {
+      console.warn("lastScreen save failed", error);
+    });
   }
 
   // ===== カテゴリ CRUD（統合版仕様 §10）=====
@@ -478,6 +489,7 @@
     switchToWorkspace: switchToWorkspace,
     switchToCategory: switchToCategory,
     goHome: goHome,
+    rememberScreen: rememberScreen,
     addCategory: addCategory,
     updateCategory: updateCategory,
     reorderCategories: reorderCategories,

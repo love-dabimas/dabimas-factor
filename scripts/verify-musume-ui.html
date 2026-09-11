@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><title>Musume Phase B verification</title>
+<style>html,body{margin:0}iframe#app{width:390px;height:844px;border:0}#result{white-space:pre-wrap}</style></head>
+<body><iframe id="app"></iframe><pre id="result">PENDING</pre>
+<script>
+(async () => {
+  const result = { status: 'RUNNING', checks: [], errors: [] };
+  const output = () => document.querySelector('#result').textContent = JSON.stringify(result);
+  const heartbeat = setInterval(output, 100);
+  const frame = document.querySelector('#app');
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const check = (ok, message) => { if (!ok) throw Error(message); };
+  async function until(test, label, timeout = 20000) {
+    for (let i = 0; i < timeout / 100; i++) { if (test()) return; await wait(100); }
+    throw Error('timeout: ' + label);
+  }
+  let app, win, D, host;
+  const all = (node, tag) => [ ...(node.$options._componentTag === tag ? [node] : []), ...node.$children.flatMap(child => all(child, tag)) ];
+  const picker = index => all(app, 'mobile-horse-picker').find(vm => vm.index === index);
+  async function boot() {
+    const old = frame.contentWindow.__debugAppInstance;
+    frame.src = '../index.html?verify=' + Date.now();
+    await until(() => frame.contentWindow.__debugAppInstance && frame.contentWindow.__debugAppInstance !== old && frame.contentWindow.__debugAppInstance.horsesBase?.length, 'app boot', 40000);
+    win = frame.contentWindow; app = win.__debugAppInstance; D = win.Dabimas;
+    host = all(app, 'musume-host')[0];
+    await until(() => app.horseSummaryLoaded && app.inbreedExceptions?.length, 'horse data');
+    win.addEventListener('error', event => result.errors.push(event.message));
+    win.addEventListener('unhandledrejection', event => result.errors.push(String(event.reason)));
+    await app.$nextTick();
+  }
+  async function readyMusume(which) {
+    await until(() => {
+      const iframe=host.$refs[which];
+      return iframe && iframe.contentWindow.location.href===iframe.src &&
+        iframe.contentDocument?.querySelector('.keyword-block .text-input') &&
+        !iframe.contentDocument.querySelector('.search-overlay--startup');
+    }, which + ' ready', 40000);
+    return host.$refs[which];
+  }
+  async function search(musume, value) {
+    const input = musume.contentDocument.querySelector('.keyword-block .text-input');
+    Object.getOwnPropertyDescriptor(musume.contentWindow.HTMLInputElement.prototype, 'value').set.call(input, value);
+    input.dispatchEvent(new musume.contentWindow.Event('input', { bubbles: true }));
+    await wait(700);
+  }
+  const cards = (musume, name) => [...musume.contentDocument.querySelectorAll('.result-card')].filter(card => !name || card.textContent.includes(name));
+  const send = (musume, message) => musume.contentWindow.Function('m', 'parent.postMessage(m, location.origin)')(message);
+  async function openPicker(index) {
+    app.currentScreen = 'category'; app.dispCategory = 0;
+    await app.$nextTick();
+    const vm = picker(index); check(vm, 'picker missing ' + index);
+    vm.openMobileEditor(); await wait(100);
+    vm.openMusumeSearch(); await app.$nextTick();
+    return vm;
+  }
+  async function test(number, fn) {
+    result.stage = number; output();
+    try { await fn(); result.checks.push({ number, status: 'OK' }); }
+    catch (error) { result.checks.push({ number, status: 'FAILED', message: String(error.stack || error) }); throw error; }
+  }
+  try {
+    await Promise.all((await navigator.serviceWorker.getRegistrations()).map(reg => reg.unregister()));
+    await Promise.all((await caches.keys()).map(name => caches.delete(name)));
+    if (navigator.serviceWorker.controller) { location.replace(location.pathname + '?clean=' + Date.now()); return; }
+    await new Promise((resolve,reject) => {
+      const request = indexedDB.deleteDatabase('dabifaku_unified');
+      request.onsuccess = resolve; request.onerror = () => reject(request.error); request.onblocked = () => reject(Error('test DB blocked'));
+    });
+    localStorage.clear();
+    await boot();
+    let categoryId, screen;
+    await test(11, async () => {
+      await D.workspaceSync.goHome(); await app.$nextTick();
+      check(D.workspaceSync.state.categories.length === 0, 'fresh categories');
+      const doc = frame.contentDocument;
+      check([...doc.querySelectorAll('.dabimas-home-section-title')].map(el=>el.textContent).join(',') === '馬を探す,カテゴリ', 'headings');
+      check(doc.querySelector('.dabimas-musume-tile'), 'empty home tile');
+      const created = await D.workspaceSync.addCategory({name:'検証カテゴリ',iconKey:'mdi-folder'}); categoryId = created.category.id;
+      await D.workspaceSync.goHome(); await app.$nextTick();
+      for (const selector of ['.dabimas-musume-tile','.dabimas-category-card']) check(Math.abs(doc.querySelector(selector).getBoundingClientRect().left-12)<=1, 'left alignment '+selector);
+      const home = all(app,'home-page')[0], count = doc.querySelector('.dabimas-musume-tile').querySelectorAll('button').length;
+      home.editMode = true; await app.$nextTick();
+      check(doc.querySelector('.dabimas-musume-tile').querySelectorAll('button').length===count,'tile editing buttons');
+    });
+    await test(12, async () => {
+      frame.contentDocument.querySelector('.dabimas-musume-tile').click(); await app.$nextTick();
+      check(app.currentScreen==='musume','tile navigation'); screen = await readyMusume('screenFrame');
+      check(screen.src.endsWith('/dabimas-data/dist/?embed=1'),'embed URL');
+      frame.contentDocument.querySelector('.musume-screen .musume-frame-back').click();
+      await until(()=>app.currentScreen==='home','home navigation');
+    });
+    await test(13, async () => {
+      app.currentScreen = 'musume'; await app.$nextTick();
+      await until(()=>false || host.screenOpened,'screen open');
+      await wait(200); await boot(); check(app.currentScreen==='musume','restore musume');
+      check(D.workspaceSync.state.activeCategoryId===categoryId,'category restored behind musume');
+      await host.leaveScreen(); await wait(200); await boot(); check(app.currentScreen!=='musume','leave musume persisted');
+      app.currentScreen='musume'; await app.$nextTick(); screen=await readyMusume('screenFrame');
+    });
+    await test(14, async () => {
+      await search(screen,'カズタカイザー');
+      // ローカルビルドには末尾「？」の馬もあるため、指示書の同名2頭を馬名で特定する。
+      const named = () => cards(screen).filter(card=>card.querySelector('.result-card__horse-name')?.textContent==='カズタカイザー');
+      await until(()=>named().length===2,'kazutaka cards');
+      await until(()=>named().filter(el=>el.querySelector('.result-card__favorite')).length===1,'supported hearts');
+      check(host.supportedKeys.length===2914,'supported key count '+host.supportedKeys.length);
+    });
+    await test(15, async () => {
+      await openPicker(0); const sheet = await readyMusume('sheetFrame'); await search(sheet,'カズタカイザー');
+      const before = D.favorites.state.count;
+      screen.contentDocument.querySelector('.result-card__favorite').click();
+      await until(()=>D.favorites.state.count===before+1,'favorite toggle');
+      await until(()=>sheet.contentDocument.querySelector('.result-card__favorite.is-on'),'sheet heart sync');
+      check((await D.repositories.favorites.getAll()).some(row=>row.id==='s1074824357'),'favorite DB');
+      await wait(200); await boot(); check(D.favorites.has('s1074824357'),'favorite restored');
+      app.currentScreen='musume'; await app.$nextTick(); screen=await readyMusume('screenFrame');
+    });
+    await test(16, async () => {
+      await search(screen,''); screen.contentDocument.querySelector('.favorites-only-toggle').click();
+      await until(()=>D.favorites.state.only,'only from musume');
+      await until(()=>cards(screen).length===D.favorites.state.count,'favorite result count');
+    });
+    await test(17, async () => {
+      app.currentScreen='category'; app.dispCategory=0; await app.$nextTick();
+      for(let index=0;index<32;index++) {
+        const vm=picker(index); check(vm,'picker '+index); vm.openMobileEditor(); await app.$nextTick();
+        // v-dialog detaches its content into v-app; use its content ref.
+        const content=vm.$refs.mobileSearchInput.closest('.exp-mobile-picker-dialog');
+        check(content.querySelector('.exp-mobile-picker-action--musume')?.textContent==='条件で探す','search action '+index);
+        check(content.querySelector('.exp-mobile-fav-only-chip')?.textContent.includes('お気に入りのみ'),'favorite chip '+index);
+        vm.closeMobileEditor(); await app.$nextTick();
+      }
+      await D.favorites.setOnly(false);
+    });
+    await test(18, async () => {
+      for (const [index,sex] of [[0,'0'],[16,'1'],[3,'any']]) {
+        await openPicker(index); const sheet=await readyMusume('sheetFrame');
+        check(sheet.src.endsWith('sex='+sex),'sex '+index); host.sheetOpen=false; picker(index).closeMobileEditor();
+      }
+      const vm=await openPicker(0), sheet=await readyMusume('sheetFrame'); await search(sheet,'アイアンリージ');
+      await until(()=>cards(sheet,'アイアンリージ').some(card=>card.querySelector('.result-card__favorite')),'supported iron liege');
+      let selectedMessage;
+      const listener=event=>{if(event.data?.type==='dabimas:select')selectedMessage=event.data;};win.addEventListener('message',listener);
+      cards(sheet,'アイアンリージ').find(card=>card.querySelector('.result-card__favorite')).click(); await wait(100);
+      sheet.contentDocument.querySelector('.picker-bar__confirm').click();
+      await until(()=>selectedMessage && app.selected[0]?.name===app.findSummaryHorse({id:'s'+selectedMessage.horseId}).name && app.selected.slice(1,16).every(h=>h?.name),'selection and ancestors');
+      check(!host.sheetOpen && !vm.mobileDialogVisible,'both dialogs closed');win.removeEventListener('message',listener);
+    });
+    await test(19, async () => {
+      const before=JSON.stringify(app.selected);
+      await openPicker(16); let sheet=await readyMusume('sheetFrame');
+      const message={type:'dabimas:select',v:1,horseId:'1074824357',gender:'0',name:'カズタカイザー'};
+      send(sheet,message); await wait(200);
+      check(host.snackbar.text==='このセルには繁殖牝馬しか入りません' && host.sheetOpen,'wrong sex');
+      host.sheetOpen=false; picker(16).closeMobileEditor(); await openPicker(0); sheet=await readyMusume('sheetFrame');
+      send(sheet,{...message,horseId:'0314537268'}); await wait(200);
+      check(host.snackbar.text==='『カズタカイザー』はダビふぁく未対応の馬です' && host.sheetOpen,'unsupported');
+      win.postMessage(message,location.origin); send(sheet,{...message,v:2}); await wait(200);
+      check(JSON.stringify(app.selected)===before,'invalid messages changed selection');
+    });
+    await test(20, async () => {
+      const vm=picker(0), sheet=await readyMusume('sheetFrame');
+      vm.mobileQueryInput='入力途中';vm.mobileQuery='入力途中';await app.$nextTick();
+      await search(sheet,'アイアンリージ'); cards(sheet,'アイアンリージ').find(card=>card.querySelector('.result-card__favorite')).click();
+      await until(()=>sheet.contentDocument.querySelector('.result-card.is-picked'),'picked');
+      const doc=sheet.contentDocument;
+      frame.contentDocument.querySelector('.musume-sheet .musume-frame-back').click();await wait(100);
+      check(vm.mobileDialogVisible && vm.$refs.mobileSearchInput.value==='入力途中','return keeps dialog input');
+      vm.openMusumeSearch();await wait(100);
+      check(host.$refs.sheetFrame.contentDocument===doc && doc.querySelector('.result-card.is-picked'),'same cell retains iframe and selection');
+      host.sheetOpen=false;vm.closeMobileEditor(); await openPicker(2); await wait(200);
+      check(host.$refs.sheetFrame.contentDocument===doc && !doc.querySelector('.result-card.is-picked'),'different cell resets pick');
+      host.sheetOpen=false;picker(2).closeMobileEditor();
+    });
+    await test(21, async () => {
+      frame.style.width='1280px';await wait(300); await D.favorites.setOnly(false);await app.$nextTick();
+      const pc=all(app,'desktop-horse-autocomplete').find(vm=>vm.index===0);check(pc,'desktop component');
+      const input=pc.$el.querySelector('input');input.focus();input.click();await wait(200);
+      const auto=pc.$children[0];check(auto.isMenuActive,'desktop menu open');
+      const row=frame.contentDocument.querySelector('.menuable__content__active .exp-fav-only-item');check(row,'desktop prepend');
+      row.dispatchEvent(new win.MouseEvent('mousedown',{bubbles:true,cancelable:true}));row.click();await app.$nextTick();
+      check(auto.isMenuActive && pc.favoritesOnly,'menu remains open');
+      const key=D.logic.horses.getHorseKey;
+      check(pc.candidateItems.every(h=>D.favorites.passesFavoritesOnly(h)||key(h)===key(pc.selected[0])),'desktop candidates');
+      check(input.value.includes(app.selected[0].name),'selected label remains');
+      auto.isMenuActive=false;frame.style.width='390px';await wait(300);
+    });
+    await test(22, async () => {
+      await D.favorites.setOnly(false);app.currentScreen='musume';await app.$nextTick();screen=await readyMusume('screenFrame');
+      await until(()=>!screen.contentDocument.querySelector('.favorites-only-toggle.is-on'),'only off');
+      screen.contentDocument.querySelector('.favorites-only-toggle').click();await until(()=>D.favorites.state.only,'only sync');
+      app.currentScreen='category';await app.$nextTick();const vm=picker(0);vm.openMobileEditor();await app.$nextTick();
+      check(vm.$refs.mobileSearchInput.closest('.exp-mobile-picker-dialog').querySelector('.exp-mobile-fav-only-chip.is-on'),'mobile chip synced');
+      check(D.components.DesktopHorseAutocomplete.computed.favoritesOnly.call({}),'PC computed sync');
+      check(await D.repositories.appMeta.get('favoritesOnly')===true,'only DB');
+      vm.closeMobileEditor();await boot();check(D.favorites.state.only,'only restored');
+      app.currentScreen='musume';await app.$nextTick();screen=await readyMusume('screenFrame');
+      app.currentScreen='category';app.dispCategory=0;await app.$nextTick();picker(0).openMobileEditor();await app.$nextTick();
+      picker(0).$refs.mobileSearchInput.closest('.exp-mobile-picker-dialog').querySelector('.exp-mobile-fav-only-chip').click();
+      await until(()=>!screen.contentDocument.querySelector('.favorites-only-toggle.is-on'),'chip to musume sync');picker(0).closeMobileEditor();
+    });
+    await test(23, async () => {
+      frame.style.height='700px';
+      // 既存の viewport 計算は縮小前の body 高を保持するため、この画面サイズで起動する。
+      await boot();
+      for(let i=D.workspaceSync.state.categories.length;i<12;i++)await D.repositories.categories.create({name:'カテゴリ '+i,iconKey:'mdi-folder'});
+      await D.workspaceSync.goHome();await wait(300);
+      const home=frame.contentDocument.querySelector('.dabimas-home');home.scrollTop=home.scrollHeight;await wait(100);
+      const last=[...frame.contentDocument.querySelectorAll('.dabimas-category-card')].pop();
+      check(home.scrollTop>0 && last.getBoundingClientRect().bottom<=701,'last category reachable '+JSON.stringify({top:home.scrollTop,height:home.clientHeight,scroll:home.scrollHeight,bottom:last.getBoundingClientRect().bottom,appHeight:win.getComputedStyle(home).maxHeight,classes:app.$el.className}));
+    });
+    await test(24, async () => {
+      await until(()=>win.navigator.serviceWorker.controller,'SW controller',30000);
+      await openPicker(16);await readyMusume('sheetFrame');
+      const names=(await caches.keys()).filter(name=>name.startsWith('dabimas-factor-'));check(names.length>0,'app cache');
+      for(const name of names) {
+        const cache=await caches.open(name);const response=await cache.match(new URL('../index.html',location.href).href);
+        check(response && (await response.text()).includes('<musume-host>'),'app shell intact '+name);
+      }
+    });
+    check(result.errors.length===0,'browser errors: '+result.errors.join(';'));
+    result.status='OK';
+  } catch(error) {
+    result.status='FAILED';result.message=String(error.stack||error);
+    result.frames = ['screenFrame','sheetFrame'].map(ref => {
+      const doc=host?.$refs[ref]?.contentDocument;
+      return {ref, names: [...(doc?.querySelectorAll('.result-card__horse-name')||[])].map(el=>el.textContent), hearts: doc?.querySelectorAll('.result-card__favorite').length, input: doc?.querySelector('.keyword-block .text-input')?.value};
+    });
+  }
+  clearInterval(heartbeat);output();document.body.dataset.status=result.status;
+})();
+</script></body></html>

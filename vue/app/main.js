@@ -1,6 +1,7 @@
 /**
  * このファイルの役割:
  * - root app（new Vue）を実際に生成するエントリポイント。
+ * - お気に入りの読み込みも待つ（失敗しても favorites.load は解決する）。
  * - 実機デバッグ用のグローバルエラーハンドラ（error / unhandledrejection）
  *   を登録し、window.__debugAppInstance.notifyHorseDetailError に
  *   橋渡しする。
@@ -71,7 +72,7 @@
       ? window.Dabimas.workspaceSync.boot()
       : Promise.resolve({ currentScreen: "category" });
 
-  bootPromise.then(function () {
+  Promise.all([bootPromise, window.Dabimas.favorites.load()]).then(function () {
     window.__debugAppInstance = new Vue(window.Dabimas.app.createAppOptions());
   });
 })(window, window.Vue);

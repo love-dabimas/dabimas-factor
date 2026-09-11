@@ -52,7 +52,7 @@
     template: `
       <v-autocomplete
         :value="selected[index]"
-        :items="lists"
+        :items="candidateItems"
         :item-text="getHorseNameText"
         :filter="filterHorse"
         solo
@@ -62,6 +62,17 @@
         @input="handleInput"
         return-object
       >
+        <template v-slot:prepend-item>
+          <v-list-item dense class="exp-fav-only-item" :class="{ 'is-on': favoritesOnly }" @mousedown.prevent @click="toggleFavoritesOnly">
+            <v-list-item-content>
+              <v-list-item-title>
+                <v-icon small class="exp-fav-only-icon">{{ favoritesOnly ? 'mdi-heart' : 'mdi-heart-outline' }}</v-icon>
+                お気に入りのみ（{{ favoriteCount }}）
+              </v-list-item-title>
+            </v-list-item-content>
+          </v-list-item>
+          <v-divider></v-divider>
+        </template>
         <template v-slot:item="data">
           <template >
             <v-list-item-content>
@@ -84,7 +95,25 @@
         </template>
       </v-autocomplete>
     `,
+    computed: {
+      favoritesOnly() { return window.Dabimas.favorites.state.only; },
+      favoriteCount() { return window.Dabimas.favorites.state.count; },
+      candidateItems() {
+        const favorites = window.Dabimas.favorites;
+        const only = favorites.state.only;
+        void favorites.state.version;
+        if (!only) return this.lists;
+        const selected = this.selected[this.index];
+        const getKey = window.Dabimas.logic.horses.getHorseKey;
+        return this.lists.filter(horse => favorites.passesFavoritesOnly(horse) ||
+          (selected && getKey(horse) === getKey(selected)));
+      },
+    },
     methods: {
+      toggleFavoritesOnly() {
+        const favorites = window.Dabimas.favorites;
+        return favorites.setOnly(!favorites.state.only);
+      },
       filterHorse(horse, queryText, itemText) {
         return window.Dabimas.logic.horses.filterHorse(horse, queryText, itemText);
       },

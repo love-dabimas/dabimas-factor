@@ -1,7 +1,8 @@
 /**
  * このファイルの役割:
  * - "dabifaku_unified" の appMeta ストア（key-value、schemaVersion /
- *   migrationDone / lastOpenedCategoryId）への get / set をまとめる
+ *   migrationDone / lastOpenedCategoryId / favoritesOnly（boolean）/
+ *   lastScreen（home / category / settings / musume））への get / set をまとめる
  *   （docs/dabifaku_unified_spec_draft.md §13.5）。
  *
  * このファイルに置かない処理:

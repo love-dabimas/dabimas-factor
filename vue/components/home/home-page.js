@@ -1,5 +1,6 @@
 /**
  * このコンポーネントの役割:
+ * - 馬を探すダビ娘の入口を持つ。
  * - ホーム画面（カテゴリ一覧・空状態・編集モード）を丸ごと担当する
  *   （docs/dabifaku_unified_spec_draft.md §9.2）。
  * - カテゴリ一覧・作業枠数は window.Dabimas.workspaceSync.state から読み取る。
@@ -39,6 +40,9 @@
       },
     },
     methods: {
+      openMusume() {
+        this.$root.currentScreen = "musume";
+      },
       workspaceCount(categoryId) {
         return this.workspaceCounts[categoryId] || 0;
       },
@@ -127,13 +131,26 @@
           </v-btn>
         </v-app-bar>
 
+        <div class="dabimas-home-section-title">馬を探す</div>
+        <div class="dabimas-musume-tile-wrap">
+          <v-card outlined ripple class="dabimas-musume-tile" @click="openMusume">
+            <v-icon size="28" color="primary">mdi-magnify</v-icon>
+            <div class="dabimas-musume-tile__text">
+              <div class="dabimas-musume-tile__title">ダビ娘</div>
+              <div class="dabimas-musume-tile__sub">馬を探す・お気に入りを付ける</div>
+            </div>
+            <v-icon color="grey">mdi-chevron-right</v-icon>
+          </v-card>
+        </div>
+        <div class="dabimas-home-section-title">カテゴリ</div>
+
         <div v-if="categories.length === 0" class="dabimas-home-empty">
           <v-icon size="48" color="grey">mdi-folder-open-outline</v-icon>
           <p>まだカテゴリがありません</p>
           <v-btn color="primary" rounded @click="openAddDialog">＋ カテゴリを追加</v-btn>
         </div>
 
-        <v-container v-else fluid>
+        <v-container v-else fluid class="dabimas-category-grid">
           <v-row dense>
             <v-col
               v-for="(category, index) in categories"

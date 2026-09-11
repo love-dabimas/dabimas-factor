@@ -2,7 +2,7 @@
  * このファイルの役割:
  * - 統合版（カテゴリ・作業枠）専用の IndexedDB "dabifaku_unified" の
  *   open / onupgradeneeded を1箇所にまとめる（categories / workspaces /
- *   appMeta / editStallions の4ストア、docs/dabifaku_unified_spec_draft.md §13）。
+ *   appMeta / editStallions / favorites の5ストア）。
  * - フォールバック付き UUID v4 生成（generateUuid）を提供する。
  *
  * このファイルに置かない処理:
@@ -23,11 +23,12 @@
   window.Dabimas.logic.storage = window.Dabimas.logic.storage || {};
 
   var DB_NAME = "dabifaku_unified";
-  var DB_VERSION = 2;
+  var DB_VERSION = 3;
   var CATEGORY_STORE_NAME = "categories";
   var WORKSPACE_STORE_NAME = "workspaces";
   var APP_META_STORE_NAME = "appMeta";
   var EDIT_STALLION_STORE_NAME = "editStallions";
+  var FAVORITE_STORE_NAME = "favorites";
 
   // crypto.randomUUID() は secure context（HTTPS / localhost）でしか使えない。
   // LAN IPへの素のHTTPアクセス（実機テスト等）では crypto.randomUUID が
@@ -128,6 +129,10 @@
           db.createObjectStore(APP_META_STORE_NAME, { keyPath: "key" });
         }
 
+        if (!db.objectStoreNames.contains(FAVORITE_STORE_NAME)) {
+          db.createObjectStore(FAVORITE_STORE_NAME, { keyPath: "id" });
+        }
+
         if (!db.objectStoreNames.contains(EDIT_STALLION_STORE_NAME)) {
           var editStallionStore = db.createObjectStore(
             EDIT_STALLION_STORE_NAME,
@@ -153,6 +158,7 @@
     WORKSPACE_STORE_NAME: WORKSPACE_STORE_NAME,
     APP_META_STORE_NAME: APP_META_STORE_NAME,
     EDIT_STALLION_STORE_NAME: EDIT_STALLION_STORE_NAME,
+    FAVORITE_STORE_NAME: FAVORITE_STORE_NAME,
     openDB: openDB,
     generateUuid: generateUuid,
   };
