@@ -807,6 +807,11 @@
 .plan-diagnosis-step--blocked .plan-diagnosis-step-result {
   color: #ef6c00;
 }
+
+/* ===== ダビ娘の組み込み（docs/dabimusume-integration-design.md §6） ===== */
+
+/* ホーム: 「馬を探す」「カテゴリ」の小見出しと、ダビ娘のタイル。
+   タイルとカテゴリの格子の左右を、どちらも画面端から 12px にそろえる。 */
 .dabimas-home-section-title {
   margin: 16px 12px 6px;
   color: #5b4b8a;
@@ -814,7 +819,11 @@
   font-weight: 700;
   letter-spacing: 0.04em;
 }
-.dabimas-musume-tile-wrap { margin: 0 12px; }
+
+.dabimas-musume-tile-wrap {
+  margin: 0 12px;
+}
+
 .dabimas-musume-tile {
   display: flex !important;
   align-items: center;
@@ -824,55 +833,155 @@
   border-radius: 12px !important;
   cursor: pointer;
 }
-.dabimas-musume-tile__text { flex: 1 1 auto; min-width: 0; }
-.dabimas-musume-tile__title { font-size: 15px; font-weight: 600; color: #33324a; }
-.dabimas-musume-tile__sub { font-size: 12px; color: #757575; margin-top: 2px; }
-.dabimas-home .dabimas-category-grid { padding: 4px 12px 12px; }
+
+.dabimas-musume-tile__text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dabimas-musume-tile__title {
+  color: #33324a;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.dabimas-musume-tile__sub {
+  margin-top: 2px;
+  color: #757575;
+  font-size: 12px;
+}
+
+/* v-row dense の -4px とカードの列の 4px が打ち消し合うので、左右 12px でタイルとそろう */
+.dabimas-home .dabimas-category-grid {
+  padding: 4px 12px 12px;
+}
+
+/* 設定画面と同じく、スマホ表示ではホーム自身をスクロールコンテナにする
+   （.exp-mobile-layout が画面の高さで overflow:hidden のため、はみ出したカードに届かない）。
+   min-height: 100vh のままだと、100vh が表示領域より高いブラウザ（Safari のツールバー表示中など）で
+   max-height より優先され、器ごと下が切れるので 0 に戻す。 */
 .exp-mobile-layout .dabimas-home {
+  min-height: 0;
   max-height: var(--exp-mobile-app-height);
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
 }
+
+/* 単体画面（ホームのタイルから）と、馬選択の「条件で探す」のシート */
 .musume-screen {
   display: flex;
   flex-direction: column;
   height: var(--exp-mobile-app-height, 100svh);
   min-height: 100svh;
-  background: white;
+  background: #fff;
 }
+
 .musume-frame-header {
-  flex: 0 0 auto;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 8px;
   height: 48px;
   padding: 0 12px;
   border-bottom: 1px solid #ddd;
-  background: white;
+  background: #fff;
 }
+
 .musume-frame-back {
   flex: 0 0 auto;
   min-height: 36px;
   padding: 0 12px;
   border: 1px solid #bbb;
   border-radius: 6px;
-  background: white;
+  background: #fff;
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 700;
 }
-.musume-frame-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: bold; }
-.musume-frame-title small { margin-left: 6px; color: #666; font-weight: normal; }
-.musume-iframe { display: block; width: 100%; border: none; background: #f8fafc; }
-.musume-iframe--fill { flex: 1 1 auto; height: 0; min-height: 0; }
-.musume-sheet { overflow: hidden; border-radius: 14px 14px 0 0 !important; }
-.musume-sheet-grip { width: 40px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: #ccc; }
-.musume-iframe--sheet { height: calc(90svh - 61px); }
-.exp-mobile-picker-action--musume { background: #1e6bd6; color: white; }
-.exp-mobile-fav-only-row { display: flex; justify-content: flex-end; }
-.exp-mobile-fav-only-chip { min-height: 34px; padding: 0 12px; border: 1px solid #cfd8e3; border-radius: 999px; background: white; color: #374151; font-size: 13px; }
-.exp-mobile-fav-only-chip.is-on { border-color: #e0245e; background: #fff0f5; color: #e0245e; font-weight: bold; }
-.exp-fav-only-item .v-list-item__title { font-size: 13px; color: #374151; }
+
+.musume-frame-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.musume-frame-title small {
+  margin-left: 6px;
+  color: #666;
+  font-weight: 400;
+}
+
+.musume-iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: #f8fafc;
+}
+
+.musume-iframe--fill {
+  flex: 1 1 auto;
+  height: 0;
+  min-height: 0;
+}
+
+.musume-sheet {
+  overflow: hidden;
+  border-radius: 14px 14px 0 0 !important;
+}
+
+.musume-sheet-grip {
+  width: 40px;
+  height: 5px;
+  margin: 8px auto 0;
+  border-radius: 3px;
+  background: #ccc;
+}
+
+/* シートの 9 割の高さから、掴み手（13px）とヘッダ（48px）を引く */
+.musume-iframe--sheet {
+  height: calc(90svh - 61px);
+}
+
+/* 馬選択: 「条件で探す」と「お気に入りのみ」。ピンクはダビ娘の ❤ と同じ色 */
+.exp-mobile-picker-action--musume {
+  background: #1e6bd6;
+  color: #fff;
+}
+
+.exp-mobile-fav-only-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.exp-mobile-fav-only-chip {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #cfd8e3;
+  border-radius: 999px;
+  background: #fff;
+  color: #374151;
+  font-size: 13px;
+}
+
+.exp-mobile-fav-only-chip.is-on {
+  border-color: #e0245e;
+  background: #fff0f5;
+  color: #e0245e;
+  font-weight: 700;
+}
+
+.exp-fav-only-item .v-list-item__title {
+  color: #374151;
+  font-size: 13px;
+}
+
 .exp-fav-only-item.is-on .v-list-item__title,
-.exp-fav-only-item.is-on .exp-fav-only-icon { color: #e0245e; font-weight: bold; }
+.exp-fav-only-item.is-on .exp-fav-only-icon {
+  color: #e0245e;
+  font-weight: 700;
+}

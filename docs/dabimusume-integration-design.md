@@ -1,6 +1,6 @@
-# ダビ娘統合（検索・お気に入り・単体画面）詳細設計書 v1.4
+# ダビ娘統合（検索・お気に入り・単体画面）詳細設計書 v1.5
 
-改訂履歴: v1.0 初版（2026-09-11）。調査結果と、iPhone で 7 ラウンド触って決めたプロトタイプの結論をまとめた。→ v1.1 未決事項のうち 3 件（旧ダビ娘の扱い、「お気に入りのみ」の共通化、同名で ❤ あり・なしが並ぶ件）をユーザー確認のうえ確定（2026-09-11、§10）。→ v1.2 アプリ名を当面「ダビふぁく」のまま据え置くと確定（2026-09-11、§10.2）。→ v1.3 移行案内のバナーを Phase A から外し、Phase C として着手を保留（2026-09-11、ユーザー指示、§8・§9）。→ v1.4 §9 の「フェーズ 2f が進行中」は誤りだったので訂正（2f は 2026-09-10 に検収済み）。
+改訂履歴: v1.0 初版（2026-09-11）。調査結果と、iPhone で 7 ラウンド触って決めたプロトタイプの結論をまとめた。→ v1.1 未決事項のうち 3 件（旧ダビ娘の扱い、「お気に入りのみ」の共通化、同名で ❤ あり・なしが並ぶ件）をユーザー確認のうえ確定（2026-09-11、§10）。→ v1.2 アプリ名を当面「ダビふぁく」のまま据え置くと確定（2026-09-11、§10.2）。→ v1.3 移行案内のバナーを Phase A から外し、Phase C として着手を保留（2026-09-11、ユーザー指示、§8・§9）。→ v1.4 §9 の「フェーズ 2f が進行中」は誤りだったので訂正（2f は 2026-09-10 に検収済み）。→ v1.5 Phase B を実装・検収（2026-09-11、`8713e89` と検収時の修正）。作業指示書 `docs/codex-work-orders/2026-09-11-musume-integration-phase-b.md` で決めた点を §4・§5・§6・§7.1・§11.1 に反映し、§9・§12 に実装と確認の状況を足した。
 
 ## 0. このドキュメントの位置づけ
 
@@ -176,6 +176,8 @@ iframe の URL の土台（`/dabimas-data/dist/`）は定数 1 か所にまと�
 2. セルの `sex` に合わなければ、トースト「このセルには種牡馬しか入りません」（または繁殖牝馬）を出して終わる。
 3. 通れば、シートを閉じ、`dabimas:reset-pick` を送り、馬選択ダイアログの `selectMobileHorse(summary)` を呼ぶ。以降は本番と同じ経路でセルに入る。
 
+親の受け口（`vue/logic/musume-link.js` の `readMessage()`）は、オリジンのほかに、送り元が自分の iframe（単体画面・シート）であることと `v === 1` も確かめる。`dabimas:select` は、シートの iframe から来て、シートが開いているときだけ処理する。閉じた後に遅れて届いたものでセルが変わらないようにするため。
+
 ---
 
 ## 5. お気に入り
@@ -196,7 +198,7 @@ favorites: keyPath "id"
 | `favoritesOnly` | `true` / `false` | 「お気に入りのみ」のオン・オフ（3 か所で共有） |
 | `lastScreen` | `"home"` / `"category"` / `"settings"` / `"musume"` | 起動時の画面復元（§6.7） |
 
-`vue/logic/storage/favorite-repository.js` を新設し、`getAll()` / `add(id)` / `remove(id)` を持たせる（既存の repository と同じ形）。画面側は起動時に全件を読み、メモリ上の集合と、変更を知らせるための `Vue.observable` の版番号で持つ。切り替えるたびに DB へ書き、iframe へ `dabimas:favorites` を配る。
+`vue/logic/storage/favorite-repository.js` を新設し、`getAll()` / `add(id)` / `remove(id)` を持たせる（既存の repository と同じ形）。メモリ上の状態は `vue/logic/favorites.js`（`window.Dabimas.favorites`）が持ち、起動時（`new Vue` の前）に全件を読む。集合は `Set` で持って Vue に監視させず、変更は `Vue.observable` の版番号（`state.version`）で知らせる。切り替えるたびに DB へ書く。iframe へ `dabimas:favorites` を配るのは `musume-host` で、`state.version` と `state.only` を監視して送る（`favorites.js` は DOM を知らない）。
 
 ### 5.2 ❤ を付けられる馬
 
@@ -212,7 +214,7 @@ favorites: keyPath "id"
 
 オン・オフは 3 か所で 1 つの設定（`appMeta.favoritesOnly`）を共有する（2026-09-11 確定）。どこかでオンにすると、ほかの 2 か所もオンになる。プロトタイプではダビ娘の検索画面のボタンだけ独立していたので、本実装ではダビ娘も親から `favoritesOnly` を受け取り、切り替えも親に頼む形にする（§4 のメッセージに `favoritesOnly` を足す）。
 
-自家製馬（id が `ch_` で始まる）と編集種牡馬（`source === "edit"`）は、「お気に入りのみ」でも常に出す。
+「お気に入りのみ」で絞るのは、id が `^[sb]\d+$` の馬（ダビふぁくのデータの馬）だけにする。それ以外の自家製馬（`ch_…`）、編集種牡馬（`es_…`）、id のない馬は常に出す。
 
 ---
 
@@ -238,6 +240,7 @@ favorites: keyPath "id"
 - カテゴリが 1 つもないときも、タイルは「まだカテゴリがありません」の上に同じそろい方で出す。
 - タイルは編集モードでも削除・並べ替えの対象にしない。
 - アプリバーに 🔍 は置かない。アプリバーは一覧と一緒にスクロールで流れるので、🔍 はすぐ下のタイルと同時に見えて同時に消え、役割が重なる。
+- スマホ表示では、ホーム自身をスクロールの器にする（設定画面と同じ方法）。`.exp-mobile-layout` が画面の高さで `overflow: hidden` のため、Phase B の前は、画面からはみ出したカテゴリカードにスクロールでも届かなかった。小見出しとタイルでカードが約 140px 下がるので、合わせて直した。
 
 もとの設計（タイルを格子の外に置く）では、タイルの左右が画面端から 12px、カードが 2px、タイルとカードの間が 2px、カード同士が 8px とばらばらで、タイルが後から貼ったように浮いて見えた。
 
@@ -255,7 +258,7 @@ favorites: keyPath "id"
 
 ### 6.4 「条件で探す」のシート
 
-- 画面の 9 割の高さのボトムシート（`v-bottom-sheet`）。上に掴み手、ヘッダは「‹ 戻る」（左）と「ダビ娘で探す ＜セル名＞」（例: 種牡馬側・祖先1）。
+- 画面の 9 割の高さのボトムシート（`v-bottom-sheet`）。上に掴み手、ヘッダは「‹ 戻る」（左）と「ダビ娘で探す ＜セル名＞」（例: 種牡馬検索 ⑩）。セル名は馬選択ダイアログの副題と同じ表記にする。プロトタイプの「種牡馬側・祖先1」は `index % 16` の番号で、画面の丸数字と一致しなかった（index 3 は ⑩）。
 - **馬選択ダイアログは閉じずにシートの下に残す。**「‹ 戻る」とシートの外側のタップは、シートを下げるだけで、馬選択ダイアログが入力途中のまま出てくる。開き直す方式にしないのは、`openMobileEditor()` の `focus()` で戻るたびにキーボードが出るため。
 - iframe は一度作ったら保持し、同じ `sex` なら次に開いたときも読み直さない（検索語と結果も残る）。`sex` が変わるときは URL が変わるので読み直しになる。
 - 同じ iframe を別のセル用に開くときは `dabimas:reset-pick` を送り、前のセル向けに選んでいた馬を消す。同じセルで開き直したときは消さない。
@@ -283,9 +286,11 @@ favorites: keyPath "id"
 
 `v-autocomplete` の候補一覧の先頭に「♡ お気に入りのみ（件数）」の行を置き、下に区切り線を引く。オンのときは `:items` を computed で絞った配列にする（オフのときは `lists` をそのまま渡し、毎回新しい配列を作らない）。
 
+オンのときも、そのセルで選択中の馬（`getHorseKey` が一致する候補）は残す。`v-autocomplete` は `items` の中に値と一致するものがないと入力欄に何も出さないので、残さないと、お気に入りでない馬の入ったセルが空に見える。
+
 ### 6.7 起動時の画面復元
 
-`boot()` の着地画面の決め方に `appMeta.lastScreen` を足す。`lastScreen === "musume"` ならダビ娘の単体画面に着地する。ダビ娘だけ使う人は、アプリを開くとすぐダビ娘が出る。`currentScreen` が変わるたびに `lastScreen` を保存する。
+`boot()` の着地画面の決め方に `appMeta.lastScreen` を足す。`lastScreen === "musume"` ならダビ娘の単体画面に着地する。ダビ娘だけ使う人は、アプリを開くとすぐダビ娘が出る。このときもカテゴリの読み込み（`lastOpenedCategoryId`）は今までどおり行い、画面だけを差し替える。ダビ娘からホームへ戻ってカテゴリを開いたときの状態を、今の起動と同じにするため。`currentScreen` が変わるたびに `lastScreen` を保存する（`musume-host` が監視して `workspaceSync.rememberScreen()` を呼ぶ）。
 
 `mounted()` はどの画面でも血統データの読込を始めるので、ダビ娘に着地してもダビふぁくのデータ（summary と pedigreeNodes で転送 0.4MB、裏で detail 10.7MB）は読まれる。summary は「お気に入りのみ」と `supportedKeys` に要るので残す。detail の裏読みを配合画面を開くまで遅らせるかは、任意の最適化とする（§10）。
 
@@ -299,15 +304,18 @@ favorites: keyPath "id"
 |---|---|
 | `vue/logic/storage/unified-db.js` | version 3、`favorites` ストア |
 | `vue/logic/storage/favorite-repository.js`（新規） | お気に入りの読み書き |
-| `vue/logic/favorites.js`（新規） | メモリ上の集合と版番号、「お気に入りのみ」の設定、iframe への配信、`passesFavoritesOnly(horse)` |
-| `vue/logic/workspace-sync.js` | `boot()` で `lastScreen` を見る。`currentScreen` の変化で保存 |
-| `vue/components/musume/musume-host.js`（新規） | 単体画面・シート・メッセージの受け口・トースト |
+| `vue/logic/musume-link.js`（新規） | iframe の URL、セルの性別、ID の変換、受け取るメッセージの検査。DOM も Vue も使わない |
+| `vue/logic/favorites.js`（新規） | メモリ上の集合と版番号、「お気に入りのみ」の設定、`passesFavoritesOnly(horse)` |
+| `vue/app/main.js` | `favorites.load()` も待ってから `new Vue` |
+| `vue/logic/workspace-sync.js` | `boot()` で `lastScreen` を見る。`rememberScreen()` を公開 |
+| `vue/components/musume/musume-host.js`（新規） | 単体画面・シート・メッセージの受け口・iframe への配信・トースト、`currentScreen` の記憶 |
 | `vue/components/home/home-page.js` | 小見出し 2 つとタイル（§6.1） |
 | `vue/components/pedigree/mobile-horse-picker.js` | 「条件で探す」「お気に入りのみ」、`filteredMobileLists` |
 | `vue/components/pedigree/desktop-horse-autocomplete.js` | `prepend-item` と `:items` の絞り込み |
 | `index.html` | `<musume-host>` の設置、script タグの追加 |
-| `css/unified.css` | ホーム、シート、単体画面、「お気に入りのみ」 |
-| `service-worker.js` | `urlsToCache` に新規ファイルを追加、`CACHE_NAME` を上げる |
+| `css/unified.css` | ホーム（スマホのスクロールを含む）、シート、単体画面、「お気に入りのみ」 |
+| `service-worker.js` | `urlsToCache` に新規ファイルを追加、`CACHE_NAME` を上げる。`/dabimas-data/` へのリクエストに手を出さない（§11.1） |
+| `scripts/verify-musume-logic.cjs`・`scripts/verify-musume-ui.html`（新規） | 自動の検証（§11.1） |
 
 ### 7.2 ダビ娘（`dabimas-data` リポジトリ）
 
@@ -351,6 +359,8 @@ favorites: keyPath "id"
 
 `docs/codex-work-orders/` の 2026-09-08〜10 の指示書（フェーズ 2d・2e・2f、インブリード判定と工程診断）は、2026-09-10 にすべて検収済みで、B を始めるのを妨げる作業はない（2026-09-11 確認）。B は `index.html`・馬の選択・storage 層に触るので、始める時点で進行中の作業指示書がないかだけ確かめる。
 
+**2026-09-11 時点:** A は `dabimas-data` の `feature/embed-mode`（`7eb0385`）、B はこのリポジトリの `8713e89` と検収時の修正で実装済みで、どちらも未公開。**公開は A を先にする。** B だけを先に出すと、ダビ娘の画面は出るが、❤ も馬選択も動かない。
+
 ---
 
 ## 10. 未決事項
@@ -381,6 +391,10 @@ iframe は同一オリジンでないと動かない。`start-lan.bat` はこの
 
 LAN の http では Service Worker が使えない（安全でない接続のため）。PC の `localhost` では使えるので、PC で確かめるときは古いキャッシュに注意する。`launch.json` の `static` 設定（`python -m http.server`）はキャッシュを制御するヘッダを付けないので、ファイルを差し替えてもブラウザが古い JS を使い続けることがある。`start-lan.bat` の `scripts/lan_server.py` は `no-store` を付けるので起きない。
 
+リポジトリのルートを配信すると、ダビふぁくの SW の scope が `/` になり、ダビ娘の iframe の読み込みもこの SW を通る。この SW はナビゲーションを app shell のキー（`index.html`）で保存するので、そのままではダビふぁくの `index.html` のキャッシュがダビ娘の HTML で上書きされる。そのため、`/dabimas-data/` で始まるリクエストには手を出さないようにした（本番では scope の外なので何も変わらない）。
+
+自動の検証は 2 本ある。`node scripts/verify-musume-logic.cjs` と、ヘッドレス Chrome で動かす `scripts/verify-musume-ui.html` である。後者は `scripts/lan_server.py` で配信し、`scripts/codex-powershell.ps1 dump-dom` で結果を読む（手順は作業指示書の「検証コマンド」）。
+
 ### 11.2 そのほか
 
 - ダビ娘のカードの ❤ を、馬名を包む `<label>` の中に置いてはいけない。`<label>` の中のボタンは、馬名のタップでも押されてしまう（プロトタイプの ❤ 案 A で踏んだ）。
@@ -393,6 +407,8 @@ LAN の http では Service Worker が使えない（安全でない接続のた
 ## 12. 受け入れ基準
 
 実装後、次をすべて満たすこと。1〜12 はプロトタイプで確認済みの挙動で、本実装でも同じになること。挙動は主にデスクトップ Chromium（375〜390px 幅）で確かめ、見た目と操作感は iPhone で見てもらって決めた。ただし 8 の「61 頭以上」は、上限を外すコードを確かめただけで、実際に 61 頭を並べてはいない。13〜16 はまだ確かめていない（16 はプロトタイプではダビ娘の画面だけ独立していた）。
+
+**2026-09-11 の Phase B 検収時点:** 1〜12 と 16 は、§11.1 の自動の検証で確かめた。8 の「61 頭以上」も、Node の検証で 70 頭・90 頭を並べて確かめた。15 は Phase A の検収で確認済み。残りは 13 と 14 で、どちらも iPhone の実機での確認が要る（14 は公開後）。
 
 1. ホームに「馬を探す」「カテゴリ」の小見出しがあり、ダビ娘のタイルとカテゴリカードの左右が画面端から 12px でそろう。アプリバーは「＋・編集・⚙」のまま。
 2. カテゴリが 0 件でも、タイルが「まだカテゴリがありません」の上に出る。編集モードでタイルに削除・並べ替えのボタンが出ない。

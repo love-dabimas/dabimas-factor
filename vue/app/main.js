@@ -72,7 +72,12 @@
       ? window.Dabimas.workspaceSync.boot()
       : Promise.resolve({ currentScreen: "category" });
 
-  Promise.all([bootPromise, window.Dabimas.favorites.load()]).then(function () {
+  var favoritesPromise =
+    window.Dabimas.favorites && typeof window.Dabimas.favorites.load === "function"
+      ? window.Dabimas.favorites.load()
+      : Promise.resolve();
+
+  Promise.all([bootPromise, favoritesPromise]).then(function () {
     window.__debugAppInstance = new Vue(window.Dabimas.app.createAppOptions());
   });
 })(window, window.Vue);

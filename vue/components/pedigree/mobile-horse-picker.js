@@ -227,6 +227,7 @@
       filteredMobileLists() {
         const favorites = window.Dabimas.favorites;
         const only = favorites.state.only;
+        // お気に入りの集合は Set でリアクティブでないため、version を読んで再計算の依存を張る。
         void favorites.state.version;
         const source = Array.isArray(this.lists) ? this.lists : [];
         const normalizedQuery = this.normalizeSearchText(this.mobileQuery);

@@ -1,6 +1,6 @@
 # 作業指示書: ダビ娘をダビふぁくに組み込む（ダビ娘統合 Phase B）
 
-- status: 実装完了・検収待ち
+- status: 完了（2026-09-11 検収済み。検収時に軽微な修正 5 件。iPhone での確認 2 件は残）
 - 作成日: 2026-09-11
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 上位仕様: `docs/dabimusume-integration-design.md` v1.4（以下「設計書」）の §4・§5・§6・§7.1・§12
@@ -503,3 +503,52 @@ powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 dump-dom
 - 基準 14 の「部分一致でカード 2 枚」というデータ前提は配置済みビルドと異なる。馬名末尾「？」の別馬が含まれるため、検収時にも上記の区別が必要。
 - 既存の `getStableViewportHeight()` は `body.clientHeight` も最大値候補にするため、起動後に iframe を 844px から 700px に縮めると `--exp-mobile-app-height` が 844px のまま残る。390×700 で起動し直すとホームを末尾までスクロールできる。指定スコープ外の `vue/app/methods/ui-viewport.js` は変更していない。
 - Phase A 公開前の本番反映は禁止のまま。push・公開は行っていない。
+
+---
+
+## 検収記録
+
+- 検収日: 2026-09-11（Claude Code セッション）
+- 実装コミット: `8713e89 feat: integrate Musume search and shared favorites`
+
+### 結果
+
+受け入れ基準を 1 つずつ再実行した。すべて満たしている。
+
+| 基準 | 確かめ方 | 結果 |
+|---|---|---|
+| 1・2 | `verify-index-exp .\index.html` と既存の Node 検証 3 本を再実行 | `[verify] OK`、3 本とも OK |
+| 3〜10 | `node scripts/verify-musume-logic.cjs` を再実行 | `musume logic regression: OK` |
+| 11〜24 | `scripts/lan_server.py` の 8768 番で配信し、`dump-dom … 390 844 300000` を再実行（検収の修正の前と後の 2 回） | 14 項目とも OK、`errors: []`。1 回 40 秒ほど |
+| 27 | Phase A の検収で確認済み | — |
+| 28 | ブラウザ（390×844 と 1280 幅）で見た | ホームの小見出しは 13px・700・`#5b4b8a`、タイルは高さ 64px・角丸 12px、タイルと先頭のカードの左端はどちらも 12px。単体画面のヘッダは 48px。シートの見出しは「ダビ娘で探す 種牡馬検索 ⑩」。「お気に入りのみ」のチップは高さ 34px。PC の候補一覧の先頭の行は、押しても一覧が閉じず、候補がお気に入りだけになる |
+| 25・26 | iPhone の実機が要る | 未確認（26 は公開後） |
+
+コードも全体を読んだ。メッセージの形は Phase A と一致している。送り元が自分の iframe であることの確認、`v === 1` の確認、閉じたシートからの `select` の無視もできている。IME まわりの不変条件にも触れていない。
+
+### 検収で直したもの（軽微）
+
+1. `unified-db.js` の先頭コメントから、仕様書（`docs/dabifaku_unified_spec_draft.md §13`）への参照が消えていたので戻した
+2. `main.js`: `window.Dabimas.favorites` が無いときでも起動が止まらないようにした。直前の `workspaceSync.boot()` と同じ書き方にそろえた
+3. コメントを 3 か所に足した。`void favorites.state.version` の理由（2 か所）と、準備完了を `stallionsBase` で判定する理由
+4. `unified.css` の追加分が 1 行書きだったので、ファイルのほかの部分と同じ書き方（複数行・空行区切り・節の見出し）にそろえた
+5. `.exp-mobile-layout .dabimas-home` に `min-height: 0` を足した。`.dabimas-home` の `min-height: 100vh` は `max-height` より優先されるので、100vh が表示領域より高いブラウザ（iOS Safari でツールバーが出ているときなど）では、スクロールの器ごと下が切れる。ヘッドレス Chrome では 100vh と表示領域が同じなので、基準 23 では出ない
+
+`CACHE_NAME` は `v20260911-02` のまま。`8713e89` は未 push で配信されていないので、上げ直さない。
+
+### Codex の設計判断について
+
+- 同じ馬への ❤ の連打を保存順に処理する件、閉じたシートから遅れて届いた `select` を無視する件は、どちらも妥当。後者は設計書 §4 に反映した
+- 基準 14 で、馬名が完全に一致するカードに絞った件は正しい。指示書は「カズタカイザー」を含むカードが 2 枚と書いたが、ダビ娘のデータには「カズタカイザー？」も 2 頭いる。指示書の前提の誤りだった
+
+### 設計書
+
+`docs/dabimusume-integration-design.md` を v1.5 に更新した。この指示書の「設計書からの補足」7 点を §4・§5・§6・§7.1・§11.1 に反映し、§9 と §12 に実装と確認の状況を足した。
+
+### 残課題
+
+- 基準 25（❤ のアニメーションと「視差効果を減らす」）と 26（機内モード）は、ユーザーが iPhone で確かめる。26 は公開後にしか確かめられない
+- 公開は Phase A（`dabimas-data` の `feature/embed-mode`）を先にする
+- `main` へ取り込むときは `service-worker.js` の `CACHE_NAME` が毎日の自動更新とぶつかる。新しいほうの値にする
+- Codex の気づき: 起動後にブラウザの高さを縮めても、`getStableViewportHeight()` が `--exp-mobile-app-height` を縮める前の高さのまま残す。今回の変更とは関係なく前からある挙動で、手を付けていない
+- 設定画面（`.exp-mobile-layout .dabimas-settings`）にも、上の修正 5 と同じ `min-height: 100vh` の組み合わせがある。前からある箇所なので、今回は触っていない

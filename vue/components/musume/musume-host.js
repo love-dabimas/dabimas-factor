@@ -19,6 +19,8 @@
       isMusumeScreen() { return this.$root.currentScreen === "musume"; },
       embedUrl() { return link.embedUrl(); },
       targetLabel() { return this.target ? this.target.label : ""; },
+      // horsesBase は root の data に無くリアクティブでないので、buildHorseLists() で
+      // 直後に代入される stallionsBase（data にある）で読み込み完了を判定する。
       horsesReady() { return this.$root.stallionsBase.length > 0; },
       favoriteVersion() { return favorites.state.version; },
       favoritesOnly() { return favorites.state.only; },

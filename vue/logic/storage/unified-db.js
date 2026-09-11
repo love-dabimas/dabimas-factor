@@ -2,7 +2,8 @@
  * このファイルの役割:
  * - 統合版（カテゴリ・作業枠）専用の IndexedDB "dabifaku_unified" の
  *   open / onupgradeneeded を1箇所にまとめる（categories / workspaces /
- *   appMeta / editStallions / favorites の5ストア）。
+ *   appMeta / editStallions / favorites の5ストア、docs/dabifaku_unified_spec_draft.md §13。
+ *   favorites は docs/dabimusume-integration-design.md §5.1）。
  * - フォールバック付き UUID v4 生成（generateUuid）を提供する。
  *
  * このファイルに置かない処理:
