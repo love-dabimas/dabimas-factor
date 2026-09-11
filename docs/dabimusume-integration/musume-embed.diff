@@ -1,0 +1,381 @@
+--- a/src/features/search/ui/HorseResultCard.tsx
++++ b/src/features/search/ui/HorseResultCard.tsx
+@@ -1,4 +1,4 @@
+-﻿import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
++﻿import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+ import { memo } from "react";
+ import type {
+   HorseRecord,
+@@ -16,6 +16,12 @@
+   horse: HorseRecord;
+   criteria: HorseCardHighlightCriteria;
+   onOpenSkillModal: (title: string, skill: HorseSkillData) => void;
++  // PROTOTYPE: ダビふぁく埋め込み時だけ渡される。
++  onSelect?: (horse: HorseRecord) => void;
++  picked?: boolean;
++  onToggleFavorite?: (horse: HorseRecord) => void;
++  canFavorite?: boolean;
++  favorite?: boolean;
+ }
+ 
+ type ResultCardSkillKind = "ability" | "temperament";
+@@ -520,13 +526,30 @@
+   }
+ };
+ 
+-const HorseResultCardBase = ({ horse, criteria, onOpenSkillModal }: HorseResultCardProps) => {
++const HorseResultCardBase = ({
++  horse,
++  criteria,
++  onOpenSkillModal,
++  onSelect,
++  picked,
++  onToggleFavorite,
++  canFavorite,
++  favorite
++}: HorseResultCardProps) => {
+   // all / 1薄 / 2薄 の因子カウントを上段表へ分けて表示する。
+   const [allFactorCounts, thin1FactorCounts, thin2FactorCounts] = horse.card.factorCounts;
+   const highlighter = createHorseCardHighlighter(criteria, horse);
+   const viewportRef = useRef<HTMLDivElement>(null);
+   const legacyRef = useRef<HTMLElement>(null);
+   const [legacyScale, setLegacyScale] = useState(1);
++  // PROTOTYPE: ❤ を押したときのアニメーション（in=付けた / out=外した）。
++  // animationend では外さない（視差効果を減らす設定だとアニメーション自体が走らず、イベントが来ないため）。
++  const [heartAnim, setHeartAnim] = useState<"in" | "out" | null>(null);
++  useEffect(() => {
++    if (!heartAnim) return;
++    const timer = window.setTimeout(() => setHeartAnim(null), 600);
++    return () => window.clearTimeout(timer);
++  }, [heartAnim]);
+   const [scaledHeight, setScaledHeight] = useState<number | null>(null);
+   const temperament = horse.card.temperamentData ?? null;
+ 
+@@ -687,7 +710,38 @@
+ 
+   return (
+     <>
+-      <article className="result-card">
++      <article
++        className={`result-card${picked ? " is-picked" : ""}`}
++        onClick={
++          onSelect
++            ? (event) => {
++                // カード内のスキル表示や ❤ のタップは選択扱いにしない
++                if ((event.target as HTMLElement).closest("button, a, [role='button']")) return;
++                onSelect(horse);
++              }
++            : undefined
++        }
++      >
++      {/* PROTOTYPE: ❤ はカード右上の角に掛かる丸ボタン */}
++      {onToggleFavorite && canFavorite ? (
++        <button
++          type="button"
++          className={`proto-fav${favorite ? " is-on" : ""}${heartAnim ? ` is-anim-${heartAnim}` : ""}`}
++          aria-pressed={favorite ? "true" : "false"}
++          aria-label={favorite ? "お気に入りから外す" : "お気に入りに追加"}
++          onClick={(event) => {
++            event.stopPropagation();
++            setHeartAnim(favorite ? "out" : "in");
++            onToggleFavorite(horse);
++          }}
++        >
++          <span className="proto-fav__circle">
++            <svg className="proto-fav__icon" viewBox="0 0 24 24" aria-hidden="true">
++              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
++            </svg>
++          </span>
++        </button>
++      ) : null}
+       <div
+         ref={viewportRef}
+         className="result-card__viewport"
+--- a/src/features/search/ui/ResultsPanel.tsx
++++ b/src/features/search/ui/ResultsPanel.tsx
+@@ -26,6 +26,12 @@
+   hasActivePrimaryFilters: boolean;
+   visibleCount: number;
+   sentinelRef: RefObject<HTMLDivElement | null>;
++  // PROTOTYPE: ダビふぁく埋め込み時だけ渡される。
++  onSelect?: (horse: HorseRecord) => void;
++  pickedKey?: string | null;
++  onToggleFavorite?: (horse: HorseRecord) => void;
++  supportedKeys?: Set<string> | null;
++  favoriteKeys?: Set<string>;
+ }
+ 
+ // 仮想スクロールで「どの範囲のカードを描画するか」を表す。
+@@ -191,7 +197,12 @@
+   criteria,
+   hasActivePrimaryFilters,
+   visibleCount: _visibleCount,
+-  sentinelRef: _sentinelRef
++  sentinelRef: _sentinelRef,
++  onSelect,
++  pickedKey,
++  onToggleFavorite,
++  supportedKeys,
++  favoriteKeys
+ }: ResultsPanelProps) => {
+   // 条件未入力または結果 0 件のどちらかなら「空の状態」とみなす。
+   const isEmpty = !hasActivePrimaryFilters || records.length === 0;
+@@ -426,6 +437,11 @@
+                   horse={horse}
+                   criteria={criteria}
+                   onOpenSkillModal={handleOpenSkillModal}
++                  onSelect={onSelect}
++                  picked={pickedKey === `${horse.HorseId}-${horse.Gender}`}
++                  onToggleFavorite={onToggleFavorite}
++                  canFavorite={!!supportedKeys && supportedKeys.has(`${horse.HorseId}-${horse.Gender}`)}
++                  favorite={!!favoriteKeys && favoriteKeys.has(`${horse.HorseId}-${horse.Gender}`)}
+                 />
+               </VirtualRow>
+             );
+--- a/src/features/search/ui/SearchPage.tsx
++++ b/src/features/search/ui/SearchPage.tsx
+@@ -26,6 +26,21 @@
+ import { PARENT_LINE_OPTIONS } from "@/shared/constants/parentLines";
+ import { RARE_OPTIONS } from "@/shared/constants/rareCodes";
+ 
++// PROTOTYPE: ダビふぁくへの埋め込み。
++//   ?embed=1              … 単体画面（❤ と「お気に入りのみ」）
++//   ?picker=1&sex=0|1|any … 馬選択の「条件で探す」（上に加えてタップで選択 → 下部バーで確定）
++const PICKER_PARAMS = new URLSearchParams(window.location.search);
++const IS_PICKER = PICKER_PARAMS.get("picker") === "1";
++const IS_EMBED = IS_PICKER || PICKER_PARAMS.get("embed") === "1";
++const PICKER_SEX = PICKER_PARAMS.get("sex");
++if (IS_EMBED) {
++  document.documentElement.classList.add("proto-embed");
++}
++if (IS_PICKER) {
++  document.documentElement.classList.add("proto-picker");
++}
++const horseKeyOf = (horse: HorseRecord) => `${horse.HorseId}-${horse.Gender}`;
++
+ // SearchPage に渡す設定。馬リスト・因子・非凡バンドル・系統選択肢が必要。
+ interface SearchPageProps {
+   horses: HorseRecord[];
+@@ -185,6 +200,51 @@
+   const setActiveTab = useUiStore((state) => state.setActiveTab);
+   const resetVisibleCounts = useUiStore((state) => state.resetVisibleCounts);
+   const increaseVisible = useUiStore((state) => state.increaseVisible);
++  // PROTOTYPE: picker モードの選択中の馬。カードのタップで選び、下部バーで確定して親へ返す。
++  const [pickedHorse, setPickedHorse] = useState<HorseRecord | null>(null);
++  const togglePickedHorse = useCallback((horse: HorseRecord) => {
++    setPickedHorse((current) =>
++      current && current.HorseId === horse.HorseId && current.Gender === horse.Gender ? null : horse
++    );
++  }, []);
++  const sendPickedHorse = useCallback((horse: HorseRecord) => {
++    window.parent.postMessage(
++      { type: "dabimas-proto:select", horseId: horse.HorseId, gender: horse.Gender, name: horse.card?.name ?? "" },
++      window.location.origin
++    );
++  }, []);
++  // PROTOTYPE: お気に入り。正本は親（ダビふぁく）にあり、ここは親から届く写し。
++  // supportedKeys が届くまでは ❤ を出さない（ダビふぁく未対応の馬には最後まで出さない）。
++  const [supportedKeys, setSupportedKeys] = useState<Set<string> | null>(null);
++  const [favoriteKeys, setFavoriteKeys] = useState<Set<string>>(() => new Set());
++  const [favoritesOnly, setFavoritesOnly] = useState(false);
++  const toggleFavorite = useCallback((horse: HorseRecord) => {
++    window.parent.postMessage(
++      { type: "dabimas-proto:favorite-toggle", horseId: horse.HorseId, gender: horse.Gender },
++      window.location.origin
++    );
++  }, []);
++  useEffect(() => {
++    if (PICKER_SEX === "0" || PICKER_SEX === "1") {
++      setActiveTab(PICKER_SEX);
++    }
++  }, [setActiveTab]);
++  useEffect(() => {
++    if (!IS_EMBED) return;
++    const onMessage = (event: MessageEvent) => {
++      if (event.origin !== window.location.origin) return;
++      const data = event.data;
++      // 親が別のセル用に開き直したら、前のセル向けに選んでいた馬を残さない
++      if (data?.type === "dabimas-proto:reset-pick") setPickedHorse(null);
++      if (data?.type === "dabimas-proto:favorites") {
++        if (Array.isArray(data.supportedKeys)) setSupportedKeys(new Set<string>(data.supportedKeys));
++        if (Array.isArray(data.favoriteKeys)) setFavoriteKeys(new Set<string>(data.favoriteKeys));
++      }
++    };
++    window.addEventListener("message", onMessage);
++    window.parent.postMessage({ type: "dabimas-proto:hello" }, window.location.origin);
++    return () => window.removeEventListener("message", onMessage);
++  }, []);
+ 
+   // 絞り込みモーダルが開いているか。
+   const [isModalOpen, setIsModalOpen] = useState(false);
+@@ -229,10 +289,20 @@
+   // 前回のキーを保持する ref。条件が変わったか比較するために使う。
+   const previousCriteriaKeyRef = useRef(criteriaKey);
+   // 遅延条件でフィルタリングした検索結果。種牡馬リストと牝馬リストが入っている。
+-  const results = useMemo(
++  const baseResults = useMemo(
+     () => filterHorseRecords(horseSearchIndex, deferredCriteria),
+     [horseSearchIndex, deferredCriteria]
+   );
++  // PROTOTYPE: 「お気に入りのみ」。条件なしならお気に入り全部、条件ありなら条件との掛け合わせ。
++  const results = useMemo(() => {
++    if (!favoritesOnly) return baseResults;
++    const source = baseResults.hasActivePrimaryFilters
++      ? [...baseResults.stallions, ...baseResults.broodmares]
++      : horseSearchIndex.records;
++    const stallions = source.filter((horse) => horse.Gender === "0" && favoriteKeys.has(horseKeyOf(horse)));
++    const broodmares = source.filter((horse) => horse.Gender === "1" && favoriteKeys.has(horseKeyOf(horse)));
++    return { stallions, broodmares, total: stallions.length + broodmares.length, hasActivePrimaryFilters: true };
++  }, [baseResults, favoritesOnly, favoriteKeys, horseSearchIndex]);
+   // カードの中でキーワードや系統名を色付けするための「強調条件」。
+   // 条件の変化が描画に関係するフィールドだけ監視し、無駄な再計算を防ぐ。
+   const highlightCriteria = useMemo(
+@@ -507,6 +577,16 @@
+                 setKeyword(event.target.value);
+               }}
+             />
++            {IS_EMBED ? (
++              <button
++                type="button"
++                className={`proto-fav-only${favoritesOnly ? " is-on" : ""}`}
++                aria-pressed={favoritesOnly ? "true" : "false"}
++                onClick={() => setFavoritesOnly((value) => !value)}
++              >
++                {favoritesOnly ? "♥" : "♡"} お気に入りのみ（{favoriteKeys.size}）
++              </button>
++            ) : null}
+           </div>
+ 
+           <div className="quick-tabs" role="tablist" aria-label="基本条件タブ">
+@@ -583,6 +663,11 @@
+                   records={activeRecords}
+                   sentinelRef={activeSentinelRef}
+                   visibleCount={activeVisibleCount}
++                  onSelect={IS_PICKER ? togglePickedHorse : undefined}
++                  pickedKey={pickedHorse ? horseKeyOf(pickedHorse) : null}
++                  onToggleFavorite={IS_EMBED ? toggleFavorite : undefined}
++                  supportedKeys={supportedKeys}
++                  favoriteKeys={favoriteKeys}
+                 />
+               </div>
+             </div>
+@@ -590,6 +675,14 @@
+         </div>
+       </div>
+ 
++      {IS_PICKER && pickedHorse ? (
++        <div className="proto-pick-bar" role="region" aria-label="選択中の馬">
++          <span className="proto-pick-bar__name">{pickedHorse.card?.name}</span>
++          <button type="button" className="proto-pick-bar__cancel" onClick={() => setPickedHorse(null)}>やめる</button>
++          <button type="button" className="proto-pick-bar__ok" onClick={() => sendPickedHorse(pickedHorse)}>この馬を入れる</button>
++        </div>
++      ) : null}
++
+       {isSearchUpdating || isSearchFeedbackVisible ? (
+         <div className="search-overlay" aria-live="polite" aria-label="検索中">
+           <div className="search-overlay__card" aria-hidden="true">
+--- a/src/styles/app.css
++++ b/src/styles/app.css
+@@ -2759,3 +2759,102 @@
+     animation: none;
+   }
+ }
++
++/* ===== PROTOTYPE: ダビふぁく埋め込み（消してよし） ===== */
++/* カードを枠で囲む。カード間の空きはグリッドの gap ではなく行の padding で取る。
++   仮想スクロールは行の実測高さを積み上げて位置を出すので、gap を広げると先頭の高さ 0 のスペーサーとの間にも
++   空きが入り、スクロール中に表示範囲が入れ替わるたびに位置もずれる */
++.proto-embed .results-list__virtual-row { padding-bottom: 14px; }
++.proto-embed .result-card {
++  position: relative;
++  background: #fff;
++  border: 2px solid #cfd8e3;
++  border-radius: 12px;
++  padding: 8px;
++  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
++  content-visibility: visible; /* 角の ❤ と「✓ 選択中」がカードの外にはみ出すので、切り取らせない */
++}
++
++/* 「お気に入りのみ」（キーワード欄の右） */
++.proto-embed .keyword-block { display: flex; align-items: center; gap: 8px; }
++.proto-embed .keyword-block .text-input { flex: 1 1 auto; min-width: 0; }
++.proto-fav-only {
++  flex: 0 0 auto; min-height: 40px; padding: 0 12px; border: 1px solid #cfd8e3; border-radius: 999px;
++  background: #fff; color: #374151; font-size: 13px; white-space: nowrap; cursor: pointer;
++}
++.proto-fav-only.is-on { border-color: #e0245e; background: #fff0f5; color: #e0245e; font-weight: 700; }
++
++/* 馬選択からの picker（タップで選択 → 下部バーで確定） */
++.proto-picker body { padding-bottom: 88px; }
++.proto-picker .result-card { cursor: pointer; }
++.proto-picker .result-card.is-picked {
++  border-color: #1e6bd6; background: #f3f8ff; box-shadow: 0 0 0 3px rgba(30, 107, 214, 0.35);
++}
++.proto-picker .result-card.is-picked::after {
++  content: "✓ 選択中"; position: absolute; top: -11px; left: 12px; z-index: 2;
++  padding: 2px 8px; border-radius: 999px; background: #1e6bd6; color: #fff; font-size: 12px; font-weight: 700;
++}
++.proto-pick-bar {
++  position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 60;
++  display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px;
++  border-radius: 12px; background: #111827; color: #fff; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
++}
++.proto-pick-bar__name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
++.proto-pick-bar__cancel {
++  flex: 0 0 auto; min-height: 40px; padding: 0 10px; border: 1px solid #6b7280; border-radius: 8px;
++  background: transparent; color: #fff;
++}
++.proto-pick-bar__ok {
++  flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 0; border-radius: 8px;
++  background: #1e6bd6; color: #fff; font-weight: 700;
++}
++
++/* ❤: 見た目は 32px の白い丸、押せる範囲は 44px。丸の下端をカード上端 +12px に置き、配合理論の見出しに掛けない */
++.proto-fav {
++  position: absolute; top: -26px; right: -12px; z-index: 2;
++  display: grid; place-items: center;
++  width: 44px; height: 44px; padding: 0; border: 0; background: transparent;
++  color: inherit; font-size: 0; line-height: 0; cursor: pointer;
++  -webkit-tap-highlight-color: transparent;
++}
++.proto-fav__circle {
++  position: relative;
++  display: grid; place-items: center;
++  width: 32px; height: 32px; border: 1px solid #e5e7eb; border-radius: 50%;
++  background: #fff; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
++}
++.proto-fav__icon {
++  width: 18px; height: 18px;
++  fill: transparent; stroke: #9aa4b2; stroke-width: 2; stroke-linejoin: round;
++  transform-box: fill-box; transform-origin: center;
++  transition: fill 0.15s ease, stroke 0.15s ease;
++}
++.proto-fav.is-on .proto-fav__icon,
++.proto-fav.is-anim-in .proto-fav__icon { fill: #e0245e; stroke: #e0245e; }
++
++/* 押したときのアニメーション: 付ける = 弾む＋輪が広がる / 外す = 縮む */
++.proto-fav.is-anim-in .proto-fav__icon { animation: proto-heart-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
++.proto-fav.is-anim-in .proto-fav__circle::after {
++  content: ""; position: absolute; inset: -2px; border: 2px solid #e0245e; border-radius: 50%;
++  opacity: 0; animation: proto-heart-ring 0.5s ease-out;
++}
++.proto-fav.is-anim-out .proto-fav__icon { animation: proto-heart-shrink 0.25s ease-out; }
++@keyframes proto-heart-pop {
++  0% { transform: scale(1); }
++  30% { transform: scale(1.4); }
++  60% { transform: scale(0.9); }
++  100% { transform: scale(1); }
++}
++@keyframes proto-heart-ring {
++  0% { transform: scale(0.7); opacity: 0.8; }
++  100% { transform: scale(1.7); opacity: 0; }
++}
++@keyframes proto-heart-shrink {
++  0% { transform: scale(1); }
++  50% { transform: scale(0.75); }
++  100% { transform: scale(1); }
++}
++@media (prefers-reduced-motion: reduce) {
++  .proto-fav .proto-fav__icon,
++  .proto-fav .proto-fav__circle::after { animation: none !important; }
++}
