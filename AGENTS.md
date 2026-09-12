@@ -1,5 +1,8 @@
 # AGENTS.md
 
+このリポジトリの現状（枝と公開状況、進め方、検証のやり方、主なドキュメント）は
+`CLAUDE.md` にまとめてある。作業を始める前に読むこと。
+
 ## Safety Rules For `index.exp.html`
 
 The following rules are mandatory when editing `index.exp.html` or `index.html`.

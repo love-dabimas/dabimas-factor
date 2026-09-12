@@ -1,22 +1,68 @@
-Skills are organized into bucket folders under `skills/`:
+# ダビふぁく（dabimas-factor）
 
-- `engineering/` — daily code work
-- `productivity/` — daily non-code workflow tools
-- `misc/` — kept around but rarely used, not promoted
-- `personal/` — tied to my own setup, not promoted
-- `in-progress/` — drafts not yet ready to ship
-- `deprecated/` — no longer used
+ダビマスの配合を組むための Web アプリ。Vue 2 ＋ Vuetify 2 をそのまま読み込む構成で、
+ビルド工程は無い（`index.html` が `vue/**/*.js` を順に読み込む）。公開先は GitHub Pages の
+`https://love-dabimas.github.io/dabimas-factor/` で、**`main` ブランチの内容がそのまま本番**になる。
 
-Every skill in `engineering/` or `productivity/` (the **promoted** buckets) must have a reference in the top-level `README.md` and an entry in `.claude-plugin/plugin.json`. Skills in `misc/`, `personal/`, `in-progress/`, and `deprecated/` must not appear in either.
+このファイルは新しいセッションの最初に読まれる。長くしないこと。
 
-Each skill entry in the top-level `README.md` must link the skill name to its `SKILL.md`.
+## いまの枝と公開状況（2026-09-12 時点）
 
-Each bucket folder has a `README.md` that lists every skill in the bucket with a one-line description, with the skill name linked to its `SKILL.md`. The promoted buckets' `README.md`s and the top-level `README.md` group entries into **User-invoked** and **Model-invoked**; non-promoted bucket `README.md`s (`misc/`, `personal/`) use a flat list.
+| 枝 | 中身 |
+|---|---|
+| `main` | 公開中。ここへ push した時点で本番に出る |
+| `feature/musume-integration` | ダビ娘統合（ダビ娘を iframe で組み込み、❤ と馬選択を連携）。**公開待ち** |
 
-Skills in `engineering/` and `productivity/` also have a human-facing docs page at `docs/<bucket>/<skill-name>.md` (the docs tree mirrors those two bucket folders under `skills/`). The published URL is `https://aihero.dev/skills-<skill-name>` regardless of bucket — the docs path is repo organisation only. When you add, rename, or change the behaviour of a skill in `engineering/` or `productivity/`, create or re-sync its docs page following [.agents/writing-docs.md](./.agents/writing-docs.md). Skills in the non-promoted buckets (`misc/`, `personal/`, `in-progress/`, `deprecated/`) get **no** docs page.
+ダビ娘統合を公開するときは、**先に**ダビ娘側（別リポジトリ `dabimas-data` の
+`feature/embed-mode`）を公開する。逆にすると、ダビふぁくの中のダビ娘に ❤ も馬選択も出ない。
+手順は `docs/dabimusume-integration-design.md` の §9 と §11.1 にある。
 
-Every `SKILL.md` is either user-invoked (`disable-model-invocation: true`, reachable only by the human) or model-invoked (model- or user-reachable). See [.agents/invocation.md](./.agents/invocation.md).
+`json/` のデータと `service-worker.js` の `CACHE_NAME` は、毎週金曜の GitHub Actions
+（`.github/workflows/x_post.yml`）が `main` へ自動で更新する。`CACHE_NAME` は
+`dabimas-factor-vYYYYMMDD-01` の形で入るので、手で上げるときは同じ日付の `-02` 以降にする。
 
-[`ask-matt`](./skills/engineering/ask-matt/SKILL.md) is the router that maps every user-reachable skill and how they relate. The same trigger that re-syncs a docs page applies to it: whenever you add, rename, remove, or change how a user-reachable skill fits the flows, re-read `ask-matt`'s `SKILL.md` and update it so the map stays accurate — a new skill it never mentions, or a stale one it still routes to, is a router that lies.
+## 進め方
 
-To (re)link every skill into the local harness skill directories (`~/.claude/skills`, `~/.agents/skills`), run `scripts/link-skills.sh`. Each entry is a symlink into this repo, so a `git pull` keeps installed skills current; re-run the script after adding, removing, or renaming a skill.
+- 改善 1 つにつき枝を 1 本、`main` から切る。終わったら `main` へ入れて公開する
+- `feature/musume-integration` では作業しない。ときどき `main` を取り込むだけにする
+  （衝突するのは `CACHE_NAME` の 1 行だけ）
+- `index.html` を編集するときは `AGENTS.md` の手順（backup → apply_patch → verify）に従う
+- コミットメッセージは日本語。push は指示があったときだけ
+
+## 検証
+
+```
+powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-index-exp .\index.html
+node scripts/verify-<名前>.cjs   # scripts/verify-*.cjs を 1 本ずつ実行する
+```
+
+`scripts/verify-p2d-common.cjs` は他から読まれる共通部品なので単体では実行しない。
+画面の検証はヘッドレス Chrome で行う。リポジトリのルートを配信してから
+`scripts/codex-powershell.ps1 dump-dom <URL> 390 844 300000` で結果を読む。配信は
+`python scripts/lan_server.py <ポート> --bind 127.0.0.1`（`no-store` を付けるので古い JS が残らない）。
+`scripts/smoke-plan-diagnosis.cjs` だけは別で、8771 番の配信とリモートデバッグ有効の Chrome（9222）が要る。
+
+実機（iPhone）で試すときは `start-lan.bat` を起動し、同じ Wi-Fi から
+`http://<PC の IP>:8080/index.html` を開く。LAN の http では Service Worker が動かないので、
+オフラインの確認だけは公開後にしかできない。
+
+## 主なドキュメント
+
+- `docs/dabimusume-integration-design.md` — ダビ娘統合の設計（公開の順番もここ）
+- `docs/dabifaku_unified_spec_draft.md` — カテゴリ・作業枠・ホーム画面の仕様
+- `docs/full-sibling-stacking-spec.md` — 全兄妹・積み上げ配合の仕様
+- `docs/codex-work-orders/` — Codex への作業指示書。先頭の status で進行中か分かる
+
+## やりたい改善
+
+着手したら枝の名前を添える。終わったらこの一覧から消す。
+
+- （まだ無し）
+
+## 片付け候補
+
+リポジトリのルートに、別プロジェクト（スキル集）のファイルが初回コミットから紛れ込んでいる。
+アプリの動作には関わらないが、`README.md` と `package.json` がこのアプリのものではない。
+消す場合の対象は `README.md` / `package.json` / `skills/` / `docs/engineering/` /
+`docs/productivity/` / `.agents/` / `.changeset/` / `.claude-plugin/` / `.out-of-scope/` /
+`scripts/link-skills.sh` / `scripts/list-skills.sh`。
