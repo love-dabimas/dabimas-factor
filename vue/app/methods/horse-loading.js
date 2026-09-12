@@ -119,6 +119,8 @@
             selectableHorses.filter((horse) => horse.sex === "1")
           );
           this.refreshCandidateLists();
+          // horsesBase はリアクティブでないので、identityResolver を作り直させる。
+          this.identityResolverVersion += 1;
         },
         createSavedHorseSummary(record) {
           return {
@@ -902,6 +904,10 @@
             .catch((error) => {
               console.warn("pedigree nodes load failed", error);
               window.Dabimas.pedigreeNodes = null;
+            })
+            .finally(() => {
+              // identityResolver を作り直させる（app-state.js の identityResolverVersion）。
+              this.identityResolverVersion += 1;
             });
           const waitReady = () =>
             Promise.all([Promise.resolve(readyPromise), nodeTablePromise]);

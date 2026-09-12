@@ -76,6 +76,10 @@
           savedHorseSummaries: [],
           editStallions: [],
           horseSummaryLoaded: false,
+          // identityResolver（vue/app/app-computed.js）の材料を読み終えるたびに 1 増やす。
+          // 材料のうち血統ノード表（window.Dabimas.pedigreeNodes）と馬マスタ（horsesBase）は
+          // どちらもリアクティブでないため、この値が作り直しの合図になる。
+          identityResolverVersion: 0,
           horseSummaryChunkSize: 128,
           horseDetailTotalChunks: 0,
           horseDetailPreloadStarted: false,
