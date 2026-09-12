@@ -20,7 +20,9 @@ if (typeof global.crypto === "undefined") {
 
 require(path.join(ROOT, "vue/constants/pedigree-indexes.js"));
 require(path.join(ROOT, "vue/constants/breeding-theories.js"));
+require(path.join(ROOT, "vue/logic/pedigree/identity-resolver.js"));
 require(path.join(ROOT, "vue/logic/pedigree/pedigree-builder.js"));
+require(path.join(ROOT, "vue/logic/pedigree/board-refs.js"));
 require(path.join(ROOT, "vue/logic/pedigree/pedigree-node-table.js"));
 require(path.join(ROOT, "vue/logic/theory/compatibility.js"));
 require(path.join(ROOT, "vue/logic/inbreed/inbreed-detector.js"));
@@ -89,11 +91,20 @@ function resolveMare(name) {
   return horses.find((horse) => horse.name === name && horse.sex === "1") || null;
 }
 
+// nodeTable を渡すときは resolver も要る（vue/logic/inbreed/inbreed-detector.js）。
+const resolver = window.Dabimas.logic.pedigree.buildIdentityResolver({
+  nodeTable,
+  customRecordsById: new Map(),
+  editRecordsById: new Map(),
+  baseHorseNodeIdById: new Map(horses.map((horse) => [horse.id, horse.nodeId])),
+});
+
 function diagnose(selected) {
   return plan.diagnoseBreedingPlan({
     selected,
     brosData,
     nodeTable,
+    resolver,
     inbreedExceptions,
     resolveHorse,
     resolveMare,

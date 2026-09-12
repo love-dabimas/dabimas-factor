@@ -163,8 +163,10 @@ assert.equal(summaryJson.version, 1);
 // 増減の内訳を確認してから直すこと。
 // 2026-09-01: 血統マスター統合ビルド（dataset_version 2026-09-01T052756Z+raw.f7018232c481）
 //             で全書更新分 +52 / -11 を取り込み、2873 -> 2914 になった。
-assert.equal(horses.length, 2914);
-assert.equal(stallions.length, 2415);
+// 2026-09-04: 週次のデータ更新で +24 / -11。2914 -> 2927（種牡馬 2415 -> 2428）。
+// 2026-09-11: 週次のデータ更新で +11 / -6。2927 -> 2932（種牡馬 2428 -> 2433）。
+assert.equal(horses.length, 2932);
+assert.equal(stallions.length, 2433);
 assert.equal(broodmares.length, 499);
 
 const fiveStarAbilityCounts = { none: 0, normal: 0, double: 0, focused: 0 };
@@ -174,11 +176,12 @@ stallions
     assert.equal(horse.abilityType in fiveStarAbilityCounts, true);
     fiveStarAbilityCounts[horse.abilityType] += 1;
   });
+// 内訳も週次のデータ更新でずれる。2026-09-11 のデータでの値。
 assert.deepEqual(fiveStarAbilityCounts, {
-  none: 586,
-  normal: 1046,
+  none: 593,
+  normal: 1055,
   double: 13,
-  focused: 266,
+  focused: 268,
 });
 assert.equal(
   horses.find((horse) => horse.id === "s3537931452").abilityType,
