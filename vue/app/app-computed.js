@@ -22,6 +22,11 @@
 
   window.Dabimas.app.computed = {
         identityResolver() {
+          // 材料の血統ノード表（グローバル）と馬マスタ（horsesBase）はリアクティブでない。
+          // 読み終えた合図の identityResolverVersion をここで読み、作り直させる。
+          // これが無いと、材料が揃う前に作られた resolver が残り、同じ馬を同じと
+          // 判定できず、クロスが 1 つも出なくなる（2026-09-12 の不具合）。
+          void this.identityResolverVersion;
           return window.Dabimas.logic.pedigree.buildIdentityResolver({
             nodeTable: window.Dabimas.pedigreeNodes || null,
             customRecordsById: this.customHorseDetails,

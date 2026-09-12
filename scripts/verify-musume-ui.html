@@ -97,22 +97,30 @@
       await host.leaveScreen(); await wait(200); await boot(); check(app.currentScreen!=='musume','leave musume persisted');
       app.currentScreen='musume'; await app.$nextTick(); screen=await readyMusume('screenFrame');
     });
+    const KAZU='カズタカイザー';
+    // ダビ娘には同名の馬が2頭いて、ダビふぁくにいるのはその一部。どちらがいるかは
+    // 週次のデータ更新で入れ替わる（2026-09-11 に s1074824357 が消え s0314537268 が入った）。
+    // そのため頭数も id も直書きせず、アプリのデータから期待値を出す。
+    const namedCards = frameRef => cards(frameRef).filter(card=>card.querySelector('.result-card__horse-name')?.textContent===KAZU);
+    const kazuHorses = () => app.horsesBase.filter(horse=>horse.name===KAZU && /^[sb]\d+$/.test(horse.id));
     await test(14, async () => {
-      await search(screen,'カズタカイザー');
-      // ローカルビルドには末尾「？」の馬もあるため、指示書の同名2頭を馬名で特定する。
-      const named = () => cards(screen).filter(card=>card.querySelector('.result-card__horse-name')?.textContent==='カズタカイザー');
-      await until(()=>named().length===2,'kazutaka cards');
-      await until(()=>named().filter(el=>el.querySelector('.result-card__favorite')).length===1,'supported hearts');
-      check(host.supportedKeys.length===2914,'supported key count '+host.supportedKeys.length);
+      await search(screen,KAZU);
+      await until(()=>namedCards(screen).length===2,'kazutaka cards');
+      const expectedHearts=kazuHorses().length;
+      check(expectedHearts>0 && expectedHearts<2,'同名2頭のうちダビふぁくにいるのは1頭という前提: '+expectedHearts);
+      await until(()=>namedCards(screen).filter(el=>el.querySelector('.result-card__favorite')).length===expectedHearts,'supported hearts');
+      const supported=app.horsesBase.filter(horse=>/^[sb]\d+$/.test(horse.id)).length;
+      check(host.supportedKeys.length===supported,'supported key count '+host.supportedKeys.length+'/'+supported);
     });
     await test(15, async () => {
-      await openPicker(0); const sheet = await readyMusume('sheetFrame'); await search(sheet,'カズタカイザー');
+      await openPicker(0); const sheet = await readyMusume('sheetFrame'); await search(sheet,KAZU);
+      const expectedId = kazuHorses()[0].id;
       const before = D.favorites.state.count;
-      screen.contentDocument.querySelector('.result-card__favorite').click();
+      namedCards(screen).find(card=>card.querySelector('.result-card__favorite')).querySelector('.result-card__favorite').click();
       await until(()=>D.favorites.state.count===before+1,'favorite toggle');
       await until(()=>sheet.contentDocument.querySelector('.result-card__favorite.is-on'),'sheet heart sync');
-      check((await D.repositories.favorites.getAll()).some(row=>row.id==='s1074824357'),'favorite DB');
-      await wait(200); await boot(); check(D.favorites.has('s1074824357'),'favorite restored');
+      check((await D.repositories.favorites.getAll()).some(row=>row.id===expectedId),'favorite DB '+expectedId);
+      await wait(200); await boot(); check(D.favorites.has(expectedId),'favorite restored');
       app.currentScreen='musume'; await app.$nextTick(); screen=await readyMusume('screenFrame');
     });
     await test(16, async () => {
@@ -149,12 +157,15 @@
     await test(19, async () => {
       const before=JSON.stringify(app.selected);
       await openPicker(16); let sheet=await readyMusume('sheetFrame');
-      const message={type:'dabimas:select',v:1,horseId:'1074824357',gender:'0',name:'カズタカイザー'};
+      // ダビふぁくに無い番号をその場で選ぶ（特定の馬に依存させない）。
+      const missingId=['1074824357','9999999999','9999999998'].find(id=>!app.horsesBase.some(horse=>horse.id==='s'+id));
+      check(missingId,'ダビふぁく未対応の番号が見つからない');
+      const message={type:'dabimas:select',v:1,horseId:kazuHorses()[0].id.slice(1),gender:'0',name:KAZU};
       send(sheet,message); await wait(200);
       check(host.snackbar.text==='このセルには繁殖牝馬しか入りません' && host.sheetOpen,'wrong sex');
       host.sheetOpen=false; picker(16).closeMobileEditor(); await openPicker(0); sheet=await readyMusume('sheetFrame');
-      send(sheet,{...message,horseId:'0314537268'}); await wait(200);
-      check(host.snackbar.text==='『カズタカイザー』はダビふぁく未対応の馬です' && host.sheetOpen,'unsupported');
+      send(sheet,{...message,horseId:missingId}); await wait(200);
+      check(host.snackbar.text==='『'+KAZU+'』はダビふぁく未対応の馬です' && host.sheetOpen,'unsupported');
       win.postMessage(message,location.origin); send(sheet,{...message,v:2}); await wait(200);
       check(JSON.stringify(app.selected)===before,'invalid messages changed selection');
     });
