@@ -6,16 +6,20 @@
 
 このファイルは新しいセッションの最初に読まれる。長くしないこと。
 
-## いまの枝と公開状況（2026-09-12 時点）
+## いまの枝と公開状況（2026-09-13 時点）
+
+**統合版（ダビ娘統合＋配合理論補助）の本番稼働は 2026年11月。** それまで `main` へは出さない。
 
 | 枝 | 中身 |
 |---|---|
 | `main` | 公開中。ここへ push した時点で本番に出る |
-| `feature/musume-integration` | ダビ娘統合（ダビ娘を iframe で組み込み、❤ と馬選択を連携）。**公開待ち** |
+| `release/2026-11` | 11月に出すものの統合点。**機能の枝はここから切り、ここへ戻す** |
+| `feature/musume-integration` | ダビ娘統合。`release/2026-11` の元になったので以後触らない |
 
-ダビ娘統合を公開するときは、**先に**ダビ娘側（別リポジトリ `dabimas-data` の
-`feature/embed-mode`）を公開する。逆にすると、ダビふぁくの中のダビ娘に ❤ も馬選択も出ない。
-手順は `docs/dabimusume-integration-design.md` の §9 と §11.1 にある。
+週に一度 `main` を `release/2026-11` へ取り込む（衝突するのは `CACHE_NAME` の1行だけ）。
+
+**枝の切り方・公開順・統合版のテスト方法は `docs/branch-strategy.md` にまとめてある。**
+ダビ娘に関わる変更をするときは先に読むこと。
 
 `json/` のデータと `service-worker.js` の `CACHE_NAME` は、毎週金曜の GitHub Actions
 （`.github/workflows/x_post.yml`）が `main` へ自動で更新する。`CACHE_NAME` は
@@ -23,9 +27,10 @@
 
 ## 進め方
 
-- 改善 1 つにつき枝を 1 本、`main` から切る。終わったら `main` へ入れて公開する
-- `feature/musume-integration` では作業しない。ときどき `main` を取り込むだけにする
-  （衝突するのは `CACHE_NAME` の 1 行だけ）
+- 改善 1 つにつき枝を 1 本。11月の統合版に入るものは `release/2026-11` から切って戻す。
+  設計書などコードを含まないものと、本番の急ぎの修正だけ `main` から切る
+- `release/2026-11` と `feature/musume-integration` では作業しない
+  （前者は取り込みとマージ先、後者は用済み）
 - `index.html` を編集するときは `AGENTS.md` の手順（backup → apply_patch → verify）に従う
 - コミットメッセージは日本語。push は指示があったときだけ
 

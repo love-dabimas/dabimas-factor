@@ -1,5 +1,9 @@
 node_modules
 
+# ダビ娘のビルドを統合テスト用に置く場所（docs/branch-strategy.md）。
+# ここは配信のために置くだけで、ダビふぁくの成果物ではないのでコミットしない。
+dabimas-data/
+
 .chrome-runtime
 
 .cache/
