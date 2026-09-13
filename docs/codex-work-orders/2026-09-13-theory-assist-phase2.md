@@ -1,6 +1,6 @@
 # 作業指示書: 配合理論補助の画面とホームの入口（Phase 2）
 
-- status: 実装完了（検収待ち）
+- status: 完了（2026-09-13 検収済み。受け入れ基準1〜5をすべて再実行して確認。検収時の修正1件）
 - 作成日: 2026-09-13
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 上位仕様: `docs/haigou-theory-assist-design.md` v0.2（以下「設計書」）の §4.6・§7
@@ -280,3 +280,27 @@ powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-i
 ### 残課題・気づき
 
 なし。因子集計・クロス判定・危険／至高／奇跡・ダビ娘ピッカー連携は指定どおり未実装。
+
+---
+
+## 検収メモ（2026-09-13）
+
+受け入れ基準1〜5をすべて再実行して確認した。検証19本と `verify-index-exp` が通り、
+`scripts/verify-theory-assist-ui.html` をヘッドレスではなくブラウザーで動かして
+status OK・15項目・エラー0 を確認。既存の血統表が従来どおり動くことも画像で確認した。
+
+### 検収時に直した点（1件）
+
+馬名の作り方が本体と揃っていなかった。この画面だけ独自に
+`name + "-" + subName + "-"` としており、同じ馬が血統表では「スターアルタイル瓏覇」、
+この画面では「スターアルタイル-瓏覇-」と別の名前に見えていた。本体共通の
+`logic.horses.getHorseNameText` / `getHorseBaseText` に寄せた（自家製馬の ☆ の扱いも
+共通関数が持っている）。修正後に検証を再実行し、描画結果が
+「スターベガ」「スターアルタイル瓏覇」になることをブラウザーで確認した。
+
+### 次の Phase への申し送り（今回は直していない）
+
+- 種牡馬の面白・見事の4枠を、画面側の `sireLines` と `assist-plan` の両方が持っている。
+  `assist-plan` 側が結果と一緒に持てば一本化できる。
+- 種牡馬を1頭選ぶたびに `expandHorseBoard` が2回走る（画面側と `selectSire` の中）。
+  上と同じく `assist-plan` の API を足せば1回で済む。

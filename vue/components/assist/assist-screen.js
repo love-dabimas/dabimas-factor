@@ -29,11 +29,13 @@
       this.requestVersion += 1;
     },
     methods: {
+      // 馬名の作り方は本体と揃える。ここだけ独自にすると、同じ馬が血統表と
+      // この画面で違う名前に見える（自家製馬の ☆ の扱いも共通関数が持っている）。
       horseName(horse) {
-        return horse ? horse.name + (horse.subName ? "-" + horse.subName + "-" : "") : "";
+        return horse ? logic.horses.getHorseNameText(horse) : "";
       },
       candidateName(horse) {
-        return this.horseName(horse) + (horse.source === "custom" ? "（自家製）" : "");
+        return logic.horses.getHorseBaseText(horse);
       },
       filterHorse(horse, query) {
         return logic.horses.filterHorse(horse, query);
