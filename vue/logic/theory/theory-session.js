@@ -19,6 +19,7 @@
 
   function prepareSireOperands(board) {
     return {
+      // 面白4枠は繁殖牝馬の4枠と同じセル（1・3・5・7）なので、同じ関数を使う。
       omoshiro: prepareMareLines(board),
       migoto: linesAt(board, [9, 11, 13, 15]),
     };
