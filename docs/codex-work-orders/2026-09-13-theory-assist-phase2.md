@@ -1,6 +1,6 @@
 # 作業指示書: 配合理論補助の画面とホームの入口（Phase 2）
 
-- status: 依頼中
+- status: 実装完了（検収待ち）
 - 作成日: 2026-09-13
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 上位仕様: `docs/haigou-theory-assist-design.md` v0.2（以下「設計書」）の §4.6・§7
@@ -236,17 +236,47 @@ powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-i
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/components/assist/assist-screen.js` — 3世代の選択済み・未選択・待ち表示、ローカル候補の検索ダイアログ、詳細取得、理論バッジ、未計算枠を追加。
+- `vue/components/home/home-page.js` — 「馬を探す」に編集対象外の「配合理論補助」タイルを追加。
+- `vue/logic/workspace-sync.js` — `assist` の保存と起動時復元を許可。
+- `index.html` — 画面の設置とコンポーネントの script タグを追加。
+- `css/unified.css` — モックに合わせた世代別の配色・馬の行・系統表示・判定枠と、ホームの2列タイルを追加。
+- `service-worker.js` — 新規コンポーネントをキャッシュ対象へ追加。`CACHE_NAME` を `dabimas-factor-v20260913-05` に更新。
+- `scripts/verify-theory-assist-screen.cjs` — 配線、実データでの選択・再選択、取得失敗、非同期処理の検証を追加。
+- `scripts/verify-theory-assist-ui.html` — 375pxのiframe内で実際の画面を操作するブラウザー検証を追加。
+- 本作業指示書 — status と完了報告を更新。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」>
+- `musume-host` は常駐し、既にすべての `currentScreen` 変更を `rememberScreen` に渡していた。重複する監視は追加せず、workspace-sync の保存・復元対象に `assist` を追加した。ダビ娘関連ファイルは変更していない。
+- 選択入口は `openPicker`、反映は `confirmSelection` に分け、Phase 4 で入口を差し替えられる形にした。検索の表記ゆれ吸収と馬自身の因子表示は既存の共通関数を利用した。
+- 詳細取得中の二重送信を防止し、取得失敗時は候補選択だけを取り消して既存計画を保持する。画面破棄後に返った取得結果も反映しない。
+- 繁殖牝馬の面白・見事は Phase 1 API の同じ4枠を表示する。モックの仮値より、指示書の4枠指定とAPIの値を優先した。
+- ホームへ戻る操作を追加。画面キーのみを記憶し、試した配合の永続保存は追加していない。
+- モックの「画面案」、仮データの注意書き、危険な配合についての案内は実画面には載せず、Phase 2 で確認できる内容に説明文を合わせた。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる。
-基準4は何をどう確認したかを具体的に書く>
+- **基準1:** `node scripts/verify-theory-assist-screen.cjs` → 終了コード0。設置・依存順・キャッシュ・導線・保存復元対象に加えて、スターベガ×スターアルタイル（瓏覇）の「完璧な配合」、3代選択、後続破棄、母の再選択、理論なし、詳細取得失敗、不完全な祖先、二重送信、破棄後の非同期完了を検証。
+- **基準2:** PowerShellで `Get-ChildItem scripts/verify-*.cjs` から `verify-p2d-common.cjs` を除き、1本ずつ `node` で実行。**19本すべて終了コード0**。Phase 1 の `verify-theory-assist.cjs` も成功。
+- **基準3:** `powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-index-exp .\index.html` → `[verify] OK`。編集前のバックアップも同スクリプトで取得済み。
+- **基準4・5:** `python scripts/lan_server.py 8794 --bind 127.0.0.1` で配信し、`powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 dump-dom http://127.0.0.1:8794/scripts/verify-theory-assist-ui.html 390 844 300000` を実行。検証HTMLが内部を375px幅に固定し、結果は `status: OK`、`errors: []`。
+  - ホームの編集モードでも固定タイルを表示し、クリックで `assist` が開くことを確認。
+  - 検索ダイアログの入力・候補行・「選択する」を実際に操作し、スターベガ選択時に2・3代目が待ちになることを確認。
+  - スターアルタイル（瓏覇）選択時に「完璧な配合」と「1代目配合の繁殖牝馬」が表示されることを確認。
+  - 3代目まで種牡馬を選び、バッジ3件と縦スクロールを確認。
+  - 1代目をサンデーサイレンス（1989）に替え、後続の種牡馬・結果・3代目の母・補助表示を破棄することを確認。母の再選択で全体が初期化されることも確認。
+  - ホーム、初期状態、1代目選択後、3代目選択後で375pxの横スクロールがないことを寸法で検証。
+  - 再読み込みで `assist` を復元し、ホームへ戻れることを確認。
+  - ホーム→カテゴリのカード→血統表を辿り、種牡馬を設定して表示されることを確認。
+- **目視:** 指定モックをヘッドレスChromeで開いて撮影し、実装後も同じスクリプトの `screenshot` で撮影。3状態の配置・配色・理論バッジ・未計算枠、および既存血統表を画像で確認した。
+  - [配合理論補助・375px](../../artifacts/theory-assist-phase2/assist-375.png)
+  - [既存血統表・375px](../../artifacts/theory-assist-phase2/category-375.png)
+  - [ブラウザー検証のDOM結果](../../artifacts/theory-assist-phase2/verification-dom.html)
+  - 画像・DOMはローカルの `artifacts/` に保存（Git管理外）。検証HTMLから再生成可能。
+- **レビュー:** 着手前 `ec703d0` を固定点として、code-review スキルの2軸レビューを実施。Standardsは確定違反0件、軽微なテスト保守性の指摘1件（キャッシュ名の日付と連番の比較）を修正し、新規検証を再実行して成功。Specは指摘0件。
+- `git diff --check` → 成功。`feature/theory-session` でローカルコミットし、push・mainへのマージは行っていない。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+なし。因子集計・クロス判定・危険／至高／奇跡・ダビ娘ピッカー連携は指定どおり未実装。

@@ -12,7 +12,8 @@ assert.ok(html.indexOf(componentPath) > html.indexOf('vue/logic/plan/assist-plan
 const worker = read('service-worker.js');
 assert.ok(worker.includes("BASE_PATH + '" + componentPath + "'"));
 const cache = worker.match(/var CACHE_NAME = 'dabimas-factor-v(\d{8})-(\d+)'/);
-assert.ok(cache && Number(cache[1]) >= 20260912 && Number(cache[2]) > 4);
+assert.ok(cache && (Number(cache[1]) > 20260912 ||
+  (Number(cache[1]) === 20260912 && Number(cache[2]) > 4)));
 const home = read('vue/components/home/home-page.js');
 assert.match(home, /@click="openAssist"/);
 assert.match(home, /配合理論補助/);

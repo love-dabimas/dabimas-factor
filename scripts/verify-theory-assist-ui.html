@@ -9,6 +9,7 @@
   const output = () => document.querySelector('#result').textContent = JSON.stringify(result);
   const heartbeat = setInterval(output, 100);
   const frame = document.querySelector('iframe');
+  if (new URLSearchParams(location.search).get('view') === 'overview') frame.style.height = '1400px';
   const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
   const check = (ok, label) => { if (!ok) throw Error(label); result.checks.push(label); };
   async function until(test, label) {
