@@ -1,6 +1,6 @@
 # 作業指示書: 配合理論補助の判定セッションと工程の連結（Phase 1）
 
-- status: 依頼中
+- status: 実装完了
 - 作成日: 2026-09-13
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 上位仕様: `docs/haigou-theory-assist-design.md` v0.2（以下「設計書」）の §1・§3.2・§7
@@ -268,16 +268,29 @@ powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-i
 
 ### 変更ファイル一覧
 
-<変更した全ファイルと、それぞれ何をしたか>
+- `vue/logic/theory/theory-session.js` — 盤面からの親系統抽出と、母を固定した添字単位の判定キャッシュ・理論別集計を追加。
+- `vue/logic/plan/assist-plan.js` — 既存の盤面展開・仮想母生成を利用する3工程の前進型計画を追加。選択変更・解除時に後続を破棄。
+- `scripts/verify-theory-assist.cjs` — VM と実データによる受け入れ基準 a〜h、解除、集計、入力境界、読み込み順・キャッシュ登録の検証を追加。
+- `index.html` — 依存順に新規2本の classic script を追加。
+- `service-worker.js` — 新規2本を `urlsToCache` に登録し、同日連番を `v20260912-03` から `v20260912-04` に更新。
+- 本指示書 — status と完了報告を更新。
 
 ### 設計判断
 
-<指示書に書かれていなくて自分で判断したことがあれば、その内容と理由。なければ「なし」>
+- 母がまだ存在しない工程の `mareLabel` / `mareLines` は `null`。工程番号が不正な操作・母取得は `RangeError`、`isSelectable` は `false` を返す。前工程が未確定の選択はエラーにし、状態は変えない。
+- `countsByTheory()` は既存の優先順位表にある全キーを返し、該当なしは0とする。表示された最優先理論だけでなく、成立した各理論を集計する。
+- 種牡馬の抽出済み配列は不変の契約で共有し、セッション内で種牡馬データの複製や盤面の再構築を行わない。
+- 種牡馬選択では判定・次工程の盤面生成に成功してから現在の工程と後続を更新する。
 
 ### 実行した検証と結果
 
-<検証コマンドごとの実行結果。受け入れ基準の番号と対応させる>
+- 基準1: `node scripts/verify-theory-assist.cjs` — 終了コード0。a〜hのすべてを確認。理論なしも含む判定・表示選択の呼び出し回数、重複キー、母切替時の盤面再構築禁止、全候補と既存判定の一致も検証。
+- 基準2・3: `Get-ChildItem scripts/verify-*.cjs` で列挙し、`verify-p2d-common.cjs` を除いて `node` で1本ずつ実行 — 既存17本＋新規1本、全18本が終了コード0。`verify-plan-diagnosis.cjs` も従来のシナリオすべて通過。
+- 基準4: `powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-index-exp .\index.html` — `[verify] OK`。編集前に同エントリポイントの `backup-index-exp .\index.html` でバックアップ取得済み。
+- 基準5: 新規検証で新規2本の script 読み込み順と `urlsToCache` 登録を確認。差分で `CACHE_NAME` の連番更新も確認。
+- `git diff --check` — 問題なし。
+- `code-review` の並列レビュー — Standards（規約）0件、Spec（仕様）0件。
 
 ### 残課題・気づき
 
-<スコープ外だが気づいた問題、やり残し。なければ「なし」>
+なし。画面・危険・至高・奇跡・ダビ娘連携は指示どおり対象外。ブラウザー・実機の操作確認は今回実施していない。
