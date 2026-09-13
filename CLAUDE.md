@@ -6,16 +6,17 @@
 
 このファイルは新しいセッションの最初に読まれる。長くしないこと。
 
-## いまの枝と公開状況（2026-09-12 時点）
+## いまの枝と公開状況（2026-09-13 時点）
 
 | 枝 | 中身 |
 |---|---|
 | `main` | 公開中。ここへ push した時点で本番に出る |
-| `feature/musume-integration` | ダビ娘統合（ダビ娘を iframe で組み込み、❤ と馬選択を連携）。**公開待ち** |
+| `feature/musume-integration` | ダビ娘統合（iframe 埋め込み・❤・馬選択）。**公開待ち** |
+| `feature/haigou-theory-assist` | 配合理論補助の設計書（`docs/haigou-theory-assist-design.md`） |
 
-ダビ娘統合を公開するときは、**先に**ダビ娘側（別リポジトリ `dabimas-data` の
-`feature/embed-mode`）を公開する。逆にすると、ダビふぁくの中のダビ娘に ❤ も馬選択も出ない。
-手順は `docs/dabimusume-integration-design.md` の §9 と §11.1 にある。
+**枝の切り方・公開順・統合版のテスト方法は `docs/branch-strategy.md` にまとめてある。**
+ダビ娘に関わる変更をするときは先に読むこと。2リポジトリにまたがり公開順に制約があるため、
+ダビふぁく側だけ見ていると順番を間違える。
 
 `json/` のデータと `service-worker.js` の `CACHE_NAME` は、毎週金曜の GitHub Actions
 （`.github/workflows/x_post.yml`）が `main` へ自動で更新する。`CACHE_NAME` は
