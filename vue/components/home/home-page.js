@@ -40,6 +40,9 @@
       },
     },
     methods: {
+      openAssist() {
+        this.$root.currentScreen = "assist";
+      },
       openMusume() {
         this.$root.currentScreen = "musume";
       },
@@ -132,12 +135,20 @@
         </v-app-bar>
 
         <div class="dabimas-home-section-title">馬を探す</div>
-        <div class="dabimas-musume-tile-wrap">
+        <div class="dabimas-musume-tile-wrap dabimas-search-tiles">
           <v-card outlined ripple class="dabimas-musume-tile" @click="openMusume">
             <v-icon size="28" color="primary">mdi-magnify</v-icon>
             <div class="dabimas-musume-tile__text">
               <div class="dabimas-musume-tile__title">ダビ娘</div>
               <div class="dabimas-musume-tile__sub">馬を探す・お気に入りを付ける</div>
+            </div>
+            <v-icon color="grey">mdi-chevron-right</v-icon>
+          </v-card>
+          <v-card outlined ripple class="dabimas-musume-tile" @click="openAssist">
+            <v-icon size="28" color="primary">mdi-family-tree</v-icon>
+            <div class="dabimas-musume-tile__text">
+              <div class="dabimas-musume-tile__title">配合理論補助</div>
+              <div class="dabimas-musume-tile__sub">繁殖牝馬から3代先の配合を試す</div>
             </div>
             <v-icon color="grey">mdi-chevron-right</v-icon>
           </v-card>

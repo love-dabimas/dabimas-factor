@@ -329,7 +329,7 @@
             });
           }).then(function (screen) {
             return appMetaRepo.get("lastScreen").then(function (lastScreen) {
-              return lastScreen === "musume" ? "musume" : screen;
+              return ["musume", "assist"].includes(lastScreen) ? lastScreen : screen;
             });
           });
         });
@@ -387,7 +387,7 @@
   }
 
   function rememberScreen(screen) {
-    if (state.dbUnavailable || !["home", "category", "settings", "musume"].includes(screen)) return;
+    if (state.dbUnavailable || !["home", "category", "settings", "musume", "assist"].includes(screen)) return;
     return appMetaRepo.set("lastScreen", screen).catch(function (error) {
       console.warn("lastScreen save failed", error);
     });
