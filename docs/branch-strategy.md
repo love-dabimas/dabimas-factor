@@ -118,12 +118,20 @@ iframe は同一オリジンでないと動かないので、ダビ娘のビル�
 1つのサーバーから配信する。
 
 ```
-# ダビ娘側（本番の週次ワークフローと同じベースパス）
-VITE_BASE_PATH=/dabimas-data/dist/ npm run build
+# ダビ娘側（本番の週次ワークフローと同じベースパス）。
+# --outDir を必ず付けて、リポジトリの dist/ の外へ出す（下の注意）
+VITE_BASE_PATH=/dabimas-data/dist/ npm run build -- --outDir "$env:TEMP/musume-embed"
 
-# ビルド結果を dabimas-data/dist/ へコピーしてから、ダビふぁくのルートで
+# 出来たものを dabimasFactor_new/dabimas-data/dist/ へコピーしてから、
+# ダビふぁくのルートで
 start-lan.bat
 ```
+
+**`--outDir` を省くと、ダビ娘リポジトリの `dist/` を上書きする。** `dist/` は
+git で追跡されていて（週次ワークフローがコミットする）、しかもこのビルドは
+ベースパスが `/dabimas-data/dist/` なので**本番用としては壊れている。**
+そのままコミットすると次の公開で本番が動かなくなる。`npm run build` のあとに
+`git status` で `dist/` が汚れていないかを見ること。
 
 **Git Bash（MSYS）でこれを打つと壊れる。** `/dabimas-data/dist/` が Windows のパスだと
 みなされ、`C:/Program Files/Git/dabimas-data/dist/` に化ける。ビルドは成功するが
