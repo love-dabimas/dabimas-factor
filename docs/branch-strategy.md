@@ -125,6 +125,19 @@ VITE_BASE_PATH=/dabimas-data/dist/ npm run build
 start-lan.bat
 ```
 
+**Git Bash（MSYS）でこれを打つと壊れる。** `/dabimas-data/dist/` が Windows のパスだと
+みなされ、`C:/Program Files/Git/dabimas-data/dist/` に化ける。ビルドは成功するが
+`index.html` の script の src がその化けたパスになり、**ダビ娘が iframe の中で
+真っ白になる**（エラーも出ない）。Git Bash で打つときは前に `MSYS_NO_PATHCONV=1` を付ける。
+PowerShell なら `$env:VITE_BASE_PATH='/dabimas-data/dist/'` としてから `npm run build`。
+
+化けていないかは、コピー後に配信して確かめられる。
+
+```
+curl -s http://127.0.0.1:8080/dabimas-data/dist/index.html | grep -o 'src="[^"]*"'
+# → src="/dabimas-data/dist/assets/index-XXXX.js" ならOK
+```
+
 同じ Wi-Fi の実機から `http://<PC の IP>:8080/index.html`。
 Service Worker とオフラインは LAN の http では確認できない（PC の `127.0.0.1` なら可）。
 詳細は `docs/haigou-theory-assist-design.md` §9。
