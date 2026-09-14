@@ -13,18 +13,22 @@
   function isMasterHorseId(id) {
     return typeof id === "string" && /^[sb]\d+$/.test(id);
   }
-  function toMusumeKey(id) {
-    return isMasterHorseId(id) ? id.slice(1) + (id[0] === "s" ? "-0" : "-1") : null;
+  function toMusumeKey(id, gender) {
+    if (isMasterHorseId(id)) return id.slice(1) + (id[0] === "s" ? "-0" : "-1");
+    return typeof id === "string" && id.length > 0 && ["0", "1"].includes(gender)
+      ? "ch_" + id + "-" + gender : null;
   }
   function fromMusume(horseId, gender) {
-    if (typeof horseId !== "string" || !/^\d+$/.test(horseId) || !["0", "1"].includes(gender)) return null;
+    if (typeof horseId !== "string" || !["0", "1"].includes(gender)) return null;
+    if (horseId.startsWith("ch_") && horseId.length > 3) return horseId.slice(3);
+    if (!/^\d+$/.test(horseId)) return null;
     return (gender === "0" ? "s" : "b") + horseId;
   }
   function readMessage(event, sources, expectedOrigin) {
     if (!event || event.origin !== expectedOrigin || !event.source || !sources.includes(event.source)) return null;
     var data = event.data;
     if (!data || typeof data !== "object" || Array.isArray(data) || data.v !== 1) return null;
-    return ["dabimas:hello", "dabimas:favorite-toggle", "dabimas:favorites-only", "dabimas:select"].includes(data.type) ? data : null;
+    return ["dabimas:hello", "dabimas:favorite-toggle", "dabimas:favorites-only", "dabimas:select", "dabimas:candidates"].includes(data.type) ? data : null;
   }
   window.Dabimas.logic.musumeLink = {
     BASE_URL: BASE_URL,

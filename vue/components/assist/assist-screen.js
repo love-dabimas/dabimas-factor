@@ -1,4 +1,4 @@
-// 配合理論補助の表示とローカル候補の選択。判定・後続世代の管理は assist-plan に委譲する。
+// 配合理論補助の表示とダビ娘への選択依頼。判定・後続世代の管理は assist-plan に委譲する。
 (function (window, Vue) {
   window.Dabimas = window.Dabimas || {};
   window.Dabimas.components = window.Dabimas.components || {};
@@ -8,20 +8,13 @@
     name: "assist-screen",
     data() {
       return {
-        plan: null, baseMare: null, sireLines: [null, null, null],
-        pickerOpen: false, pickerStep: 0, selectedCandidate: null,
+        plan: null, baseMare: null,
         busy: false, error: "", requestVersion: 0,
       };
     },
     computed: {
       steps() {
         return this.plan ? this.plan.steps : [1, 2, 3].map(stepNo => ({ stepNo }));
-      },
-      candidates() {
-        return (this.pickerStep === 0 ? this.$root.broodmares : this.$root.stallions) || [];
-      },
-      pickerTitle() {
-        return this.pickerStep === 0 ? "繁殖牝馬を選ぶ" : this.pickerStep + "代目の種牡馬を選ぶ";
       },
     },
     beforeDestroy() {
@@ -34,34 +27,42 @@
       horseName(horse) {
         return horse ? logic.horses.getHorseNameText(horse) : "";
       },
-      candidateName(horse) {
-        return logic.horses.getHorseBaseText(horse);
-      },
-      filterHorse(horse, query) {
-        return logic.horses.filterHorse(horse, query);
-      },
       factorBadges(horse) {
         return logic.horses.getHorseFactorBadges(horse);
       },
       theoryName(result) {
         return window.Dabimas.constants.breedingTheories.DISPLAY_NAME[result.displayed] || "理論なし";
       },
-      // Phase 4 ではこの選択入口を差し替える。
       openPicker(stepNo) {
         if (this.busy || (stepNo && (!this.plan || !this.plan.isSelectable(stepNo)))) return;
-        this.pickerStep = stepNo;
-        this.selectedCandidate = null;
+        var version = ++this.requestVersion;
         this.error = "";
-        this.pickerOpen = true;
+        var request = {
+          sex: stepNo === 0 ? "1" : "0",
+          label: stepNo === 0 ? "繁殖牝馬を選ぶ" : stepNo + "代目の種牡馬を選ぶ",
+          select: horse => {
+            if (version !== this.requestVersion) return;
+            return this.confirmSelection(stepNo, horse);
+          },
+        };
+        if (stepNo) {
+          var mother = logic.musumeLink.toMusumeKey(this.baseMare.id, this.baseMare.sex);
+          request.theoryMap = {
+            mareKey: stepNo === 1 ? mother : "virtual-" + stepNo + "-" + JSON.stringify([
+              mother, this.plan.steps.slice(0, stepNo - 1).map(step => step.sire.id),
+            ]),
+            damLines: this.plan.steps[stepNo - 1].mareLines.slice(),
+          };
+        }
+        this.$root.$emit("musume:open-search", request);
       },
-      async confirmSelection() {
-        if (this.busy || !this.selectedCandidate) return;
-        var stepNo = this.pickerStep;
+      async confirmSelection(stepNo, horse) {
+        if (this.busy || !horse) return;
         var version = ++this.requestVersion;
         this.busy = true;
         this.error = "";
         try {
-          var detail = await this.$root.ensureHorseDetail(this.selectedCandidate);
+          var detail = await this.$root.ensureHorseDetail(horse);
           if (version !== this.requestVersion) return;
           if (!detail || !Array.isArray(detail.descendants) || detail.descendants.length !== 15 ||
               !Array.from(detail.descendants).every(entry => entry && typeof entry === "object")) {
@@ -71,21 +72,15 @@
             var nextPlan = logic.plan.createAssistPlan({ baseMare: detail, brosData: this.$root.brosData });
             this.plan = nextPlan;
             this.baseMare = detail;
-            this.sireLines = [null, null, null];
           } else {
-            var lines = logic.theory.prepareSireOperands(logic.plan.expandHorseBoard(detail, this.$root.brosData));
             this.plan.selectSire(stepNo, detail);
-            this.sireLines = this.sireLines.map((previous, index) =>
-              index < stepNo - 1 ? previous : index === stepNo - 1 ? lines : null);
           }
-          this.pickerOpen = false;
         } catch (error) {
           if (version !== this.requestVersion) return;
           this.error = "馬の詳細を取得できませんでした。もう一度選んでください。";
         } finally {
           if (version === this.requestVersion) {
             this.busy = false;
-            this.selectedCandidate = null;
           }
         }
       },
@@ -103,7 +98,7 @@
             <h1>配合理論補助</h1>
             <p>繁殖牝馬を起点に、代ごとに種牡馬を選び、その組み合わせで成立する配合理論を確認する画面です。</p>
           </div>
-          <v-alert v-if="error && !pickerOpen" dense outlined type="error" role="alert">{{ error }}</v-alert>
+          <v-alert v-if="error" dense outlined type="error" role="alert">{{ error }}</v-alert>
           <section v-for="step in steps" :key="step.stepNo" class="assist-gen"
             :class="['assist-gen--' + step.stepNo, { 'is-locked': step.stepNo > 1 && !step.mareLines }]">
             <div class="assist-gen-head"><span>STEP {{ step.stepNo }}</span>{{ step.stepNo }}代目</div>
@@ -142,7 +137,7 @@
                     <div class="assist-lines">
                       <div v-for="kind in ['omoshiro', 'migoto']" :key="kind" class="assist-line-row">
                         <span class="assist-line-label" :class="{ 'is-migoto': kind === 'migoto' }">{{ kind === 'omoshiro' ? '面白' : '見事' }}</span>
-                        <span v-for="(code, index) in sireLines[step.stepNo - 1][kind]" :key="index" class="assist-line-code">{{ code || 'ー' }}</span>
+                        <span v-for="(code, index) in step.sireLines[kind]" :key="index" class="assist-line-code">{{ code || 'ー' }}</span>
                       </div>
                     </div>
                   </div>
@@ -162,21 +157,6 @@
           </section>
           <footer class="assist-foot">1代目で選んだ種牡馬と繁殖牝馬から生まれる産駒が、そのまま2代目の繁殖牝馬になります。前の代を変えると、後ろの代は組み直しになります。</footer>
         </div>
-        <v-dialog v-model="pickerOpen" :persistent="busy" max-width="480">
-          <v-card>
-            <v-card-title class="text-subtitle-1">{{ pickerTitle }}</v-card-title>
-            <v-card-text>
-              <v-alert v-if="error" dense outlined type="error" role="alert">{{ error }}</v-alert>
-              <v-autocomplete v-model="selectedCandidate" :items="candidates" :item-text="candidateName"
-                item-value="id" return-object :filter="filterHorse" label="馬名で検索" no-data-text="候補がありません"
-                :disabled="busy" :loading="busy" hide-details outlined dense></v-autocomplete>
-            </v-card-text>
-            <v-card-actions><v-spacer></v-spacer>
-              <v-btn text :disabled="busy" @click="pickerOpen = false">キャンセル</v-btn>
-              <v-btn color="primary" :disabled="!selectedCandidate || busy" :loading="busy" @click="confirmSelection">選択する</v-btn>
-            </v-card-actions>
-          </v-card>
-        </v-dialog>
       </div>
     `,
   };
