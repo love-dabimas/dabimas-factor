@@ -120,8 +120,17 @@
           var horses = await pending;
           if (pending !== this.customPayloadPromise || !this.sources().includes(source)) return;
           this.send(source, { type: "dabimas:custom-horses", v: 1, horses });
-          if (target !== this.target || !target || !target.theoryMap || !this.sheetOpen ||
-              !this.$refs.sheetFrame || source !== this.$refs.sheetFrame.contentWindow || !this.candidateRows) return;
+          if (target !== this.target || !target || !this.sheetOpen ||
+              !this.$refs.sheetFrame || source !== this.$refs.sheetFrame.contentWindow) return;
+          // 理論を出さない検索（繁殖牝馬を選ぶときや血統表のセル）では、空のチップを
+          // 送ってダビ娘側の理論チップを消す。前の母のチップが残るのを防ぐ。
+          if (!target.theoryMap) {
+            this.send(source, { type: "dabimas:theory-map", v: 1, mareKey: "", chips: [], entries: [] });
+            return;
+          }
+          // 候補が届くまでは送らない。空のチップを先に送ると、出るはずのチップが
+          // 一瞬消えて見える。
+          if (!this.candidateRows) return;
           var input = target.theoryMap;
           this.send(source, input.entries ? input : window.Dabimas.logic.musume.buildTheoryMap({
             mareKey: input.mareKey, damLines: input.damLines,
@@ -138,9 +147,10 @@
         sex = sex === undefined ? link.allowedSexForCell(index) : sex;
         if (!["0", "1", "any"].includes(sex)) return;
         this.target = { index, label, select, sex, theoryMap };
+        // 母が変わっても iframe は作り直さない。作り直すとダビ娘の起動に毎回
+        // 1.4〜1.8 秒かかる（8MB の検索データを読み直すため）。母が変わったことは
+        // mareKey で伝わり、理論を出さない検索へ戻すときは空のチップを送る。
         var src = link.BASE_URL + "?picker=1&sex=" + sex;
-        // 母が変わると別の iframe にする。理論なしの検索に前のチップを残さない。
-        if (theoryMap) src += "&mareKey=" + encodeURIComponent(theoryMap.mareKey);
         if (src !== this.sheetSrc) {
           var previous = this.$refs.sheetFrame && this.$refs.sheetFrame.contentWindow;
           this.readySources.delete(previous);

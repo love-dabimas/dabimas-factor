@@ -26,8 +26,10 @@ const brosData = JSON.parse(read('json/brosData.json')).brosData;
 const mare = horses.find(h => h.name === 'スターベガ' && h.sex === '1');
 const sires = horses.filter(h => h.sex === '0');
 const boards = sires.map(h => plan.expandHorseBoard(h, brosData));
+// ダビ娘の行の並びは [key, Paternal_t, Paternal_ht, Paternal_jik, Paternal_mig]。
+// 盤面ではセル3が Paternal_ht、セル5・7が Paternal_jik（設計書 §1.2 の訂正）。
 const rows = boards.map((board, i) => [link.toMusumeKey(sires[i].id), board[1].parentLine,
-  board[5].parentLine, board[3].parentLine + board[7].parentLine,
+  board[3].parentLine, board[5].parentLine + board[7].parentLine,
   [9, 11, 13, 15].map(cell => board[cell].parentLine).join('')]);
 const damLines = theory.prepareMareLines(plan.expandHorseBoard(mare, brosData));
 const input = { mareKey: link.toMusumeKey(mare.id), damLines, rows };
@@ -60,10 +62,15 @@ for (const sex of ['0', '1']) {
   const payload = musume.buildCustomHorsePayload({ id: 'a1b2', sex, name: '自家製', factors: ['速', '堅', ''] }, synthetic);
   assert.deepEqual(plain(payload.factors), ['02', '09', '']);
   assert.equal(payload.paternalMig, sex === '0' ? '09111315' : '091315');
-  assert.equal(payload.paternalJik, '0307');
-  assert.deepEqual([payload.paternalT, payload.paternalJik.slice(0, 2), payload.paternalHt, payload.paternalJik.slice(2)], ['01', '03', '05', '07']);
+  assert.equal(payload.paternalHt, '03', 'Paternal_ht は盤面のセル3');
+  assert.equal(payload.paternalJik, '0507', 'Paternal_jik は盤面のセル5と7');
+  // 面白4枠はダビ娘の並び [t, jik前半, ht, jik後半] に戻ること。
+  assert.deepEqual([payload.paternalT, payload.paternalJik.slice(0, 2), payload.paternalHt, payload.paternalJik.slice(2)], ['01', '05', '03', '07']);
+  // 系統コードは理論に使うセルだけ。種牡馬は 1/3/5/7/9/11/13/15、繁殖牝馬は 1/3/5/7。
+  const lineCells = sex === '0' ? [1, 3, 5, 7, 9, 11, 13, 15] : [1, 3, 5, 7];
   assert.deepEqual(plain(payload.pedigree), [1,2,4,8,9,5,10,11,3,6,12,13,7,14,15]
-    .map(cell => ['ancestor' + cell, 'son' + cell, String(cell).padStart(2, '0'), ['01', '', '']]));
+    .map(cell => ['ancestor' + cell, 'son' + cell,
+      lineCells.includes(cell) ? String(cell).padStart(2, '0') : '', ['01', '', '']]));
 }
 const factorNames = ['短','速','底','長','適','丈','早','晩','堅','難','走','中','強','雷',''];
 const expectedCodes = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14',''];
@@ -75,6 +82,48 @@ const altair = sires.find(h => h.name === 'スターアルタイル' && h.subNam
 const custom = { ...altair, id: 'a1b2', source: 'custom' };
 const payload = musume.buildCustomHorsePayload(custom, plan.expandHorseBoard(custom, brosData));
 assert.ok(musume.buildTheoryMap({ ...input, customHorses: [payload] }).entries.some(([key, bits]) => key === payload.key && (bits & 1)));
+
+// --- 実在馬でダビ娘のマスターと突き合わせる ---------------------------------
+// 自家製馬にマスターは無いが、変換規則が合っているかは実在馬で検算できる。
+// ダビ娘の配信物が手元に無い環境（CI など）では飛ばす。
+const musumeJsonPath = path.join(root, 'dabimas-data/dist/json/horselist.json');
+if (!fs.existsSync(musumeJsonPath)) {
+  console.log('[verify-theory-assist-phase4a] 注意: dabimas-data/dist が無いのでマスター突き合わせは飛ばした');
+} else {
+  const master = new Map(JSON.parse(fs.readFileSync(musumeJsonPath, 'utf8'))
+    .map(entry => [entry.card.name + '|' + entry.Gender, entry]));
+  const detailDir = path.join(root, 'json/dabimasFactor-details');
+  const details = new Map();
+  for (const file of fs.readdirSync(detailDir).slice(0, 3)) {
+    for (const detail of JSON.parse(fs.readFileSync(path.join(detailDir, file), 'utf8')).horseDetails || []) {
+      details.set(detail.id, detail);
+    }
+  }
+  let compared = 0;
+  for (const horse of horses) {
+    const detail = details.get(horse.id);
+    if (!detail || !Array.isArray(detail.descendants) || detail.descendants.length !== 15) continue;
+    const ref = master.get((horse.subName ? `${horse.name}-${horse.subName}-` : horse.name) + '|' + horse.sex);
+    if (!ref) continue;
+    const merged = { ...horse, descendants: detail.descendants };
+    const built = musume.buildCustomHorsePayload(merged, plan.expandHorseBoard(merged, brosData));
+    const where = `${ref.card.name}（${horse.sex === '1' ? '繁殖牝馬' : '種牡馬'}）`;
+    assert.equal(built.paternalT, ref.Paternal_t, where + ' の Paternal_t');
+    assert.equal(built.paternalHt, ref.Paternal_ht, where + ' の Paternal_ht');
+    assert.equal(built.paternalJik, ref.Paternal_jik, where + ' の Paternal_jik');
+    assert.equal(built.paternalMig, ref.Paternal_mig, where + ' の Paternal_mig');
+    assert.equal(built.category, ref.Category, where + ' の Category');
+    assert.equal(built.categoryHt, ref.Category_ht, where + ' の Category_ht');
+    built.pedigree.forEach((row, i) => {
+      assert.equal(row[0], ref.card.pedigree[i][0], `${where} の血統表 ${i} 行目の名前`);
+      assert.equal(row[2], ref.card.pedigree[i][2], `${where} の血統表 ${i} 行目の系統コード`);
+    });
+    compared += 1;
+    if (compared >= 150) break;
+  }
+  assert.ok(compared >= 100, '突き合わせた実在馬が少なすぎる: ' + compared);
+  console.log('[verify-theory-assist-phase4a] マスター突き合わせ ' + compared + '頭 OK');
+}
 
 async function runHost() {
   const definition = D.components.MusumeHost;
@@ -115,6 +164,17 @@ async function runHost() {
   const count = messages.filter(m => m.type === 'dabimas:theory-map').length;
   finish(custom); await pending;
   assert.equal(messages.filter(m => m.type === 'dabimas:theory-map').length, count);
+  // 理論を出さない検索（繁殖牝馬を選ぶとき）に切り替えたら、空のチップを送って
+  // 前の母のチップを消す。iframe を作り直すとダビ娘の起動に毎回 1.4〜1.8 秒かかるので、
+  // 作り直しではなくメッセージで消す。
+  host.$root.ensureHorseDetail = async horse => horse;
+  host.customPayloadPromise = null;
+  host.openSearch({ sex: '1', select() {} });
+  await host.sendCustomAndTheory(source);
+  const cleared = messages.at(-1);
+  assert.equal(cleared.type, 'dabimas:theory-map', '理論なしの検索では空のチップを送る');
+  assert.deepEqual(plain(cleared.chips), []);
+  assert.deepEqual(plain(cleared.entries), []);
   host.openSearch({ index: 16, select() {} });
   assert.equal(host.target.sex, '1', '既存セル経由は維持');
   definition.beforeDestroy.call(host);
