@@ -33,6 +33,10 @@
       theoryName(result) {
         return window.Dabimas.constants.breedingTheories.DISPLAY_NAME[result.displayed] || "理論なし";
       },
+      // ゲームと同じ理論の画像。css/style.css の .theory_01〜08 をそのまま使う。
+      theoryClass(result) {
+        return window.Dabimas.constants.breedingTheories.CLASS_NAME[result.displayed] || "";
+      },
       openPicker(stepNo) {
         if (this.busy || (stepNo && (!this.plan || !this.plan.isSelectable(stepNo)))) return;
         var version = ++this.requestVersion;
@@ -94,14 +98,17 @@
       <div class="assist-screen">
         <div class="assist-page">
           <div class="assist-head">
-            <v-btn text small class="align-self-start" @click="goHome"><v-icon left small>mdi-arrow-left</v-icon>ホーム</v-btn>
+            <v-btn text small class="align-self-start assist-back" @click="goHome"><v-icon left small>mdi-arrow-left</v-icon>ホーム</v-btn>
             <h1>配合理論補助</h1>
             <p>繁殖牝馬を起点に、代ごとに種牡馬を選び、その組み合わせで成立する配合理論を確認する画面です。</p>
           </div>
           <v-alert v-if="error" dense outlined type="error" role="alert">{{ error }}</v-alert>
           <section v-for="step in steps" :key="step.stepNo" class="assist-gen"
             :class="['assist-gen--' + step.stepNo, { 'is-locked': step.stepNo > 1 && !step.mareLines }]">
-            <div class="assist-gen-head"><span>STEP {{ step.stepNo }}</span>{{ step.stepNo }}代目</div>
+            <div class="assist-gen-head"><span>STEP {{ step.stepNo }}</span>{{ step.stepNo }}代目
+              <i v-if="step.result" class="assist-gen-theory" :class="theoryClass(step.result)"
+                role="img" :aria-label="theoryName(step.result)" :title="theoryName(step.result)"></i>
+            </div>
             <div class="assist-gen-body">
               <template v-if="step.mareLines">
                 <div class="assist-horse">
@@ -142,9 +149,6 @@
                     </div>
                   </div>
                   <div class="assist-result" aria-live="polite">
-                    <div><div class="assist-block-title">成立した配合理論</div>
-                      <span class="assist-theory-badge">{{ theoryName(step.result) }}</span>
-                    </div>
                     <div><div class="assist-block-title">因子</div><div class="assist-placeholder">未計算</div></div>
                     <div class="assist-placeholder assist-cross">クロスの詳細 — 未計算</div>
                   </div>
