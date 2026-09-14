@@ -843,8 +843,10 @@
   height: var(--exp-mobile-app-height, 100svh);
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: #f4f3f7;
-  color: #241f33;
+  /* 黒ベース。理論の画像（.theory_01〜08）は白フチ＋淡い地の素材で、
+     ゲームと同じく暗い地の上に置く前提で作られている。 */
+  background: #15131d;
+  color: #eceaf4;
   -webkit-overflow-scrolling: touch;
 }
 .assist-page {
@@ -859,8 +861,8 @@
 }
 .assist-head { display: flex; flex-direction: column; gap: 7px; }
 .assist-head h1 { margin: 0; font-size: 20px; font-weight: 800; }
-.assist-head p { margin: 0; color: #6d6880; font-size: 13.5px; }
-.assist-gen { background: #fff; border: 1px solid #e2ddec; border-radius: 14px; overflow: hidden; flex-shrink: 0; }
+.assist-head p { margin: 0; color: #a49fb8; font-size: 13.5px; }
+.assist-gen { background: #221f2e; border: 1px solid #332f45; border-radius: 14px; overflow: hidden; flex-shrink: 0; }
 .assist-gen-head { display: flex; align-items: center; gap: 9px; padding: 9px 13px; font-weight: 800; font-size: 14px; color: #fff; }
 .assist-gen-head span { font-size: 11px; opacity: .85; letter-spacing: .08em; }
 .assist-gen--1 .assist-gen-head { background: #d9534f; }
@@ -868,27 +870,61 @@
 .assist-gen--3 .assist-gen-head { background: #d8c53f; color: #4a4118; }
 .assist-gen-body { padding: 12px 13px 14px; display: flex; flex-direction: column; gap: 10px; }
 .assist-gen.is-locked .assist-gen-body { opacity: .55; }
-.assist-horse { border: 1px solid #e2ddec; border-radius: 11px; padding: 10px 11px; background: #faf9fc; }
-.assist-role, .assist-block-title { font-size: 11px; font-weight: 700; color: #6d6880; letter-spacing: .06em; }
+.assist-horse { border: 1px solid #332f45; border-radius: 11px; padding: 10px 11px; background: #2a2739; }
+.assist-role, .assist-block-title { font-size: 11px; font-weight: 700; color: #a49fb8; letter-spacing: .06em; }
 .assist-horse-name { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
 .assist-horse-name b { font-size: 15.5px; font-weight: 800; }
 .assist-virtual { font-size: 10.5px; color: white; background: #5b4b8a; border-radius: 4px; padding: 1px 6px; }
 .assist-rare { font-size: 10.5px; color: white; background: #3560c4; border-radius: 4px; padding: 1px 6px; }
-.assist-horse-meta { font-size: 12px; color: #6d6880; margin-top: 1px; }
+.assist-horse-meta { font-size: 12px; color: #a49fb8; margin-top: 1px; }
 .assist-horse-factors { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
 .assist-lines { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .assist-line-row { display: flex; align-items: center; gap: 4px; }
 .assist-line-label { font-size: 11px; font-weight: 700; color: #fff; border-radius: 4px; padding: 2px 7px; min-width: 46px; text-align: center; background: #c2703a; }
 .assist-line-label.is-migoto { background: #2f6fb5; }
-.assist-line-code { font-size: 12px; font-weight: 700; background: #fff; border: 1px solid #e2ddec; border-radius: 4px; padding: 2px 0; min-width: 34px; text-align: center; }
-.assist-screen .assist-pick.v-btn { height: auto; min-height: 54px; white-space: normal; padding: 15px; color: #5b4b8a; background: #efeaf9; border: 1.5px dashed #5b4b8a; border-radius: 11px; font-size: 14px; font-weight: 700; letter-spacing: normal; }
-.assist-waiting { border: 1.5px dashed #e2ddec; border-radius: 11px; padding: 15px; text-align: center; color: #6d6880; font-size: 13.5px; }
-.assist-result { border-top: 1px solid #e2ddec; padding-top: 11px; display: flex; flex-direction: column; gap: 10px; }
+.assist-line-code { font-size: 12px; font-weight: 700; color: #241f33; background: #f2f0f8; border: 1px solid #4a4560; border-radius: 4px; padding: 2px 0; min-width: 34px; text-align: center; }
+.assist-screen .assist-pick.v-btn { height: auto; min-height: 54px; white-space: normal; padding: 15px; color: #cbbcf5; background: #2f2a44; border: 1.5px dashed #7d6cc0; border-radius: 11px; font-size: 14px; font-weight: 700; letter-spacing: normal; }
+.assist-waiting { border: 1.5px dashed #3c3752; border-radius: 11px; padding: 15px; text-align: center; color: #8f8aa6; font-size: 13.5px; }
+.assist-result { border-top: 1px solid #332f45; padding-top: 11px; display: flex; flex-direction: column; gap: 10px; }
 .assist-block-title { margin-bottom: 5px; }
 .assist-theory-badge { display: inline-block; font-size: 16px; font-weight: 800; color: #1f7a4d; background: #e4f4ec; border: 1.5px solid #1f7a4d; border-radius: 9px; padding: 5px 14px; }
-.assist-placeholder { border: 1px solid #e2ddec; background: #faf9fc; border-radius: 9px; padding: 9px; text-align: center; font-size: 13px; color: #6d6880; }
-.assist-cross { color: #5b4b8a; background: #efeaf9; font-weight: 700; }
-.assist-foot { color: #6d6880; font-size: 12.5px; border-top: 1px solid #e2ddec; padding-top: 13px; }
+.assist-placeholder { border: 1px solid #332f45; background: #2a2739; border-radius: 9px; padding: 9px; text-align: center; font-size: 13px; color: #a49fb8; }
+.assist-cross { color: #cbbcf5; background: #2f2a44; font-weight: 700; }
+.assist-foot {
+  position: sticky;
+  bottom: 0;
+  margin: 0 -14px calc(-1 * env(safe-area-inset-bottom, 0px));
+  padding: 11px 14px calc(11px + env(safe-area-inset-bottom, 0px));
+  color: #a49fb8;
+  font-size: 12.5px;
+  border-top: 1px solid #332f45;
+  /* 白帯だと本文から浮くので、地の色をそのまま薄く敷いてぼかす。 */
+  background: rgba(21, 19, 29, .92);
+  backdrop-filter: blur(6px);
+}
+
+/* ホームへ戻る。薄いテキストボタンだと黒地で沈むので、枠付きにして浮かせる。 */
+.assist-screen .assist-back.v-btn {
+  color: #eceaf4;
+  background: #2a2739;
+  border: 1px solid #4a4560;
+  border-radius: 999px;
+  padding: 0 14px;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+/* 成立した配合理論。ゲームと同じ画像を STEP の見出しの右端に置く。
+   見出しの高さは変えたくないので、画像の縦横比（142:50）のまま 26px に収める。 */
+.assist-gen-theory {
+  margin-left: auto;
+  flex: 0 0 auto;
+  /* 見出しの高さ（42px）を変えないよう、文字の行より高くしない。
+     画像の縦横比は 142:50 なので 24px なら 68px。 */
+  width: 68px;
+  height: 24px;
+  border-radius: 3px;
+}
 
 .dabimas-musume-tile {
   display: flex !important;
