@@ -1,0 +1,340 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>配合理論補助 画面案</title>
+<style>
+:root {
+  --bg: #f4f3f7;
+  --surface: #ffffff;
+  --surface-2: #faf9fc;
+  --edge: #e2ddec;
+  --ink: #241f33;
+  --muted: #6d6880;
+  --accent: #5b4b8a;
+  --accent-soft: #efeaf9;
+  --gen1: #d9534f;
+  --gen2: #e8913a;
+  --gen3: #d8c53f;
+  --good: #1f7a4d;
+  --good-soft: #e4f4ec;
+  --danger: #b4342f;
+  --danger-soft: #fbe9e8;
+  --sample: #a15c1e;
+  --sample-soft: #fdf0e2;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17151f; --surface: #221e2d; --surface-2: #1c1927; --edge: #35304a;
+    --ink: #ece9f4; --muted: #9d97ae; --accent: #b9a5e8; --accent-soft: #2c2540;
+    --good: #63c795; --good-soft: #1d3a2d; --danger: #f08a84; --danger-soft: #3a2020;
+    --sample: #e0a468; --sample-soft: #362a1c;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17151f; --surface: #221e2d; --surface-2: #1c1927; --edge: #35304a;
+  --ink: #ece9f4; --muted: #9d97ae; --accent: #b9a5e8; --accent-soft: #2c2540;
+  --good: #63c795; --good-soft: #1d3a2d; --danger: #f08a84; --danger-soft: #3a2020;
+  --sample: #e0a468; --sample-soft: #362a1c;
+}
+
+* { box-sizing: border-box; }
+/* display を指定した要素だと hidden 属性が効かなくなるので、ここで押さえておく。 */
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); line-height: 1.7;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+.page { max-width: 560px; margin: 0 auto; padding: 20px 14px 56px; display: flex; flex-direction: column; gap: 18px; }
+
+.head { display: flex; flex-direction: column; gap: 7px; }
+.eyebrow {
+  align-self: flex-start; font-size: 11px; font-weight: 700; letter-spacing: .14em;
+  color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 4px 12px;
+}
+h1 { margin: 0; font-size: 20px; font-weight: 800; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+.notice {
+  display: grid; grid-template-columns: auto 1fr; gap: 9px; align-items: start;
+  font-size: 12.5px; background: var(--sample-soft); color: var(--ink);
+  border: 1px solid var(--sample); border-radius: 10px; padding: 10px 12px;
+}
+.notice b { color: var(--sample); }
+
+/* ---- 世代 ---- */
+.gen { background: var(--surface); border: 1px solid var(--edge); border-radius: 14px; overflow: hidden; }
+.gen__head {
+  display: flex; align-items: center; gap: 9px; padding: 9px 13px;
+  font-weight: 800; font-size: 14px; color: #fff;
+}
+.gen--1 .gen__head { background: var(--gen1); }
+.gen--2 .gen__head { background: var(--gen2); }
+.gen--3 .gen__head { background: var(--gen3); color: #4a4118; }
+.gen__step { font-size: 11px; font-weight: 700; opacity: .85; letter-spacing: .08em; }
+.gen__body { padding: 12px 13px 14px; display: flex; flex-direction: column; gap: 10px; }
+.gen.is-locked .gen__body { opacity: .55; }
+
+/* ---- 馬の行 ---- */
+.horse { border: 1px solid var(--edge); border-radius: 11px; padding: 10px 11px; background: var(--surface-2); }
+.horse__role { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .06em; }
+.horse__name { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
+.horse__name b { font-size: 15.5px; font-weight: 800; }
+.rare {
+  font-size: 10.5px; font-weight: 700; color: #fff; background: #3560c4;
+  border-radius: 4px; padding: 1px 6px;
+}
+.rare--virtual { background: var(--accent); }
+.horse__meta { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.chips { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+.chip-img { width: 17px; height: 17px; display: block; }
+
+.lines { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.lines__row { display: flex; align-items: center; gap: 4px; }
+.lines__label {
+  font-size: 11px; font-weight: 700; color: #fff; border-radius: 4px;
+  padding: 2px 7px; min-width: 46px; text-align: center;
+}
+.lines__row--omo .lines__label { background: #c2703a; }
+.lines__row--mig .lines__label { background: #2f6fb5; }
+.lines__code {
+  font-size: 12px; font-weight: 700; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--edge); border-radius: 4px; padding: 2px 0;
+  min-width: 34px; text-align: center; font-variant-numeric: tabular-nums;
+}
+
+/* ---- 未選択 / 待ち ---- */
+.pick {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 7px;
+  font: inherit; font-size: 14px; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); border: 1.5px dashed var(--accent);
+  border-radius: 11px; padding: 15px; cursor: pointer;
+}
+.pick:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.waiting {
+  border: 1.5px dashed var(--edge); border-radius: 11px; padding: 15px;
+  text-align: center; color: var(--muted); font-size: 13.5px;
+}
+
+/* ---- 判定結果 ---- */
+.result { border-top: 1px solid var(--edge); padding-top: 11px; display: flex; flex-direction: column; gap: 10px; }
+.result__theory { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.theory-badge {
+  font-size: 16px; font-weight: 800; color: var(--good);
+  background: var(--good-soft); border: 1.5px solid var(--good);
+  border-radius: 9px; padding: 5px 14px;
+}
+.block__title {
+  font-size: 11.5px; font-weight: 700; color: var(--muted);
+  letter-spacing: .06em; margin-bottom: 5px;
+}
+.factor-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--surface-2); border: 1px solid var(--edge); border-radius: 6px;
+  padding: 3px 8px 3px 5px; font-size: 13px; font-weight: 700;
+}
+.factor-chip span { font-variant-numeric: tabular-nums; }
+
+/* 因子表: ダビふぁくの集計ヘッダーと同じ並び・色。文字は黒＋白フチで、
+   濃い色（中・強・雷）の上でも読めるようにしている。 */
+.fx-wrap { overflow-x: auto; }
+.fx-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.fx-table th, .fx-table td { border: 1px solid var(--edge); }
+.fx {
+  font-size: 11px; font-weight: 700; color: #000; text-align: center; padding: 2px 0;
+  text-shadow: 1px 1px 0 #fff, -1px 1px 0 #fff, 1px -1px 0 #fff, -1px -1px 0 #fff;
+}
+.fx-label {
+  width: 40px; font-size: 10.5px; font-weight: 700; color: #fff;
+  text-align: center; padding: 3px 2px; white-space: nowrap;
+}
+.fx-label--head { background: transparent; border: 0; }
+.fx-label--nitro { background: #00abab; }
+.fx-label--cross { background: #aa0000; }
+.fx-num {
+  font-size: 11.5px; text-align: center; padding: 3px 0; color: #241f33;
+  background: #fff; font-variant-numeric: tabular-nums;
+}
+.fx-num:nth-child(2n) { background: #eee; }
+
+.cross-toggle {
+  width: 100%; font: inherit; font-size: 13px; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); border: 1px solid var(--edge);
+  border-radius: 9px; padding: 9px; cursor: pointer;
+}
+.cross-toggle:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.cross { display: flex; flex-direction: column; gap: 0; margin-top: 4px; }
+.cross__row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 9px; align-items: center;
+  padding: 7px 0; font-size: 13.5px;
+}
+.cross__row + .cross__row { border-top: 1px dashed var(--edge); }
+.cross__pos { font-weight: 700; font-variant-numeric: tabular-nums; }
+.cross__tag {
+  font-size: 11px; font-weight: 700; color: var(--danger);
+  background: var(--danger-soft); border: 1px solid var(--danger);
+  border-radius: 999px; padding: 1px 8px;
+}
+.sample-tag {
+  display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--sample);
+  background: var(--sample-soft); border: 1px solid var(--sample);
+  border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle;
+}
+.calc-tag {
+  display: inline-block; font-size: 10.5px; font-weight: 700; color: var(--good);
+  background: var(--good-soft); border: 1px solid var(--good);
+  border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle;
+}
+.basis { font-size: 11.5px; color: var(--muted); margin-top: 5px; }
+
+.foot { color: var(--muted); font-size: 12.5px; border-top: 1px solid var(--edge); padding-top: 13px; }
+.foot p { margin: 0 0 6px; }
+</style>
+
+<div class="page">
+  <header class="head">
+    <span class="eyebrow">画面案</span>
+    <h1>配合理論補助 — 種牡馬を選んだあとに何が出るか</h1>
+    <p class="lede">繁殖牝馬を起点に、代ごとに種牡馬を選び、その組み合わせで成立する理論・有効な因子・クロスを確認する画面です。</p>
+  </header>
+
+  <div class="notice">
+    <b>注意</b>
+    <div>
+      馬のデータと<span class="calc-tag">実計算</span>の付いた配合理論は本物です。理論はゲーム画面の「完璧な配合」と一致しました。
+      <span class="sample-tag">見本</span> の付いた有効な因子とクロスだけが仮の値で、
+      ここは15祖先の重なりを見る判定（ダビふぁくに実装済み）を繋ぐ部分です。
+    </div>
+  </div>
+
+  <section class="gen gen--1" id="gen1"></section>
+  <section class="gen gen--2" id="gen2"></section>
+  <section class="gen gen--3 is-locked" id="gen3"></section>
+
+  <footer class="foot">
+    <p>1代目で選んだ種牡馬と繁殖牝馬から生まれる産駒が、そのまま2代目の繁殖牝馬になります。前の代を変えると、後ろの代は組み直しになります。</p>
+    <p>危険な配合は他のどの理論よりも優先して表示します。成立した理論を全部持っておいて、表示は代表1件だけにする作りです。</p>
+  </footer>
+</div>
+
+<script>
+const D = {"mare":{"name":"スターベガ","gender":"1","category":"インテント系","rareLabel":"券","factors":[],"omoshiro":["Ma","Hi","Ha","Sw"],"migoto":["Ma","Ec","Ph"]},"sire":{"name":"スターアルタイル-瓏覇-","gender":"0","category":"ボールドルーラー系","rareLabel":"５","factors":["04","04","02"],"omoshiro":["Ns","He","He","Ro"],"migoto":["Ma","Sw","Hi","Ha"]},"icons":{"04":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAh1BMVEUD/f339/cD/f0D/f0D/f0D/f0D/f0D/f0D/f0D/f0D/f1W+/u7+Pgx/PzY2NhiYmJA+/vNzc0AAAD39/ednZ2T+fnj4+Mi/PyqqqrCwsIhISGCgoJzc3Pt7e0S/f2E+vq2trZQUFBf+/t9+vqr+fnZ+PiQkJA7Ozvp9/ec+fkZ/Px1+vpQ+/sUGf7xAAAACnRSTlMAAE2+80yE8k70vyb3CgAAAAFiS0dEEnu8bAAAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAAHdElNRQfgCg4LFjBG67QqAAAA4klEQVQoz42S7W6DMAxFDaGwhlDiELaGhlIWuq5d3//55oC2JRP7OH+QfHTtSBcASFnGIzK2ASLnK+QAG75KCmxdMCj8pxQhJU0K8PNqV4cIP5uFRBXSRKLWn7Q/JFD+T3ytenz6K1GKJk407SJErb7hM7+Jcod7pfZoOtUZPCiL/XE5XvnjKIeTUqOmwOk5fBW66Wz9ns600atetL2okcRoXgcvivB4f5gztCujopxeprXV7RUvJOg4g5Ta0Bqxb8TkbvztbKwZfLVJzivnpDx+lHqf7vPPkCQPbBv3vWUpwDucQSHnJ15hiAAAAABJRU5ErkJggg==","02":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAjVBMVEX9/aL39/f9/aL9/aL9/aL9/aL9/aL9/aL9/aL9/aL9/aL8/K38/Kr6+s37+7f7+7/4+OLj4+P6+s/8/K/6+tKdnZ3Nzc3t7e1iYmIhISHY2NiQkJAAAAA7Ozv8/LL4+OdQUFCCgoL7+8S2trb7+8L39/f39/Jzc3P9/afCwsL5+d35+dSqqqr4+O36+sq1Io00AAAACnRSTlMAAE2+80yE8k70vyb3CgAAAAFiS0dEHJwEQQcAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAAHdElNRQfgCg4LFh0DNOhfAAABG0lEQVQoz22SiVLCMBCGtwcga2+bbRLS0tJWVNT3fzx3eyAo/0ySSb5ksxcA+EGIdwqDDQB4W3ygLcAGH8qHQJbneRfFcbKAAHaIaZYXL2XGUopkSRF3wPcqbWx50Cznallsg8ggVryv+PAqSiYQHVvnugcv8FQZQ7liOad57gecARbWFvRrSWczSLORxWB+UV9BNv3LgHh01P4Hf00NvWJkJ6eca7U+lMvng0Qyvva1AKNyiXz2SsDZ8G0+F1NrHBPomFWzZ6Z6WwI8np3r6/ePkcGF2s9iiaNqJ9tEpLXMlHMZOO3ibmtucuj4j5ALlRJbtTfZrb+kUD7iRdmCi0Wr7LeUlpshihspb7KqmZrB856C/X0j7AMf4Aev/Cpu9xJXHgAAAABJRU5ErkJggg==","03":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAAilBMVEX8bgD39/f8bgD8bgD8bgD8bgD8bgD8bgD8bgD8bgD8bgD7fx/5s3z7kD76nVT41brj4+OdnZ3Nzc1iYmJQUFAAAAA7Ozv39/chISHt7e22traCgoL8dw9zc3PCwsL6ol3Y2NiQkJD5u4v6pWT45tn43sn5xJuqqqr6rnP5v5H5t4P8ehb7iC77gyY3d1AHAAAACnRSTlMAAE2+80yE8k70vyb3CgAAAAFiS0dEFeXY+aMAAAAJcEhZcwAACxIAAAsSAdLdfvwAAAAHdElNRQfgCg4LFiUrNlDBAAAA/klEQVQoz3WS7XaDIAyGo9gvpnUBEcWq2HXr3Nz9394CdM722PdHTswjb9AEAGKW8DslbAMA0ZavaAuw4auKgc35S5pm8wODHefH3OsVUYTsyPkOiObSq1CqDFlORQe0epD+B5VcanFC1oJkEBtZNa7HDMTCqT6tgLLF7hFoTQlSfGq1bN4+A0gAEaWPpg/gVAegrRmUEmnq6g5kVJTSmxAYzsa+BdAbpZpwV1Oo8tIW7wF8ULWTw1XUWtM7rVKuCf32S0n+8nah8vbpCQ3q01Yy/wMdBRzdoGLOv6zprfCyI5mO3260bhmmnk+Z10TjPP/4ZYiiPTvcL8KBxQC/Ad0liTX53z8AAAAASUVORK5CYII="},"theory":{"name":"完璧な配合","uniqueCount":7,"matchedMigoto":4,"basis":"面白側8枠のユニーク7種類（7以上で成立） ／ 見事4枠の一致4件（4件で成立）"},"factorLabels":{"10":"難","11":"走","12":"中","13":"強","14":"雷","01":"短","02":"速","03":"底","04":"長","05":"適","06":"丈","07":"早","08":"晩","09":"堅"},"factorOrder":["01","02","03","04","11","12","13","14","09","10","05","06","07","08"],"factorColors":{"10":"#fc00fc","11":"#f1eeea","12":"#117e28","13":"#3e3b5c","14":"#c64562","01":"#fdfd00","02":"#fdfda2","03":"#fc6e00","04":"#03fdfd","05":"#4682ff","06":"#feabdd","07":"#02fe02","08":"#a7de0d","09":"#a1a1a3"},"sample":{"nitro":[3,11,15,9,1,0,1,0,0,0,0,1,0,0],"cross":[0,2,2,1,0,0,0,0,0,0,0,0,0,0],"crosses":[{"name":"ノーザンダンサー","position":"4×5","note":""},{"name":"ナスルーラ","position":"5×5","note":""},{"name":"ボールドルーラー","position":"4×5","note":"危険"}],"nextMareLines":{"omoshiro":["Ns","Ne","Ma","Ha"],"migoto":["Ns","Ma","Ha","Sw"]}}};
+
+const esc = (v) => String(v ?? "").replace(/[&<>"]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const factorImg = (code) => D.icons[code]
+  ? '<img class="chip-img" src="' + D.icons[code] + '" alt="' + esc(D.factorLabels[code] || "") + '">'
+  : '';
+
+const linesHtml = (omoshiro, migoto) => {
+  const row = (kind, label, codes) =>
+    '<div class="lines__row lines__row--' + kind + '"><span class="lines__label">' + label + '</span>' +
+    codes.map((c) => '<span class="lines__code">' + esc(c || "ー") + '</span>').join('') + '</div>';
+  return '<div class="lines">' + row('omo', '面白', omoshiro) + row('mig', '見事', migoto) + '</div>';
+};
+
+const horseHtml = (horse, role, options = {}) =>
+  '<div class="horse">' +
+    '<div class="horse__role">' + role + '</div>' +
+    '<div class="horse__name">' +
+      '<b>' + esc(horse.name) + '</b>' +
+      '<span class="rare' + (options.virtual ? ' rare--virtual' : '') + '">' + esc(horse.rareLabel) + '</span>' +
+    '</div>' +
+    '<div class="horse__meta">' + esc(horse.category) + '　' + (horse.gender === '0' ? '種牡馬' : '繁殖牝馬') + '</div>' +
+    (horse.factors.length
+      ? '<div class="chips">' + horse.factors.map(factorImg).join('') + '</div>'
+      : '') +
+    linesHtml(horse.omoshiro, horse.migoto) +
+  '</div>';
+
+const resultHtml = () =>
+  '<div class="result">' +
+    '<div>' +
+      '<div class="block__title">成立した配合理論<span class="calc-tag">実計算</span></div>' +
+      '<div class="result__theory"><span class="theory-badge">' + esc(D.theory.name) + '</span></div>' +
+      '<div class="basis">' + esc(D.theory.basis) + '</div>' +
+    '</div>' +
+    '<div>' +
+      '<div class="block__title">因子<span class="sample-tag">見本</span></div>' +
+      factorTableHtml() +
+    '</div>' +
+    '<div>' +
+      // クロスの一覧は既定で畳む。数の把握は上の因子表で足りるので、
+      // どの祖先がどこで重なっているかを見たいときだけ開く。
+      '<button type="button" class="cross-toggle" data-cross-toggle aria-expanded="false">' +
+        '▼ クロスの詳細を見る（' + D.sample.crosses.length + '件）' +
+      '</button>' +
+      '<div class="cross" data-cross-detail hidden>' +
+        D.sample.crosses.map((c) =>
+          '<div class="cross__row"><span>' + esc(c.name) + '</span>' +
+          '<span class="cross__pos">' + esc(c.position) + '</span>' +
+          (c.note ? '<span class="cross__tag">' + esc(c.note) + '</span>' : '<span></span>') +
+          '</div>'
+        ).join('') +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+// ダビふぁくの集計ヘッダーと同じ並び・同じ色の因子表。
+function factorTableHtml() {
+  const head = D.factorOrder.map((code) =>
+    '<th class="fx" style="background:' + D.factorColors[code] + '">' + esc(D.factorLabels[code]) + '</th>'
+  ).join('');
+  const row = (label, kind, values) =>
+    '<tr><th class="fx-label fx-label--' + kind + '">' + label + '</th>' +
+    values.map((v) => '<td class="fx-num">' + String(v).padStart(2, '0') + '</td>').join('') + '</tr>';
+  return '<div class="fx-wrap"><table class="fx-table"><tbody>' +
+    '<tr><th class="fx-label fx-label--head"></th>' + head + '</tr>' +
+    row('ニトロ', 'nitro', D.sample.nitro) +
+    row('クロス', 'cross', D.sample.cross) +
+    '</tbody></table></div>';
+}
+
+// 1代目: 選択済み → 判定結果まで出る
+document.getElementById('gen1').innerHTML =
+  '<div class="gen__head"><span class="gen__step">STEP 1</span>1代目</div>' +
+  '<div class="gen__body">' +
+    horseHtml(D.mare, '繁殖牝馬') +
+    horseHtml(D.sire, '種牡馬（選択済み）') +
+    resultHtml() +
+  '</div>';
+
+// 2代目: 1代目の産駒が母になり、種牡馬は未選択
+const nextMare = {
+  name: '1代目配合の産駒',
+  gender: '1',
+  category: '仮想の繁殖牝馬',
+  rareLabel: '仮想',
+  factors: [],
+  omoshiro: D.sample.nextMareLines.omoshiro,
+  migoto: D.sample.nextMareLines.migoto
+};
+document.getElementById('gen2').innerHTML =
+  '<div class="gen__head"><span class="gen__step">STEP 2</span>2代目</div>' +
+  '<div class="gen__body">' +
+    horseHtml(nextMare, '繁殖牝馬（1代目の産駒）', { virtual: true }) +
+    '<button type="button" class="pick">＋ 種牡馬を選ぶ</button>' +
+  '</div>';
+
+// 3代目: 前の代が決まるまで操作できない
+document.getElementById('gen3').innerHTML =
+  '<div class="gen__head"><span class="gen__step">STEP 3</span>3代目</div>' +
+  '<div class="gen__body">' +
+    '<div class="waiting">2代目の種牡馬を選ぶと使えるようになります</div>' +
+  '</div>';
+
+document.querySelector('.pick').addEventListener('click', () => {
+  alert('ここでダビ娘の種牡馬リストが開きます（カードのモックで確認いただいた画面）。');
+});
+
+// クロスの詳細は既定で畳んである。
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-cross-toggle]');
+  if (!button) return;
+  const detail = button.parentElement.querySelector('[data-cross-detail]');
+  const open = detail.hasAttribute('hidden');
+  if (open) detail.removeAttribute('hidden'); else detail.setAttribute('hidden', '');
+  button.textContent = (open ? '▲ クロスの詳細を隠す（' : '▼ クロスの詳細を見る（') + D.sample.crosses.length + '件）';
+  button.setAttribute('aria-expanded', String(open));
+});
+</script>

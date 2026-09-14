@@ -1,5 +1,5 @@
 // cache name, cache files
-var CACHE_NAME = 'dabimas-factor-v20260912-03';
+var CACHE_NAME = 'dabimas-factor-v20260913-05';
 var BASE_PATH = self.location.pathname.replace(/\/service-worker\.js$/, '/');
 var APP_SHELL_URL = BASE_PATH + 'index.html';
 // プリキャッシュは「実行時に実際に使われるもの」だけに絞る。
@@ -51,6 +51,7 @@ var urlsToCache = [
   BASE_PATH + 'vue/logic/horses/horse-search.js',
   BASE_PATH + 'vue/logic/storage/local-storage.js',
   BASE_PATH + 'vue/logic/theory/compatibility.js',
+  BASE_PATH + 'vue/logic/theory/theory-session.js',
   BASE_PATH + 'vue/logic/theory/affinity.js',
   BASE_PATH + 'vue/logic/pedigree/pedigree-node-table.js',
   BASE_PATH + 'vue/logic/pedigree/identity-resolver.js',
@@ -63,6 +64,7 @@ var urlsToCache = [
   BASE_PATH + 'vue/logic/inbreed/inbreed-detector.js',
   BASE_PATH + 'vue/logic/inbreed/inbreed-counts.js',
   BASE_PATH + 'vue/logic/plan/plan-diagnosis.js',
+  BASE_PATH + 'vue/logic/plan/assist-plan.js',
   BASE_PATH + 'vue/components/pedigree/memo-cell.js',
   BASE_PATH + 'vue/components/pedigree/desktop-horse-autocomplete.js',
   BASE_PATH + 'vue/components/pedigree/mobile-horse-picker.js',
@@ -84,6 +86,7 @@ var urlsToCache = [
   BASE_PATH + 'vue/components/settings/settings-page.js',
   BASE_PATH + 'vue/components/home/category-dialog.js',
   BASE_PATH + 'vue/components/home/home-page.js',
+  BASE_PATH + 'vue/components/assist/assist-screen.js',
   BASE_PATH + 'vue/components/workspace/workspace-tab-bar.js',
   BASE_PATH + 'vue/logic/musume-link.js',
   BASE_PATH + 'vue/logic/favorites.js',

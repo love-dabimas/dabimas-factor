@@ -56,6 +56,7 @@
     <v-app id="app" :class="{ 'exp-mobile-layout': isCompactMobileLayout }">
       <home-page v-if="currentScreen === 'home'"></home-page>
       <settings-page v-if="currentScreen === 'settings'"></settings-page>
+      <assist-screen v-if="currentScreen === 'assist'"></assist-screen>
       <musume-host></musume-host>
 
       <header ref="appHeader" v-show="currentScreen === 'category'">
@@ -169,6 +170,7 @@
   <script src="./vue/logic/horses/horse-search.js"></script>
   <script src="./vue/logic/storage/local-storage.js"></script>
   <script src="./vue/logic/theory/compatibility.js"></script>
+  <script src="./vue/logic/theory/theory-session.js"></script>
   <script src="./vue/logic/theory/affinity.js"></script>
   <script src="./vue/logic/pedigree/pedigree-node-table.js"></script>
   <script src="./vue/logic/pedigree/identity-resolver.js"></script>
@@ -179,6 +181,7 @@
   <script src="./vue/logic/inbreed/inbreed-detector.js"></script>
   <script src="./vue/logic/inbreed/inbreed-counts.js"></script>
   <script src="./vue/logic/plan/plan-diagnosis.js"></script>
+  <script src="./vue/logic/plan/assist-plan.js"></script>
   <script src="./vue/components/pedigree/memo-cell.js"></script>
   <script src="./vue/components/pedigree/desktop-horse-autocomplete.js"></script>
   <script src="./vue/components/pedigree/mobile-horse-picker.js"></script>
@@ -202,6 +205,7 @@
   <script src="./vue/components/settings/settings-page.js"></script>
   <script src="./vue/components/home/category-dialog.js"></script>
   <script src="./vue/components/home/home-page.js"></script>
+  <script src="./vue/components/assist/assist-screen.js"></script>
   <script src="./vue/components/workspace/workspace-tab-bar.js"></script>
   <!-- ダビ娘の組み込み（お気に入り・検索） -->
   <script src="./vue/logic/musume-link.js"></script>
