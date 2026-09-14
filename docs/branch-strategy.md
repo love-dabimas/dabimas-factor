@@ -25,7 +25,7 @@
 どちらも**`main` へ push した時点で本番に出る**。ステージング環境は無い。
 公開前の確認方法は §5。
 
-## 2. いまの枝（2026-09-13 時点）
+## 2. いまの枝（2026-09-14 時点）
 
 ### ダビふぁく
 
@@ -34,7 +34,9 @@
 | `main` | 公開中 | 本番。週次でデータと `CACHE_NAME` が自動更新される |
 | **`release/2026-11`** | **統合点** | 11月に出すものを溜める。`feature/musume-integration` から作成 |
 | `feature/musume-integration` | 取り込み済み | ダビ娘統合。`release/2026-11` の元。以後はこちらを触らない |
-| `feature/haigou-theory-assist` | 未公開 | 配合理論補助の設計書 |
+| `feature/theory-session` | 取り込み済み | 配合理論補助 Phase 1・2。`release/2026-11` へマージ済み |
+| `feature/theory-assist-phase4` | 作業中 | 配合理論補助 Phase 4a（設計書の更新と指示書を含む） |
+| `feature/haigou-theory-assist` | 未公開 | 配合理論補助の設計書（初版） |
 | `chore/repo-workflow` | 未公開 | この文書と `.gitignore` の修正 |
 
 設計書と運用文書（`feature/haigou-theory-assist` / `chore/repo-workflow`）は
@@ -45,9 +47,16 @@
 | 枝 | 状態 | 中身 |
 | --- | --- | --- |
 | `main` | 公開中 | 本番 |
-| `feature/embed-mode` | **未公開**・上流なし | 埋め込みモード（`?embed=1` / `?picker=1`） |
+| **`release/2026-11`** | **統合点** | `feature/embed-mode` から作成 |
+| `feature/embed-mode` | 取り込み済み | 埋め込みモード（`?embed=1` / `?picker=1`） |
+| `theory-assist-phase3` | 取り込み済み | 埋め込みカードの項目整理・血統表開閉・選択解除 |
+| `fix/parity-ancestor-cases` | 取り込み済み | `verify:parity` の先祖名の突き合わせの修正 |
+| `theory-assist-phase4` | 作業中 | 配合理論補助 Phase 4b（自家製馬・理論チップ） |
 
-`main` との差は1コミットだけ（`7eb0385`）。
+### 取り込み済みの枝をどうするか
+
+`release/2026-11` に入ったあとも、11月に公開するまでは**消さない。**
+何がいつ入ったかを追える状態にしておく。公開が終わってから §6 とあわせて片付ける。
 
 ## 3. 公開順（11月にこの順でやる）
 

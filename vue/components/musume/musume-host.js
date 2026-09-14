@@ -30,6 +30,10 @@
         immediate: true,
         handler(screen, previous) {
           if (screen === "musume") this.screenOpened = true;
+          if (previous !== undefined && previous !== screen) {
+            this.sheetOpen = false;
+            this.target = null;
+          }
           if (previous !== undefined && previous !== screen) workspaceSync.rememberScreen(screen);
         },
       },
@@ -37,17 +41,29 @@
         if (!ready) return;
         this.prepareSupported();
         this.pendingHello.forEach(source => {
-          if (this.sources().includes(source)) this.sendFavorites(source, true);
+          if (this.sources().includes(source)) this.replyHello(source);
         });
         this.pendingHello.clear();
       },
       favoriteVersion() { this.broadcastFavorites(); },
       favoritesOnly() { this.broadcastFavorites(); },
+      "$root.savedHorseSummaries": {
+        deep: true,
+        handler() {
+          this.customPayloadPromise = null;
+          this.readySources.forEach(source => {
+            if (this.sources().includes(source)) this.sendCustomAndTheory(source);
+          });
+        },
+      },
     },
     created() {
       this.pendingHello = new Set();
       this.supportedIds = null;
       this.supportedKeys = [];
+      this.readySources = new Set();
+      this.candidateRows = null;
+      this.customPayloadPromise = null;
       this.$root.$on("musume:open-search", this.openSearch);
       window.addEventListener("message", this.onMessage);
     },
@@ -55,6 +71,8 @@
       this.$root.$off("musume:open-search", this.openSearch);
       window.removeEventListener("message", this.onMessage);
       this.pendingHello.clear();
+      this.readySources.clear();
+      this.customPayloadPromise = null;
     },
     methods: {
       sources() {
@@ -78,12 +96,72 @@
         this.send(source, message);
       },
       broadcastFavorites() { this.sources().forEach(source => this.sendFavorites(source, false)); },
+      customPayloads() {
+        if (!this.customPayloadPromise) {
+          this.customPayloadPromise = Promise.all((this.$root.savedHorseSummaries || [])
+            .filter(horse => horse.source !== "edit")
+            .map(async horse => {
+              var detail = await this.$root.ensureHorseDetail(horse);
+              var board = window.Dabimas.logic.plan.expandHorseBoard(detail, this.$root.brosData);
+              return window.Dabimas.logic.musume.buildCustomHorsePayload(detail, board);
+            }));
+        }
+        return this.customPayloadPromise;
+      },
+      replyHello(source) {
+        this.readySources.add(source);
+        this.sendFavorites(source, true);
+        this.sendCustomAndTheory(source);
+      },
+      async sendCustomAndTheory(source) {
+        var target = this.target;
+        var pending = this.customPayloads();
+        try {
+          var horses = await pending;
+          if (pending !== this.customPayloadPromise || !this.sources().includes(source)) return;
+          this.send(source, { type: "dabimas:custom-horses", v: 1, horses });
+          if (target !== this.target || !target || !this.sheetOpen ||
+              !this.$refs.sheetFrame || source !== this.$refs.sheetFrame.contentWindow) return;
+          // 理論を出さない検索（繁殖牝馬を選ぶときや血統表のセル）では、空のチップを
+          // 送ってダビ娘側の理論チップを消す。前の母のチップが残るのを防ぐ。
+          if (!target.theoryMap) {
+            this.send(source, { type: "dabimas:theory-map", v: 1, mareKey: "", chips: [], entries: [] });
+            return;
+          }
+          // 候補が届くまでは送らない。空のチップを先に送ると、出るはずのチップが
+          // 一瞬消えて見える。
+          if (!this.candidateRows) return;
+          var input = target.theoryMap;
+          this.send(source, input.entries ? input : window.Dabimas.logic.musume.buildTheoryMap({
+            mareKey: input.mareKey, damLines: input.damLines,
+            rows: this.candidateRows, customHorses: horses,
+          }));
+        } catch (error) {
+          if (pending !== this.customPayloadPromise || !this.sources().includes(source)) return;
+          this.customPayloadPromise = null;
+          this.showError("自家製馬・配合理論を読み込めませんでした。もう一度開いてください");
+        }
+      },
       leaveScreen() { return workspaceSync.goHome(); },
-      openSearch({ index, label, select }) {
-        this.target = { index, label, select };
-        var src = link.pickerUrl(index);
-        if (src !== this.sheetSrc) this.sheetSrc = src;
-        else if (this.lastTargetIndex !== index) this.resetPick();
+      openSearch({ index, label, select, sex, theoryMap }) {
+        sex = sex === undefined ? link.allowedSexForCell(index) : sex;
+        if (!["0", "1", "any"].includes(sex)) return;
+        this.target = { index, label, select, sex, theoryMap };
+        // 母が変わっても iframe は作り直さない。作り直すとダビ娘の起動に毎回
+        // 1.4〜1.8 秒かかる（8MB の検索データを読み直すため）。母が変わったことは
+        // mareKey で伝わり、理論を出さない検索へ戻すときは空のチップを送る。
+        var src = link.BASE_URL + "?picker=1&sex=" + sex;
+        if (src !== this.sheetSrc) {
+          var previous = this.$refs.sheetFrame && this.$refs.sheetFrame.contentWindow;
+          this.readySources.delete(previous);
+          this.pendingHello.delete(previous);
+          this.sheetSrc = src;
+        }
+        else {
+          this.resetPick();
+          var source = this.$refs.sheetFrame && this.$refs.sheetFrame.contentWindow;
+          if (this.readySources.has(source)) this.sendCustomAndTheory(source);
+        }
         this.lastTargetIndex = index;
         this.sheetOpen = true;
       },
@@ -95,8 +173,18 @@
         var data = link.readMessage(event, this.sources(), window.location.origin);
         if (!data) return;
         if (data.type === "dabimas:hello") {
-          if (this.horsesReady) this.sendFavorites(event.source, true);
+          if (this.horsesReady) this.replyHello(event.source);
           else this.pendingHello.add(event.source);
+          return;
+        }
+        if (data.type === "dabimas:candidates") {
+          if (!Array.isArray(data.rows) || !data.rows.every(row => Array.isArray(row) && row.length === 5 &&
+              row.every(value => typeof value === "string") && /^\d+-[01]$/.test(row[0]) &&
+              /^[A-Za-z]{2}$/.test(row[1]) && /^[A-Za-z]{2}$/.test(row[2]) &&
+              /^[A-Za-z]{4}$/.test(row[3]) && /^[A-Za-z]{6}([A-Za-z]{2})?$/.test(row[4]))) return;
+          this.candidateRows = data.rows;
+          var source = this.$refs.sheetFrame && this.$refs.sheetFrame.contentWindow;
+          if (this.readySources.has(source)) this.sendCustomAndTheory(source);
           return;
         }
         if (data.type === "dabimas:favorites-only") {
@@ -116,8 +204,8 @@
           this.showError("『" + (typeof data.name === "string" ? data.name : "") + "』はダビふぁく未対応の馬です");
           return;
         }
-        var sex = link.allowedSexForCell(this.target.index);
-        if (sex !== "any" && sex !== data.gender) {
+        var sex = this.target.sex;
+        if (summary.sex !== data.gender || (sex !== "any" && sex !== data.gender)) {
           this.showError(sex === "0" ? "このセルには種牡馬しか入りません" : "このセルには繁殖牝馬しか入りません");
           return;
         }
@@ -142,7 +230,7 @@
               <button type="button" class="musume-frame-back" @click="sheetOpen = false">‹ 戻る</button>
               <span class="musume-frame-title">ダビ娘で探す<small>{{ targetLabel }}</small></span>
             </div>
-            <iframe v-if="sheetSrc" ref="sheetFrame" :src="sheetSrc" class="musume-iframe musume-iframe--sheet" title="ダビ娘で探す"></iframe>
+            <iframe v-if="sheetSrc" :key="sheetSrc" ref="sheetFrame" :src="sheetSrc" class="musume-iframe musume-iframe--sheet" title="ダビ娘で探す"></iframe>
           </v-sheet>
         </v-bottom-sheet>
         <v-snackbar v-model="snackbar.show" :timeout="3500" top color="error">{{ snackbar.text }}</v-snackbar>

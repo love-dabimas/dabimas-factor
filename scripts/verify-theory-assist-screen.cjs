@@ -30,7 +30,7 @@ const context = vm.createContext({ window: { Vue: { component() {} } }, console 
   'logic/pedigree/identity-resolver.js', 'logic/pedigree/pedigree-builder.js',
   'logic/pedigree/board-refs.js', 'logic/theory/compatibility.js',
   'logic/theory/theory-session.js', 'logic/plan/plan-diagnosis.js',
-  'logic/plan/assist-plan.js', 'components/assist/assist-screen.js',
+  'logic/plan/assist-plan.js', 'logic/musume-link.js', 'components/assist/assist-screen.js',
 ].forEach(file => vm.runInContext(read('vue/' + file), context, { filename: file }));
 const definition = context.window.Dabimas.components.AssistScreen;
 const horses = JSON.parse(read('json/dabimasFactor.json')).horseLists;
@@ -39,25 +39,30 @@ const sire = horses.find(h => h.name === 'スターアルタイル' && h.subName
 const brosData = JSON.parse(read('json/brosData.json')).brosData;
 function mount() {
   const component = Object.assign(definition.data(), { $root: { brosData } });
+  component.$root.$emit = (type, request) => {
+    assert.equal(type, 'musume:open-search');
+    component.request = request;
+  };
   Object.entries(definition.methods).forEach(([key, method]) => component[key] = method.bind(component));
   return component;
 }
 async function select(component, step, detail) {
   component.openPicker(step);
   const { descendants, ...summary } = detail;
-  component.selectedCandidate = summary;
   component.$root.ensureHorseDetail = async candidate => {
     assert.strictEqual(candidate, summary);
     assert.equal(candidate.descendants, undefined);
     return detail;
   };
-  await component.confirmSelection();
+  assert.equal(component.request.sex, step === 0 ? '1' : '0');
+  assert.equal(!!component.request.theoryMap, step > 0);
+  await component.request.select(summary);
   assert.equal(component.error, '');
 }
 (async () => {
   const component = mount();
   component.openPicker(2);
-  assert.equal(component.pickerOpen, false);
+  assert.equal(component.request, undefined);
   await select(component, 0, mare);
   assert.equal(component.plan.isSelectable(2), false);
   await select(component, 1, sire);
@@ -69,18 +74,17 @@ async function select(component, step, detail) {
   await select(component, 1, horses.find(h => h.sex === '0' && h !== sire));
   assert.ok(component.plan.steps.slice(1).every(step => !step.sire && !step.result));
   assert.equal(component.plan.steps[2].mareLabel, null);
-  assert.deepEqual(Array.from(component.sireLines.slice(1)), [null, null]);
+  assert.deepEqual(Array.from(component.plan.steps.slice(1), step => step.sireLines), [null, null]);
+  assert.equal(Object.hasOwn(component, 'sireLines'), false);
   assert.equal(component.theoryName({ displayed: null }), '理論なし');
   const previous = component.plan;
   // reject / 詳細未取得 / 祖先不足は現在の計画を壊さない。
   for (const loader of [async () => { throw Error('offline'); }, async () => ({}),
     async () => ({ descendants: new Array(15).fill(null) })]) {
     component.openPicker(0);
-    component.selectedCandidate = { id: 'bad' };
     component.$root.ensureHorseDetail = loader;
-    await component.confirmSelection();
+    await component.request.select({ id: 'bad' });
     assert.ok(component.error);
-    assert.equal(component.selectedCandidate, null);
     assert.equal(component.busy, false);
     assert.strictEqual(component.plan, previous);
   }
@@ -89,16 +93,31 @@ async function select(component, step, detail) {
   assert.ok(component.plan.steps.every(step => !step.sire));
   // 二重送信と、画面を離れた後の非同期結果を無視する。
   component.openPicker(1);
-  component.selectedCandidate = sire;
   let finish;
   let calls = 0;
   component.$root.ensureHorseDetail = () => { calls++; return new Promise(resolve => { finish = resolve; }); };
-  const pending = component.confirmSelection();
-  await component.confirmSelection();
+  const pending = component.request.select(sire);
+  await component.request.select(sire);
   assert.equal(calls, 1);
   definition.beforeDestroy.call(component);
   finish(sire);
   await pending;
   assert.equal(component.plan.steps[0].sire, null);
+  // 開き直し前の選択コールバックは現在の選択を上書きしない。
+  const replacement = mount();
+  replacement.openPicker(0);
+  const stale = replacement.request;
+  await select(replacement, 0, mare);
+  const currentPlan = replacement.plan;
+  await stale.select(sire);
+  assert.strictEqual(replacement.plan, currentPlan);
+  const { plan } = context.window.Dabimas.logic;
+  const expand = plan.expandHorseBoard;
+  let expansions = 0;
+  plan.expandHorseBoard = (...args) => { expansions++; return expand(...args); };
+  await select(replacement, 1, sire);
+  assert.equal(expansions, 1, '種牡馬選択1回につき盤面展開1回');
+  plan.expandHorseBoard = expand;
+  assert.ok(!definition.template.includes('v-autocomplete'));
   console.log('[verify-theory-assist-screen] OK: 配線、実データ3世代、選び直し、詳細取得失敗、非同期境界');
 })().catch(error => { console.error(error); process.exitCode = 1; });

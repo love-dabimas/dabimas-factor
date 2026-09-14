@@ -12,7 +12,7 @@
     var mareBoards = new Array(STEP_COUNT).fill(null);
     var steps = [];
     for (var i = 0; i < STEP_COUNT; i += 1) {
-      steps.push({ stepNo: i + 1, mareLabel: null, mareLines: null, sire: null, result: null });
+      steps.push({ stepNo: i + 1, mareLabel: null, mareLines: null, sire: null, sireLines: null, result: null });
     }
     mareBoards[0] = plan.expandHorseBoard(input.baseMare, input.brosData);
     steps[0].mareLabel = input.baseMare.name;
@@ -33,12 +33,14 @@
     function clearSire(stepNo) {
       var index = stepIndex(stepNo);
       steps[index].sire = null;
+      steps[index].sireLines = null;
       steps[index].result = null;
       for (var later = index + 1; later < STEP_COUNT; later += 1) {
         mareBoards[later] = null;
         steps[later].mareLabel = null;
         steps[later].mareLines = null;
         steps[later].sire = null;
+        steps[later].sireLines = null;
         steps[later].result = null;
       }
     }
@@ -47,8 +49,9 @@
       var index = stepIndex(stepNo);
       if (!isSelectable(stepNo)) throw new Error("前工程の種牡馬を選択してください");
       var sireBoard = plan.expandHorseBoard(sireDetail, input.brosData);
+      var sireLines = theory.prepareSireOperands(sireBoard);
       var result = theory.createTheorySession({
-        sires: [theory.prepareSireOperands(sireBoard)],
+        sires: [sireLines],
         damLines: steps[index].mareLines,
       }).get(0);
       var label = stepNo + "代目配合の繁殖牝馬";
@@ -59,6 +62,7 @@
 
       clearSire(stepNo);
       steps[index].sire = sireDetail;
+      steps[index].sireLines = sireLines;
       steps[index].result = result;
       if (nextBoard) {
         mareBoards[index + 1] = nextBoard;
