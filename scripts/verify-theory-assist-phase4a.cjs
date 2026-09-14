@@ -11,7 +11,8 @@ const context = vm.createContext({ window: { Vue: { component() {} },
   'constants/pedigree-indexes.js', 'constants/breeding-theories.js',
   'constants/factor-definitions.js', 'logic/factor/factor-map.js',
   'logic/pedigree/identity-resolver.js', 'logic/pedigree/pedigree-builder.js',
-  'logic/pedigree/board-refs.js', 'logic/theory/compatibility.js',
+  'logic/pedigree/board-refs.js', 'logic/horses/horse-search.js',
+  'logic/theory/compatibility.js',
   'logic/theory/theory-session.js', 'logic/plan/plan-diagnosis.js',
   'logic/musume-link.js', 'logic/musume/custom-horse-payload.js', 'logic/musume/theory-map.js',
 ].forEach(file => vm.runInContext(read('vue/' + file), context, { filename: file }));
@@ -72,6 +73,19 @@ for (const sex of ['0', '1']) {
     .map(cell => ['ancestor' + cell, 'son' + cell,
       lineCells.includes(cell) ? String(cell).padStart(2, '0') : '', ['01', '', '']]));
 }
+// 実機で見つかった不具合の回帰。自家製馬の父は利用者が選んだ種牡馬そのものなので、
+// 因子名（サブ名）と3つ目の因子を落とすと、本体の血統表と食い違って見える。
+{
+  const withSub = synthetic.map((entry, cell) => cell === 1
+    ? { ...entry, name: 'ドリームジャーニー', subName: '央瓏', factors: ['中', '長', '長'] }
+    : entry);
+  const payload = musume.buildCustomHorsePayload(
+    { id: 'dj', sex: '1', name: '☆ドリメゾ牝馬', factors: ['', '', ''] }, withSub);
+  assert.equal(payload.name, 'ドリメゾ牝馬', '自家製馬の ☆ は外す（ダビ娘側で 自 バッジを出す）');
+  assert.equal(payload.pedigree[0][0], 'ドリームジャーニー央瓏', '父は因子名まで出す');
+  assert.deepEqual(plain(payload.pedigree[0][3]), ['12', '04', '04'], '父の因子は3つとも送る');
+}
+
 const factorNames = ['短','速','底','長','適','丈','早','晩','堅','難','走','中','強','雷',''];
 const expectedCodes = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14',''];
 const allFactors = musume.buildCustomHorsePayload({ id: 'factors', sex: '0', factors: factorNames },
@@ -131,7 +145,11 @@ async function runHost() {
   const source = { postMessage(message) { messages.push(plain(message)); } };
   const host = Object.assign(definition.data(), { $refs: { sheetFrame: { contentWindow: source } }, horsesReady: true,
     $root: { savedHorseSummaries: [custom, { source: 'edit' }], brosData, horsesBase: sires,
-      $on() {}, $off() {}, ensureHorseDetail: async horse => horse, findSummaryHorse: ({ id }) => id === custom.id ? custom : null } });
+      $on() {}, $off() {}, ensureHorseDetail: async horse => horse,
+      // 本物の findSummaryHorse は horsesBase（マスター）しか見ない。自家製馬を
+      // ここで拾えるように見せかけると、実機で「ダビふぁく未対応」になる不具合を
+      // 見逃す（実際に見逃した）。同じ振る舞いにしておく。
+      findSummaryHorse: ({ id }) => sires.find(horse => horse.id === id) || null } });
   Object.entries(definition.methods).forEach(([key, method]) => host[key] = method.bind(host));
   definition.created.call(host);
   const receive = data => host.onMessage({ origin: 'http://localhost', source, data: { v: 1, ...data } });

@@ -199,7 +199,12 @@
           return;
         }
         if (!this.sheetOpen || !this.target || !this.$refs.sheetFrame || event.source !== this.$refs.sheetFrame.contentWindow) return;
-        var summary = id ? this.$root.findSummaryHorse({ id }) : null;
+        // findSummaryHorse が見るのは horsesBase（マスター）だけなので、自家製馬は
+        // そのままでは「未対応」になる。自家製馬は savedHorseSummaries にいる。
+        var summary = id
+          ? this.$root.findSummaryHorse({ id }) ||
+            (this.$root.savedHorseSummaries || []).find(horse => horse.id === id) || null
+          : null;
         if (!summary) {
           this.showError("『" + (typeof data.name === "string" ? data.name : "") + "』はダビふぁく未対応の馬です");
           return;

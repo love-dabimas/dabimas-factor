@@ -20,7 +20,10 @@
     }
     return {
       key: logic.musumeLink.toMusumeKey(horse.id, horse.sex),
-      gender: horse.sex, name: horse.name || "", category: horse.son || "",
+      // 馬名の作り方は本体と揃える。自家製馬の ☆ を外し、因子名（サブ名）を繋ぐのは
+      // 共通関数が持っている。ここだけ horse.name で済ませると、同じ馬が
+      // ダビふぁくの血統表と ダビ娘のカードで違う名前に見える。
+      gender: horse.sex, name: logic.horses.getHorseNameText(horse), category: horse.son || "",
       categoryHt: board[3].son || "",
       // 盤面セル3が Paternal_ht、セル5・7が Paternal_jik（設計書 §1.2 の訂正）。
       paternalT: line(1), paternalHt: line(3), paternalJik: line(5) + line(7),
@@ -29,7 +32,9 @@
       // ダビ娘の t, tt, ttt, tttt, ttht, ... hhht と同じ深さ優先順。
       pedigree: logic.pedigree.DESCENDANT_SLOTS.map(function (cell) {
         var entry = board[cell];
-        return [entry.name || "", entry.son || "",
+        // 祖先も同じ作り方にする。自家製馬の父は利用者が選んだ種牡馬そのものなので、
+        // 因子名（例「ドリームジャーニー央瓏」）まで出さないと本体と食い違う。
+        return [logic.horses.getHorseNameText(entry), entry.son || "",
           lineCells.indexOf(cell) === -1 ? "" : line(cell), factorCodes(entry.factors)];
       }),
     };
