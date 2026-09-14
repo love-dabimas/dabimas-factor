@@ -48,16 +48,17 @@
     else if (screen.plan.steps[step - 1].sire) clickText(generation.querySelectorAll('.assist-horse')[1], 'button', '選び直す');
     else clickText(generation, 'button', '種牡馬を選ぶ');
     await app.$nextTick();
-    const input = doc.querySelector('.v-dialog--active input');
-    input.focus(); input.click(); input.value = name;
-    input.dispatchEvent(new win.Event('input', { bubbles: true }));
-    await until(() => [...doc.querySelectorAll('.v-menu__content.menuable__content__active .v-list-item')]
-      .some(node => node.textContent.includes(name) && (!subName || node.textContent.includes(subName))), 'search ' + name);
-    const item = [...doc.querySelectorAll('.v-menu__content.menuable__content__active .v-list-item')]
-      .find(node => node.textContent.includes(name) && (!subName || node.textContent.includes(subName)));
-    item.click(); await app.$nextTick();
-    clickText(doc.querySelector('.v-dialog--active'), 'button', '選択する');
-    await until(() => !screen.busy && !screen.pickerOpen, 'selection ' + name);
+    const host = all(app, 'musume-host')[0];
+    await until(() => host.sheetOpen && host.$refs.sheetFrame?.contentWindow?.location.pathname === '/dabimas-data/dist/' &&
+      host.$refs.sheetFrame?.contentDocument?.readyState === 'complete', 'sheet');
+    const horse = (step ? app.stallions : app.broodmares).find(h => h.name === name && (!subName || h.subName === subName));
+    check(!!horse && !screen.$el.querySelector('.v-autocomplete'), 'ダビ娘選択入口 ' + name);
+    // 受け手 Phase 4b と独立に、実 iframe から選択メッセージを送る。
+    host.$refs.sheetFrame.contentWindow.eval('parent.postMessage(' + JSON.stringify({
+      type: 'dabimas:select', v: 1, horseId: horse.id.slice(1), gender: horse.sex, name: horse.name,
+    }) + ', location.origin)');
+    await until(() => !screen.busy && !host.sheetOpen &&
+      (step ? screen.plan.steps[step - 1].sire?.id === horse.id : screen.baseMare?.id === horse.id), 'selection ' + name);
     await app.$nextTick();
   }
   try {
@@ -91,7 +92,7 @@
     check(scroller.scrollTop > 0, '3代目まで縦スクロール可能');
     await choose(1, 'サンデーサイレンス', '1989');
     check(doc.querySelectorAll('.assist-theory-badge').length === 1 &&
-      !screen.plan.steps[1].sire && !screen.plan.steps[2].mareLabel && !screen.sireLines[2], '4e 後続の選択・結果を破棄');
+      !screen.plan.steps[1].sire && !screen.plan.steps[2].mareLabel && !screen.plan.steps[2].sireLines, '4e 後続の選択・結果を破棄');
     await choose(0, 'スターベガ');
     check(doc.querySelectorAll('.assist-theory-badge').length === 0 && doc.querySelectorAll('.assist-waiting').length === 2,
       '母の選び直しで計画を再作成');

@@ -9,6 +9,7 @@ const context = vm.createContext({ window: { Vue: { component() {} },
   location: { origin: 'http://localhost' }, addEventListener() {}, removeEventListener() {} }, console });
 [
   'constants/pedigree-indexes.js', 'constants/breeding-theories.js',
+  'constants/factor-definitions.js', 'logic/factor/factor-map.js',
   'logic/pedigree/identity-resolver.js', 'logic/pedigree/pedigree-builder.js',
   'logic/pedigree/board-refs.js', 'logic/theory/compatibility.js',
   'logic/theory/theory-session.js', 'logic/plan/plan-diagnosis.js',
@@ -54,15 +55,22 @@ assert.equal(link.fromMusume('1774722353', '0'), 's1774722353');
 assert.equal(link.fromMusume('ch_', '0'), null);
 assert.equal(link.fromMusume('ch_a', '2'), null);
 const synthetic = Array.from({ length: 16 }, (_, cell) => ({ name: 'ancestor' + cell,
-  son: 'son' + cell, parentLine: String(cell).padStart(2, '0'), factors: ['01', '', ''] }));
+  son: 'son' + cell, parentLine: String(cell).padStart(2, '0'), factors: ['短', '', ''] }));
 for (const sex of ['0', '1']) {
-  const payload = musume.buildCustomHorsePayload({ id: 'a1b2', sex, name: '自家製', factors: ['02'] }, synthetic);
+  const payload = musume.buildCustomHorsePayload({ id: 'a1b2', sex, name: '自家製', factors: ['速', '堅', ''] }, synthetic);
+  assert.deepEqual(plain(payload.factors), ['02', '09', '']);
   assert.equal(payload.paternalMig, sex === '0' ? '09111315' : '091315');
   assert.equal(payload.paternalJik, '0307');
   assert.deepEqual([payload.paternalT, payload.paternalJik.slice(0, 2), payload.paternalHt, payload.paternalJik.slice(2)], ['01', '03', '05', '07']);
   assert.deepEqual(plain(payload.pedigree), [1,2,4,8,9,5,10,11,3,6,12,13,7,14,15]
     .map(cell => ['ancestor' + cell, 'son' + cell, String(cell).padStart(2, '0'), ['01', '', '']]));
 }
+const factorNames = ['短','速','底','長','適','丈','早','晩','堅','難','走','中','強','雷',''];
+const expectedCodes = ['01','02','03','04','05','06','07','08','09','10','11','12','13','14',''];
+const allFactors = musume.buildCustomHorsePayload({ id: 'factors', sex: '0', factors: factorNames },
+  synthetic.map(entry => ({ ...entry, factors: factorNames })));
+assert.deepEqual(plain(allFactors.factors), expectedCodes);
+allFactors.pedigree.forEach(entry => assert.deepEqual(plain(entry[3]), expectedCodes));
 const altair = sires.find(h => h.name === 'スターアルタイル' && h.subName === '瓏覇');
 const custom = { ...altair, id: 'a1b2', source: 'custom' };
 const payload = musume.buildCustomHorsePayload(custom, plan.expandHorseBoard(custom, brosData));

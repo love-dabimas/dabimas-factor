@@ -1,6 +1,6 @@
 # 作業指示書: 自家製馬と理論マップを送る（配合理論補助 Phase 4a・ダビふぁく側）
 
-- status: 依頼中
+- status: 実装済み（検証完了）
 - 作成日: 2026-09-14
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 対象リポジトリ: **`dabimasFactor_new`（ダビふぁく）**
@@ -233,8 +233,51 @@ powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 dump-dom
 
 ### 変更ファイル一覧
 
+- `vue/logic/musume-link.js` — candidates の受信許可、自家製 ID の双方向変換。
+- `vue/logic/musume/custom-horse-payload.js`（新規）— 盤面からカード用の系統・15行の血統を生成。
+- `vue/logic/musume/theory-map.js`（新規）— 既存セッションで判定し、4チップと該当馬だけのビット表を生成。
+- `vue/components/musume/musume-host.js` — hello 後の自家製馬送信、保存馬変更時の再送、候補受信、理論マップ送信、性別指定、古い非同期処理の抑止。
+- `vue/components/assist/assist-screen.js` — ダビ娘へ選択を委譲し、母・工程の判定入力を渡す。
+- `vue/logic/plan/assist-plan.js` — `sireLines` を計画に集約。
+- `index.html` / `service-worker.js` — 新規 script・キャッシュ登録、キャッシュ名を `dabimas-factor-v20260914-02` へ更新。
+- `scripts/verify-theory-assist-phase4a.cjs` / `scripts/verify-theory-assist-phase4a-ui.html`（新規）— ロジック・通信・画面検証。
+- `scripts/verify-theory-assist-screen.cjs` / `scripts/verify-theory-assist-ui.html` — 既存の非同期境界・3世代画面検証を新しい選択入口へ更新。
+- `CLAUDE.md` — 完了した作業を「やりたい改善」から削除。
+
 ### 設計判断
+
+- `toMusumeKey(id, gender)` は既存マスター呼び出しを維持し、自家製の場合だけ性別を必要とする。
+- 本人・祖先の漢字因子は既存 `factorMap` でダビ娘の2桁コードへ変換する。空欄は空文字のまま送る。
+- 画面からホストへ渡す `theoryMap` は `{ mareKey, damLines }` の計算入力。候補到着・自家製馬詳細取得が揃ったホストが完成メッセージを作る。完成済み `entries` を持つメッセージも渡せる。
+- 母のキーは実在馬ならマスターキー、自家製なら `ch_` キー。仮想産駒は工程番号・起点の母・先行種牡馬の ID 列から作る。
+- 母・性別が変わる検索は iframe を作り直し、前の理論チップを残さない。同じ検索の再表示は iframe を再利用して送信し直す。
+- 自家製馬の詳細取得 Promise は共有し、保存一覧の変更時に無効化。古い Promise・選択対象・iframe の結果は送信しない。エディット種牡馬は除く。
+- 種牡馬1回の選択について、`expandHorseBoard` は変更前 **2回** → 変更後 **1回**、`prepareSireOperands` も **2回 → 1回**。画面側の `sireLines` は削除し、計画の `step.sireLines` のみを保持する。
 
 ### 実行した検証と結果
 
+- `backup-index-exp` は既定の `index.exp.html` が存在しないため、実ファイルの `index.html` を明示して実行。その後 apply_patch で編集し、`verify-index-exp .\index.html` は OK。
+- `verify-p2d-common.cjs` を除く `scripts/verify-*.cjs` **全20本（既存19本＋新規1本）を1本ずつ実行、すべて成功**。
+- Phase 4a 新規検証: 牡4コード／牝3コード、Jik・血統順、スターベガの完璧6頭、セッションとの全件一致、ゼロ該当の除外、チップ順・pending、自家製 ID、hello／候補受信順、編集馬除外、保存馬削除、実際の性別照合、古い母への送信抑止が成功。
+- 既存画面の Node 検証: 3世代、選び直し、取得失敗、破棄後の完了、旧コールバック、種牡馬選択の盤面展開1回が成功。
+- `python scripts/lan_server.py 8790 --bind 127.0.0.1` で配信し、`dump-dom <検証ページURL> 390 844 300000` を実行。
+  - `scripts/verify-theory-assist-phase4a-ui.html`: **OK**。ダビ娘シート、母選択時のマップなし、送信された完璧6頭、実在／仮想 mareKey、母変更後のキー更新と後続破棄、390px 横スクロールなし、実行時エラーなし。
+  - `scripts/verify-theory-assist-ui.html`: **OK**。375px、3世代の選択と解除、縦スクロール、画面復元、ホーム→カテゴリ→血統表の既存遷移。
+- 画面の受信メッセージは実 iframe から契約どおりに流し、`postMessage` を捕捉して送信内容を確認した。Phase 4b のチップ UI 自体の検証は含めない。
+- ローカル証跡（Git対象外）: `artifacts/phase4a/ui-result.html`、`artifacts/phase4a/regression-ui-result.html`。
+- 最終修正後、Phase 4a・画面境界・既存ダビ娘ロジックの3本を再実行して成功。`artifacts/phase4a/sheet.png` を撮影し、ダビ娘シートと検証結果 OK を目視確認。
+- ダビ娘のローカル実データ 2,979 行も候補受信の検証条件に全件適合。`git diff --check` は成功。
+
+#### Standards レビュー
+
+修正必須の指摘なし。IIFE・名前空間・責務分離・系統の一元管理・非同期処理の照合を確認。
+
+#### Spec レビュー
+
+本人・祖先の因子コード変換漏れを1件指摘。既存 `factorMap` による変換を追加し、漢字因子14種類と空欄の回帰テストで修正を確認。再レビューで解消を確認、追加指摘なし。
+
 ### 残課題・気づき
+
+- Phase 4b と結合した実際のカード操作・チップ絞り込みは別途確認が必要。ダビ娘側ファイルの変更はしていない。
+- 至高は pending、危険は未判定という Phase 4 の仕様どおり。Phase 5 で扱う。
+- `feature/theory-assist-phase4` にコミット。push・main へのマージは行っていない。

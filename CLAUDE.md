@@ -62,9 +62,6 @@ node scripts/verify-<名前>.cjs   # scripts/verify-*.cjs を 1 本ずつ実行�
 
 着手したら枝の名前を添える。終わったらこの一覧から消す。
 
-- 配合理論補助 Phase 4a（自家製馬と理論マップを送る）— `feature/theory-assist-phase4`。
-  指示書は `docs/codex-work-orders/2026-09-14-theory-assist-phase4a.md`。
-  対になるダビ娘側 Phase 4b は `dabimas-data` の `theory-assist-phase4`
 
 ## 片付け候補
 

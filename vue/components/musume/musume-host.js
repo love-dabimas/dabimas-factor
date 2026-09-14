@@ -141,7 +141,12 @@
         var src = link.BASE_URL + "?picker=1&sex=" + sex;
         // 母が変わると別の iframe にする。理論なしの検索に前のチップを残さない。
         if (theoryMap) src += "&mareKey=" + encodeURIComponent(theoryMap.mareKey);
-        if (src !== this.sheetSrc) this.sheetSrc = src;
+        if (src !== this.sheetSrc) {
+          var previous = this.$refs.sheetFrame && this.$refs.sheetFrame.contentWindow;
+          this.readySources.delete(previous);
+          this.pendingHello.delete(previous);
+          this.sheetSrc = src;
+        }
         else {
           this.resetPick();
           var source = this.$refs.sheetFrame && this.$refs.sheetFrame.contentWindow;
