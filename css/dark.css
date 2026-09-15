@@ -592,6 +592,17 @@ html.dabimas-dark .v-application .v-dialog .v-btn.v-btn--disabled .v-icon {
   color: #8d88a3 !important;
 }
 
+/* ===== 危険な配合の ⚠ ===== */
+/* #c62828 は黒地だと 1.3:1 しかなく、同じ赤の枠・赤い馬名に埋もれて
+   何の印か分からなくなっていた。黒地で読める明るさの琥珀に上げる
+   （工程診断のパネルに出る ⚠ と同じ系統の色）。
+   白のにじみ（text-shadow）は明るい行に乗せるためのものなので、
+   黒地では暗い縁に替えて字の形を立たせる。 */
+html.dabimas-dark .plan-danger-mark {
+  color: #ffc24a;
+  text-shadow: 0 0 2px #000, 0 0 3px #000;
+}
+
 /* ===== プレースホルダ ===== */
 /* Vuetify は rgba(0,0,0,.38) で描くので、黒地では消える。 */
 html.dabimas-dark .v-application .v-input input::placeholder,
