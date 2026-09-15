@@ -44,11 +44,11 @@
           @back="activeMenu = null"
         ></edit-stallion-manager>
         <div v-else class="dabimas-settings">
-          <v-app-bar dense flat color="white" class="dabimas-settings-appbar">
+          <v-app-bar dense flat color="white" class="dabimas-appbar dabimas-settings-appbar">
             <v-btn icon aria-label="ホームへ戻る" @click="goHome">
               <v-icon>mdi-arrow-left</v-icon>
             </v-btn>
-            <v-toolbar-title class="dabimas-settings-title">設定</v-toolbar-title>
+            <v-toolbar-title class="dabimas-appbar-title dabimas-settings-title">設定</v-toolbar-title>
           </v-app-bar>
           <v-list class="dabimas-settings-menu">
             <v-list-item @click="activeMenu = 'edit-stallions'">

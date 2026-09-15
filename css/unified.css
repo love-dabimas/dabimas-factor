@@ -29,6 +29,33 @@
 }
 
 /* 洗練されたホームヘッダー: ほのかなブランド地＋ブランドカラーの下線 */
+/* ===== 画面上部のバー（ホーム・設定・ダビ娘・配合理論補助で共通） =====
+   左は ← の1種類、題名はバーの中、操作は右端。高さは 48px で揃える。
+   作業枠（血統表）の <header ref="appHeader"> はここに含めない。あちらは
+   因子集計の表を抱えていて、高さを変えると16行の行高がそのぶん痩せる
+   （実測：ヘッダ 109px → 本文 734px → 1行 23px）。 */
+.dabimas-appbar.v-app-bar,
+.dabimas-appbar {
+  height: 48px !important;
+  min-height: 48px;
+}
+
+.dabimas-appbar .v-toolbar__content {
+  height: 48px !important;
+  padding: 0 4px;
+}
+
+.dabimas-appbar .dabimas-appbar-title,
+.dabimas-appbar-title {
+  font-size: 18px !important;
+  font-weight: 700;
+  letter-spacing: normal;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dabimas-home-appbar {
   border-bottom: 2px solid #5b4b8a;
   background: linear-gradient(180deg, #f6f4fb 0%, #ffffff 100%) !important;
@@ -844,11 +871,59 @@
   width: 100%;
   min-width: 0;
   height: var(--exp-mobile-app-height, 100svh);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #f4f3f7;
   color: #241f33;
+}
+
+/* バーを固定するため、スクロールは中の枠に持たせる。
+   本文に置いていたころは下へ送ると戻るボタンごと画面外へ出ていた
+   （実測：900px 送ると上端 -880px）。 */
+.assist-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+.assist-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 0 4px;
+  background: #fff;
+  border-bottom: 1px solid #e2ddec;
+}
+
+.assist-bar-back {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #33324a;
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.assist-bar .dabimas-appbar-title {
+  flex: 1 1 auto;
+}
+
+.assist-lead {
+  margin: 0;
+  color: #6d6880;
+  font-size: 13.5px;
 }
 .assist-page {
   max-width: 560px;
@@ -860,9 +935,6 @@
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
-.assist-head { display: flex; flex-direction: column; gap: 7px; }
-.assist-head h1 { margin: 0; font-size: 20px; font-weight: 800; }
-.assist-head p { margin: 0; color: #6d6880; font-size: 13.5px; }
 .assist-gen { background: #fff; border: 1px solid #e2ddec; border-radius: 14px; overflow: hidden; flex-shrink: 0; }
 .assist-gen-head { display: flex; align-items: center; gap: 9px; padding: 9px 13px; font-weight: 800; font-size: 14px; color: #fff; }
 .assist-gen-head span { font-size: 11px; opacity: .85; letter-spacing: .08em; }
@@ -918,16 +990,7 @@
   letter-spacing: normal;
 }
 
-/* ホームと「画像を保存」を1行に並べる。 */
-.assist-head-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-/* ホームへ戻る。薄いテキストボタンだと沈むので、枠付きにして浮かせる。 */
-.assist-screen .assist-back.v-btn,
+/* 「画像を保存」。薄いテキストボタンだと沈むので、枠付きにして浮かせる。 */
 .assist-screen .assist-shot.v-btn {
   color: #33324a;
   background: #fff;
@@ -1008,22 +1071,29 @@
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   height: 48px;
-  padding: 0 12px;
+  padding: 0 4px;
   border-bottom: 1px solid #ddd;
   background: #fff;
 }
 
+/* 戻るは他の画面と同じ ← のアイコンボタンにする（枠付きのピルはやめた）。 */
 .musume-frame-back {
   flex: 0 0 auto;
-  min-height: 36px;
-  padding: 0 12px;
-  border: 1px solid #bbb;
-  border-radius: 6px;
-  background: #fff;
-  font-size: 14px;
-  font-weight: 700;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #33324a;
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
 
 .musume-frame-title {

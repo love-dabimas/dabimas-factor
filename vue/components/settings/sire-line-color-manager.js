@@ -176,11 +176,11 @@
     },
     template: `
       <div class="dabimas-settings sire-line-color-manager">
-        <v-app-bar dense flat color="white" class="dabimas-settings-appbar">
+        <v-app-bar dense flat color="white" class="dabimas-appbar dabimas-settings-appbar">
           <v-btn icon aria-label="設定メニューへ戻る" @click="$emit('back')">
             <v-icon>mdi-arrow-left</v-icon>
           </v-btn>
-          <v-toolbar-title class="dabimas-settings-title">子系統カラー</v-toolbar-title>
+          <v-toolbar-title class="dabimas-appbar-title dabimas-settings-title">子系統カラー</v-toolbar-title>
         </v-app-bar>
 
         <div class="sire-line-color-toolbar">

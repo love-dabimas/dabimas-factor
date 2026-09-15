@@ -224,8 +224,10 @@
       <div class="musume-host">
         <div v-if="screenOpened" v-show="isMusumeScreen" class="musume-screen">
           <div class="musume-frame-header">
-            <button type="button" class="musume-frame-back" @click="leaveScreen">‹ ホーム</button>
-            <span class="musume-frame-title">ダビ娘</span>
+            <button type="button" class="musume-frame-back" aria-label="ホームへ戻る" @click="leaveScreen">
+              <span class="mdi mdi-arrow-left"></span>
+            </button>
+            <span class="musume-frame-title dabimas-appbar-title">ダビ娘</span>
           </div>
           <iframe ref="screenFrame" :src="embedUrl" class="musume-iframe musume-iframe--fill" title="ダビ娘"></iframe>
         </div>
@@ -233,8 +235,10 @@
           <v-sheet class="musume-sheet">
             <div class="musume-sheet-grip"></div>
             <div class="musume-frame-header">
-              <button type="button" class="musume-frame-back" @click="sheetOpen = false">‹ 戻る</button>
-              <span class="musume-frame-title">ダビ娘で探す<small>{{ targetLabel }}</small></span>
+              <button type="button" class="musume-frame-back" aria-label="閉じる" @click="sheetOpen = false">
+                <span class="mdi mdi-arrow-left"></span>
+              </button>
+              <span class="musume-frame-title dabimas-appbar-title">ダビ娘で探す<small>{{ targetLabel }}</small></span>
             </div>
             <iframe v-if="sheetSrc" :key="sheetSrc" ref="sheetFrame" :src="sheetSrc" class="musume-iframe musume-iframe--sheet" title="ダビ娘で探す"></iframe>
           </v-sheet>

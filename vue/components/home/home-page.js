@@ -120,8 +120,8 @@
     },
     template: `
       <div class="dabimas-home">
-        <v-app-bar flat color="white" class="dabimas-home-appbar">
-          <v-toolbar-title class="dabimas-home-title">ダビふぁく</v-toolbar-title>
+        <v-app-bar dense flat color="white" class="dabimas-appbar dabimas-home-appbar">
+          <v-toolbar-title class="dabimas-appbar-title dabimas-home-title">ダビふぁく</v-toolbar-title>
           <v-spacer></v-spacer>
           <v-btn icon large class="dabimas-home-action" @click="openAddDialog" aria-label="カテゴリを追加">
             <v-icon size="28">mdi-plus</v-icon>
