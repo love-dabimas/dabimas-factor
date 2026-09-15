@@ -14,7 +14,7 @@
   --dk-surface: #1d1b27;   /* カード・表の土台 */
   --dk-raised: #221f2e;    /* ヘッダー・タブなど一段手前 */
   --dk-line: #332f45;      /* 罫線 */
-  --dk-text: #eceaf4;      /* 本文 */
+  --dk-text: #dcd9e6;      /* 本文。純白だとハレーションが出るので少し落とす */
   --dk-muted: #a49fb8;     /* 補助の文字 */
   --dk-accent: #cbbcf5;    /* ブランド色（黒地でも読める明るさ） */
 }
@@ -35,9 +35,11 @@
   border-color: var(--dk-line) !important;
 }
 
-.v-application header .v-btn,
+/* 背景色を持つボタン（作業枠の番号など）は Vuetify が白文字を前提に塗っているので触らない。
+   v-btn--has-bg が付いているものがそれ。 */
+.v-application header .v-btn:not(.v-btn--has-bg),
 .v-application header .v-icon,
-.v-application .dabimas-tab-bar .v-btn,
+.v-application .dabimas-tab-bar .v-btn:not(.v-btn--has-bg),
 .v-application .dabimas-tab-bar .v-icon {
   color: var(--dk-text);
 }
@@ -137,4 +139,47 @@ td.factorNumCell {
 /* アイコンを丸で囲う選択肢は、枠が黒だと見えない。 */
 .v-application .v-dialog .v-btn--outlined:not([class*="--text"]) {
   border-color: var(--dk-line);
+}
+
+
+/* ===== 血統表の淡い色を落とす =====
+   面積×明るさで測ると、画面のまぶしさの約9割がこの4色だった
+   （見事枠の黄は輝度94%で、本文の文字より明るい）。
+   **色相は1度も動かさず**、明度だけ落とす。緑・黄・水色・サーモンの
+   区別はそのまま残り、輝度は 1/15 前後になる。
+
+     見事枠 黄    #fffcaa 94%  → #4a4520 5.8%
+     面白枠 緑    #b6ffbd 85%  → #1e4a26 5.3%
+     自身 水色    #cfe7f5 77%  → #1f4257 4.9%
+     繁殖牝馬     #f3a68c 48%  → #5f3227 4.9%
+
+   父紺(8.2%)・母臙脂(15.9%) はもともと暗いので変えない。
+   暗くしたぶん、これらのセルの文字は明るくする（コントラスト 8〜9:1）。 */
+.pedigree-card-shell [class*="migoto"] {
+  background-color: #4a4520 !important;
+}
+
+.pedigree-card-shell [class*="omoshiro"] {
+  background-color: #1e4a26 !important;
+}
+
+.pedigree-card-shell [class*="AliceBlue"] {
+  background-color: #1f4257 !important;
+}
+
+.pedigree-card-shell [class*="SalmonPink"] {
+  background-color: #5f3227 !important;
+}
+
+/* 繁殖牝馬側の面白枠は黄→緑のグラデーション。両端とも落とす。 */
+.pedigree-card-shell .Broodmare {
+  background: linear-gradient(135deg, #4a4520 0%, #4a4520 70%, #1e4a26 50%, #1e4a26 100%) !important;
+}
+
+.pedigree-card-shell [class*="migoto"],
+.pedigree-card-shell [class*="omoshiro"],
+.pedigree-card-shell [class*="AliceBlue"],
+.pedigree-card-shell [class*="SalmonPink"],
+.pedigree-card-shell .Broodmare {
+  color: var(--dk-text);
 }
