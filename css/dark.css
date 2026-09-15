@@ -490,6 +490,10 @@ html.dabimas-dark .refined-factor-dialog .selection-info {
 html.dabimas-dark .v-menu__content .v-list-item.manual-factor-option:not(.v-list-item--active):not(.manual-factor-option--selected) {
   background: var(--dk-raised) !important;
   color: var(--dk-text) !important;
+  /* style.css が因子の字に白の縁取り（text-shadow 8方向）を付けている。
+     淡い因子色の上の黒字を読ませるためのもので、ライトでは白地に白の縁なので
+     見えない。ダークで字を明るくしたぶん、この縁が滲んで字が潰れていた。 */
+  text-shadow: none;
 }
 
 html.dabimas-dark .v-menu__content .v-list-item.manual-factor-option:not(.v-list-item--active):not(.manual-factor-option--selected):hover {
