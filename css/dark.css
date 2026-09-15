@@ -60,11 +60,15 @@ html.dabimas-dark .pedigree-card-shell :is(.horse_0, .factor_horse, .horse_all):
   color: var(--dk-text);
 }
 
-/* セルの中の文字・入力・アイコンも合わせる */
-html.dabimas-dark .pedigree-card-shell .horse_0 select,
-html.dabimas-dark .pedigree-card-shell .horse_0 input,
-html.dabimas-dark .pedigree-card-shell .factor_horse select,
-html.dabimas-dark .pedigree-card-shell .factor_horse input {
+/* セルの中の文字・入力・アイコンも合わせる。
+   入力欄は Vuetify が rgba(0,0,0,.87) を直接あてるので、セルに color を
+   置いただけでは届かない。血統表のセルの地はどれも暗い（色付きのセルも
+   明度を落としてある）ので、中の入力欄はまとめて明るい文字にする。
+   例外は子系統カラーの淡い9色で、あちらは .sire-color-cell input が
+   !important で黒文字に戻している。 */
+html.dabimas-dark .pedigree-card-shell td select,
+html.dabimas-dark .pedigree-card-shell td input,
+html.dabimas-dark .pedigree-card-shell td textarea {
   color: var(--dk-text);
   background-color: transparent;
 }
