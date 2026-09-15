@@ -197,6 +197,19 @@ html.dabimas-dark .pedigree-card-shell .Broodmare {
   color: var(--dk-text);
 }
 
+/* 子系統モードでは、unified.css が行の色を transparent に中和している
+   （子系統カラーを読ませたいので、面白・見事の色をわざと消している）。
+   上の「淡い色を落とす」ルールは !important なのでその中和を踏み倒し、
+   ライトでは白一色の画面がダークだけ緑・黄に染まっていた。ここで戻す。
+   子系統カラーが乗っているセルは中和の対象外なので外す。 */
+html.dabimas-dark .exp-category-mode [class*="migoto"]:not([class*="sire-color-"]),
+html.dabimas-dark .exp-category-mode [class*="omoshiro"]:not([class*="sire-color-"]),
+html.dabimas-dark .exp-category-mode [class*="AliceBlue"]:not([class*="sire-color-"]),
+html.dabimas-dark .exp-category-mode [class*="SalmonPink"]:not([class*="sire-color-"]),
+html.dabimas-dark .exp-category-mode .Broodmare:not([class*="sire-color-"]) {
+  background: transparent !important;
+}
+
 /* ===== ホーム・カテゴリ画面 ===== */
 html.dabimas-dark .dabimas-home {
   background-color: var(--dk-bg);
