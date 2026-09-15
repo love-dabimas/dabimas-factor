@@ -34,6 +34,16 @@
 - `index.html` を編集するときは `AGENTS.md` の手順（backup → apply_patch → verify）に従う
 - コミットメッセージは日本語。push は指示があったときだけ
 
+## 表示テーマ
+
+明るい／暗いは `css/dark.css` が `html.dabimas-dark` の下だけで効く形にしてある。
+`css/unified.css` と `css/style.css` は明るい側の値のまま触らない。切り替えと保存は
+`vue/logic/theme.js`（localStorage の `dabimasTheme`、既定は `dark`）。設定画面から
+ダーク／ライト／端末に合わせる を選べる。**暗い色を足すときは dark.css に書く。**
+
+血統表の色は情報そのもの（緑＝面白枠、黄＝見事枠、紺＝父、臙脂＝母）なので、
+暗くするときも色相は動かさず明度だけ落とす。
+
 ## 検証
 
 ```

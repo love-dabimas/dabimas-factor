@@ -22,8 +22,7 @@
   /* 親（.v-application--wrap）は縦の flex なので、余りを受け取って最後まで
      地を塗る。これをしないと中身が短いとき下に白（Vuetify の .v-application）が出る。 */
   flex: 1 1 auto;
-  /* 配合理論補助と同じ黒ベース。画面をまたいでも地の色が飛ばないようにする。 */
-  background-color: #15131d;
+  background-color: #ffffff;
   padding-top: env(safe-area-inset-top, 0px);
   padding-left: env(safe-area-inset-left, 0px);
   padding-right: env(safe-area-inset-right, 0px);
@@ -31,21 +30,21 @@
 
 /* 洗練されたホームヘッダー: ほのかなブランド地＋ブランドカラーの下線 */
 .dabimas-home-appbar {
-  border-bottom: 2px solid #7d6cc0;
-  background: linear-gradient(180deg, #221f2e 0%, #15131d 100%) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+  border-bottom: 2px solid #5b4b8a;
+  background: linear-gradient(180deg, #f6f4fb 0%, #ffffff 100%) !important;
+  box-shadow: 0 2px 8px rgba(91, 75, 138, 0.08) !important;
 }
 
 .dabimas-home-title {
   font-weight: 700;
   font-size: 22px;
   letter-spacing: 1px;
-  color: #eceaf4;
+  color: #33324a;
 }
 
 /* ＋・設定アイコンをブランドカラーで大きく */
 .dabimas-home-action.v-btn--icon .v-icon {
-  color: #cbbcf5;
+  color: #5b4b8a;
 }
 
 /* 編集ボタンの文字を読みやすく（editMode 時の primary 色は Vuetify に任せる） */
@@ -54,7 +53,6 @@
   font-weight: 600;
   letter-spacing: normal;
   min-width: 52px;
-  color: #eceaf4;
 }
 
 .dabimas-home-empty {
@@ -64,7 +62,7 @@
   justify-content: center;
   min-height: 60vh;
   gap: 12px;
-  color: #a49fb8;
+  color: #757575;
   text-align: center;
 }
 
@@ -96,7 +94,7 @@
 }
 
 .dabimas-category-count {
-  color: #a49fb8;
+  color: #757575;
 }
 
 .dabimas-category-delete {
@@ -819,7 +817,7 @@
    タイルとカテゴリの格子の左右を、どちらも画面端から 12px にそろえる。 */
 .dabimas-home-section-title {
   margin: 16px 12px 6px;
-  color: #cbbcf5;
+  color: #5b4b8a;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -848,10 +846,8 @@
   height: var(--exp-mobile-app-height, 100svh);
   overflow-y: auto;
   overscroll-behavior: contain;
-  /* 黒ベース。理論の画像（.theory_01〜08）は白フチ＋淡い地の素材で、
-     ゲームと同じく暗い地の上に置く前提で作られている。 */
-  background: #15131d;
-  color: #eceaf4;
+  background: #f4f3f7;
+  color: #241f33;
   -webkit-overflow-scrolling: touch;
 }
 .assist-page {
@@ -866,8 +862,8 @@
 }
 .assist-head { display: flex; flex-direction: column; gap: 7px; }
 .assist-head h1 { margin: 0; font-size: 20px; font-weight: 800; }
-.assist-head p { margin: 0; color: #a49fb8; font-size: 13.5px; }
-.assist-gen { background: #221f2e; border: 1px solid #332f45; border-radius: 14px; overflow: hidden; flex-shrink: 0; }
+.assist-head p { margin: 0; color: #6d6880; font-size: 13.5px; }
+.assist-gen { background: #fff; border: 1px solid #e2ddec; border-radius: 14px; overflow: hidden; flex-shrink: 0; }
 .assist-gen-head { display: flex; align-items: center; gap: 9px; padding: 9px 13px; font-weight: 800; font-size: 14px; color: #fff; }
 .assist-gen-head span { font-size: 11px; opacity: .85; letter-spacing: .08em; }
 .assist-gen--1 .assist-gen-head { background: #d9534f; }
@@ -875,58 +871,58 @@
 .assist-gen--3 .assist-gen-head { background: #d8c53f; color: #4a4118; }
 .assist-gen-body { padding: 12px 13px 14px; display: flex; flex-direction: column; gap: 10px; }
 .assist-gen.is-locked .assist-gen-body { opacity: .55; }
-.assist-horse { border: 1px solid #332f45; border-radius: 11px; padding: 10px 11px; background: #2a2739; }
-.assist-role, .assist-block-title { font-size: 11px; font-weight: 700; color: #a49fb8; letter-spacing: .06em; }
+.assist-horse { border: 1px solid #e2ddec; border-radius: 11px; padding: 10px 11px; background: #faf9fc; }
+.assist-role, .assist-block-title { font-size: 11px; font-weight: 700; color: #6d6880; letter-spacing: .06em; }
 .assist-horse-name { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 2px; }
 .assist-horse-name b { font-size: 15.5px; font-weight: 800; }
 .assist-virtual { font-size: 10.5px; color: white; background: #5b4b8a; border-radius: 4px; padding: 1px 6px; }
 .assist-rare { font-size: 10.5px; color: white; background: #3560c4; border-radius: 4px; padding: 1px 6px; }
-.assist-horse-meta { font-size: 12px; color: #a49fb8; margin-top: 1px; }
+.assist-horse-meta { font-size: 12px; color: #6d6880; margin-top: 1px; }
 .assist-horse-factors { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
 .assist-lines { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .assist-line-row { display: flex; align-items: center; gap: 4px; }
 .assist-line-label { font-size: 11px; font-weight: 700; color: #fff; border-radius: 4px; padding: 2px 7px; min-width: 46px; text-align: center; background: #c2703a; }
 .assist-line-label.is-migoto { background: #2f6fb5; }
-.assist-line-code { font-size: 12px; font-weight: 700; color: #241f33; background: #f2f0f8; border: 1px solid #4a4560; border-radius: 4px; padding: 2px 0; min-width: 34px; text-align: center; }
-.assist-screen .assist-pick.v-btn { height: auto; min-height: 54px; white-space: normal; padding: 15px; color: #cbbcf5; background: #2f2a44; border: 1.5px dashed #7d6cc0; border-radius: 11px; font-size: 14px; font-weight: 700; letter-spacing: normal; }
-.assist-waiting { border: 1.5px dashed #3c3752; border-radius: 11px; padding: 15px; text-align: center; color: #8f8aa6; font-size: 13.5px; }
-.assist-result { border-top: 1px solid #332f45; padding-top: 11px; display: flex; flex-direction: column; gap: 10px; }
+.assist-line-code { font-size: 12px; font-weight: 700; background: #fff; border: 1px solid #e2ddec; border-radius: 4px; padding: 2px 0; min-width: 34px; text-align: center; }
+.assist-screen .assist-pick.v-btn { height: auto; min-height: 54px; white-space: normal; padding: 15px; color: #5b4b8a; background: #efeaf9; border: 1.5px dashed #5b4b8a; border-radius: 11px; font-size: 14px; font-weight: 700; letter-spacing: normal; }
+.assist-waiting { border: 1.5px dashed #e2ddec; border-radius: 11px; padding: 15px; text-align: center; color: #6d6880; font-size: 13.5px; }
+.assist-result { border-top: 1px solid #e2ddec; padding-top: 11px; display: flex; flex-direction: column; gap: 10px; }
 .assist-block-title { margin-bottom: 5px; }
 .assist-theory-badge { display: inline-block; font-size: 16px; font-weight: 800; color: #1f7a4d; background: #e4f4ec; border: 1.5px solid #1f7a4d; border-radius: 9px; padding: 5px 14px; }
-.assist-placeholder { border: 1px solid #332f45; background: #2a2739; border-radius: 9px; padding: 9px; text-align: center; font-size: 13px; color: #a49fb8; }
-.assist-cross { color: #cbbcf5; background: #2f2a44; font-weight: 700; }
+.assist-placeholder { border: 1px solid #e2ddec; background: #faf9fc; border-radius: 9px; padding: 9px; text-align: center; font-size: 13px; color: #6d6880; }
+.assist-cross { color: #5b4b8a; background: #efeaf9; font-weight: 700; }
 .assist-foot {
   position: sticky;
   bottom: 0;
   margin: 0 -14px calc(-1 * env(safe-area-inset-bottom, 0px));
   padding: 11px 14px calc(11px + env(safe-area-inset-bottom, 0px));
-  color: #a49fb8;
+  color: #6d6880;
   font-size: 12.5px;
-  border-top: 1px solid #332f45;
-  /* 白帯だと本文から浮くので、地の色をそのまま薄く敷いてぼかす。 */
-  background: rgba(21, 19, 29, .92);
+  border-top: 1px solid #e2ddec;
+  /* 本文から浮かないよう、地の色をそのまま薄く敷いてぼかす。 */
+  background: rgba(244, 243, 247, .92);
   backdrop-filter: blur(6px);
 }
 
-/* 選び直す。黒地では素のテキストボタンだと沈むので、枠付きにする。 */
+/* 選び直す。素のテキストボタンだと沈むので、枠付きにする。 */
 .assist-screen .assist-reselect.v-btn {
   height: 24px;
   min-width: 0;
   padding: 0 10px;
-  color: #cbbcf5;
-  background: #33304a;
-  border: 1px solid #574f78;
+  color: #5b4b8a;
+  background: #efeaf9;
+  border: 1px solid #d8cdf5;
   border-radius: 999px;
   font-size: 11.5px;
   font-weight: 700;
   letter-spacing: normal;
 }
 
-/* ホームへ戻る。薄いテキストボタンだと黒地で沈むので、枠付きにして浮かせる。 */
+/* ホームへ戻る。薄いテキストボタンだと沈むので、枠付きにして浮かせる。 */
 .assist-screen .assist-back.v-btn {
-  color: #eceaf4;
-  background: #2a2739;
-  border: 1px solid #4a4560;
+  color: #33324a;
+  background: #fff;
+  border: 1px solid #e2ddec;
   border-radius: 999px;
   padding: 0 14px;
   font-weight: 700;
@@ -961,14 +957,14 @@
 }
 
 .dabimas-musume-tile__title {
-  color: #eceaf4;
+  color: #33324a;
   font-size: 15px;
   font-weight: 600;
 }
 
 .dabimas-musume-tile__sub {
   margin-top: 2px;
-  color: #a49fb8;
+  color: #757575;
   font-size: 12px;
 }
 
@@ -1107,19 +1103,13 @@
   font-weight: 700;
 }
 
-/* ホームのタイルとカード。Vuetify の v-sheet が白を敷いているので上書きする。 */
-.dabimas-home .dabimas-musume-tile.v-sheet,
-.dabimas-home .dabimas-category-card.v-sheet {
-  background-color: #221f2e !important;
-  border: 1px solid #332f45 !important;
-  color: #eceaf4;
+/* 表示テーマの切り替え。リストの行の中に収める。 */
+.dabimas-theme-item .dabimas-theme-toggle {
+  margin-top: 8px;
+  flex-wrap: wrap;
 }
 
-.dabimas-home .dabimas-musume-tile.v-sheet .v-icon,
-.dabimas-home .dabimas-category-card.v-sheet .v-icon {
-  color: #cbbcf5;
-}
-
-.dabimas-home .dabimas-category-name {
-  color: #eceaf4;
+.dabimas-theme-item .dabimas-theme-toggle .v-btn {
+  font-size: 12px;
+  letter-spacing: normal;
 }
