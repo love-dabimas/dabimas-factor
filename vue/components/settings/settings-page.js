@@ -7,13 +7,24 @@
     name: "settings-page",
     data: function () {
       var theme = window.Dabimas.logic.theme;
-      return { activeMenu: null, themeMode: theme ? theme.get() : "dark" };
+      var link = window.Dabimas.logic.musumeLink;
+      return {
+        activeMenu: null,
+        themeMode: theme ? theme.get() : "dark",
+        pedigreeOpen: !!(link && link.pedigreeOpen()),
+      };
     },
     watch: {
       // 押した瞬間に画面へ反映し、次に開いたときも同じになるよう覚える。
       themeMode: function (mode) {
         var theme = window.Dabimas.logic.theme;
         if (theme) theme.set(mode);
+      },
+      // ダビ娘の URL に載せている値なので、変えると iframe を読み直す。
+      pedigreeOpen: function (value) {
+        var link = window.Dabimas.logic.musumeLink;
+        if (link) link.setPedigreeOpen(value);
+        this.$root.musumePedigreeOpen = !!value;
       },
     },
     methods: {
@@ -47,6 +58,16 @@
                 <v-list-item-subtitle>登録・編集・削除</v-list-item-subtitle>
               </v-list-item-content>
               <v-list-item-icon><v-icon>mdi-chevron-right</v-icon></v-list-item-icon>
+            </v-list-item>
+            <v-list-item class="dabimas-theme-item">
+              <v-list-item-icon><v-icon>mdi-file-tree</v-icon></v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>ダビ娘の血統表</v-list-item-title>
+                <v-list-item-subtitle>最初から開く（一覧のスクロールは重くなります）</v-list-item-subtitle>
+              </v-list-item-content>
+              <v-list-item-action>
+                <v-switch v-model="pedigreeOpen" dense hide-details inset aria-label="血統表を最初から開く"></v-switch>
+              </v-list-item-action>
             </v-list-item>
             <v-list-item class="dabimas-theme-item">
               <v-list-item-icon><v-icon>mdi-theme-light-dark</v-icon></v-list-item-icon>
