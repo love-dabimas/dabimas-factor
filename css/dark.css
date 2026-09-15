@@ -9,7 +9,7 @@
      土台を暗くし、その透明なセルにだけ暗い地と明るい文字を与える。
    - 触るのは土台・ヘッダー・タブバー・数値セル・ダイアログに限る。 */
 
-:root {
+html.dabimas-dark {
   --dk-bg: #15131d;        /* いちばん奥の地 */
   --dk-surface: #1d1b27;   /* カード・表の土台 */
   --dk-raised: #221f2e;    /* ヘッダー・タブなど一段手前 */
@@ -23,13 +23,13 @@
 /* 文字色はここでは触らない。ここで明るくすると、血統表の色付きセル
    （黄・緑・水色・サーモン）の黒文字まで白くなって読めなくなる。
    明るい文字は、地を暗くした要素にだけ個別に与える。 */
-.v-application.theme--light {
+html.dabimas-dark .v-application.theme--light {
   background-color: var(--dk-bg) !important;
 }
 
 /* ===== 作業枠のヘッダーとタブバー ===== */
-.v-application header,
-.v-application .dabimas-tab-bar {
+html.dabimas-dark .v-application header,
+html.dabimas-dark .v-application .dabimas-tab-bar {
   background-color: var(--dk-raised) !important;
   color: var(--dk-text);
   border-color: var(--dk-line) !important;
@@ -37,15 +37,15 @@
 
 /* 背景色を持つボタン（作業枠の番号など）は Vuetify が白文字を前提に塗っているので触らない。
    v-btn--has-bg が付いているものがそれ。 */
-.v-application header .v-btn:not(.v-btn--has-bg),
-.v-application header .v-icon,
-.v-application .dabimas-tab-bar .v-btn:not(.v-btn--has-bg),
-.v-application .dabimas-tab-bar .v-icon {
+html.dabimas-dark .v-application header .v-btn:not(.v-btn--has-bg),
+html.dabimas-dark .v-application header .v-icon,
+html.dabimas-dark .v-application .dabimas-tab-bar .v-btn:not(.v-btn--has-bg),
+html.dabimas-dark .v-application .dabimas-tab-bar .v-icon {
   color: var(--dk-text);
 }
 
 /* ===== 血統表の土台 ===== */
-.pedigree-card-shell.v-card {
+html.dabimas-dark .pedigree-card-shell.v-card {
   background-color: var(--dk-surface) !important;
   border-color: var(--dk-line) !important;
 }
@@ -55,24 +55,24 @@
    今までどおりの色と黒文字のまま残る。 */
 /* .Broodmare は background-color を持たず linear-gradient（黄→緑）で塗るので、
    background-color を見ただけでは「透明」に見える。これも色付きなので外す。 */
-.pedigree-card-shell :is(.horse_0, .factor_horse, .horse_all):not(.Broodmare):not([class*="AliceBlue"]):not([class*="SalmonPink"]):not([class*="migoto"]):not([class*="omoshiro"]) {
+html.dabimas-dark .pedigree-card-shell :is(.horse_0, .factor_horse, .horse_all):not(.Broodmare):not([class*="AliceBlue"]):not([class*="SalmonPink"]):not([class*="migoto"]):not([class*="omoshiro"]) {
   background-color: var(--dk-surface);
   color: var(--dk-text);
 }
 
 /* セルの中の文字・入力・アイコンも合わせる */
-.pedigree-card-shell .horse_0 select,
-.pedigree-card-shell .horse_0 input,
-.pedigree-card-shell .factor_horse select,
-.pedigree-card-shell .factor_horse input {
+html.dabimas-dark .pedigree-card-shell .horse_0 select,
+html.dabimas-dark .pedigree-card-shell .horse_0 input,
+html.dabimas-dark .pedigree-card-shell .factor_horse select,
+html.dabimas-dark .pedigree-card-shell .factor_horse input {
   color: var(--dk-text);
   background-color: transparent;
 }
 
 /* 罫線 */
-.pedigree-card-shell table,
-.pedigree-card-shell td,
-.pedigree-card-shell th {
+html.dabimas-dark .pedigree-card-shell table,
+html.dabimas-dark .pedigree-card-shell td,
+html.dabimas-dark .pedigree-card-shell th {
   border-color: var(--dk-line);
 }
 
@@ -84,60 +84,60 @@ td.factorNumCell {
 }
 
 /* ===== ダイアログ・メニュー ===== */
-.v-application .v-dialog > .v-card,
-.v-application .v-menu__content .v-list,
-.v-application .v-menu__content .v-sheet,
-.v-application .v-bottom-sheet .v-sheet {
+html.dabimas-dark .v-application .v-dialog > .v-card,
+html.dabimas-dark .v-application .v-menu__content .v-list,
+html.dabimas-dark .v-application .v-menu__content .v-sheet,
+html.dabimas-dark .v-application .v-bottom-sheet .v-sheet {
   background-color: var(--dk-surface) !important;
   color: var(--dk-text);
 }
 
-.v-application .v-dialog .v-card__title,
-.v-application .v-dialog .v-card__text,
-.v-application .v-menu__content .v-list-item__title {
+html.dabimas-dark .v-application .v-dialog .v-card__title,
+html.dabimas-dark .v-application .v-dialog .v-card__text,
+html.dabimas-dark .v-application .v-menu__content .v-list-item__title {
   color: var(--dk-text);
 }
 
-.v-application .v-dialog .v-card__text,
-.v-application .dabimas-field-label {
+html.dabimas-dark .v-application .v-dialog .v-card__text,
+html.dabimas-dark .v-application .dabimas-field-label {
   color: var(--dk-muted);
 }
 
 /* 入力欄。コンパクト版 Vuetify は枠と文字を黒前提で塗っている。 */
-.v-application .v-dialog .v-input input,
-.v-application .v-dialog .v-input textarea,
-.v-application .v-dialog .v-label {
+html.dabimas-dark .v-application .v-dialog .v-input input,
+html.dabimas-dark .v-application .v-dialog .v-input textarea,
+html.dabimas-dark .v-application .v-dialog .v-label {
   color: var(--dk-text);
 }
 
-.v-application .v-dialog .v-input__slot fieldset {
+html.dabimas-dark .v-application .v-dialog .v-input__slot fieldset {
   border-color: var(--dk-line);
 }
 
 /* ===== ダビ娘の枠まわり（中身の iframe は明るいまま） ===== */
-.musume-frame-header {
+html.dabimas-dark .musume-frame-header {
   background-color: var(--dk-raised);
   color: var(--dk-text);
   border-color: var(--dk-line);
 }
 
-.musume-frame-back {
+html.dabimas-dark .musume-frame-back {
   color: var(--dk-text);
 }
 
-.musume-sheet {
+html.dabimas-dark .musume-sheet {
   background-color: var(--dk-surface) !important;
 }
 
 /* ダイアログのボタンとアイコン。Vuetify の既定色（黒）だと黒地で沈む。
    色付きのもの（選択中のアイコンなど *--text）はそのまま残す。 */
-.v-application .v-dialog .v-btn:not([class*="--text"]):not(.v-btn--disabled),
-.v-application .v-dialog .v-icon:not([class*="--text"]) {
+html.dabimas-dark .v-application .v-dialog .v-btn:not([class*="--text"]):not(.v-btn--disabled),
+html.dabimas-dark .v-application .v-dialog .v-icon:not([class*="--text"]) {
   color: var(--dk-text);
 }
 
 /* アイコンを丸で囲う選択肢は、枠が黒だと見えない。 */
-.v-application .v-dialog .v-btn--outlined:not([class*="--text"]) {
+html.dabimas-dark .v-application .v-dialog .v-btn--outlined:not([class*="--text"]) {
   border-color: var(--dk-line);
 }
 
@@ -155,31 +155,206 @@ td.factorNumCell {
 
    父紺(8.2%)・母臙脂(15.9%) はもともと暗いので変えない。
    暗くしたぶん、これらのセルの文字は明るくする（コントラスト 8〜9:1）。 */
-.pedigree-card-shell [class*="migoto"] {
+html.dabimas-dark .pedigree-card-shell [class*="migoto"] {
   background-color: #4a4520 !important;
 }
 
-.pedigree-card-shell [class*="omoshiro"] {
+html.dabimas-dark .pedigree-card-shell [class*="omoshiro"] {
   background-color: #1e4a26 !important;
 }
 
-.pedigree-card-shell [class*="AliceBlue"] {
+html.dabimas-dark .pedigree-card-shell [class*="AliceBlue"] {
   background-color: #1f4257 !important;
 }
 
-.pedigree-card-shell [class*="SalmonPink"] {
+html.dabimas-dark .pedigree-card-shell [class*="SalmonPink"] {
   background-color: #5f3227 !important;
 }
 
 /* 繁殖牝馬側の面白枠は黄→緑のグラデーション。両端とも落とす。 */
-.pedigree-card-shell .Broodmare {
+html.dabimas-dark .pedigree-card-shell .Broodmare {
   background: linear-gradient(135deg, #4a4520 0%, #4a4520 70%, #1e4a26 50%, #1e4a26 100%) !important;
 }
 
-.pedigree-card-shell [class*="migoto"],
-.pedigree-card-shell [class*="omoshiro"],
-.pedigree-card-shell [class*="AliceBlue"],
-.pedigree-card-shell [class*="SalmonPink"],
-.pedigree-card-shell .Broodmare {
+html.dabimas-dark .pedigree-card-shell [class*="migoto"],
+html.dabimas-dark .pedigree-card-shell [class*="omoshiro"],
+html.dabimas-dark .pedigree-card-shell [class*="AliceBlue"],
+html.dabimas-dark .pedigree-card-shell [class*="SalmonPink"],
+html.dabimas-dark .pedigree-card-shell .Broodmare {
   color: var(--dk-text);
+}
+
+/* ===== ホーム・カテゴリ画面 ===== */
+html.dabimas-dark .dabimas-home {
+  background-color: var(--dk-bg);
+}
+
+html.dabimas-dark .dabimas-home-appbar {
+  border-bottom-color: #7d6cc0;
+  background: linear-gradient(180deg, var(--dk-raised) 0%, var(--dk-bg) 100%) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .5) !important;
+}
+
+html.dabimas-dark .dabimas-home-title,
+html.dabimas-dark .dabimas-home-edit.v-btn,
+html.dabimas-dark .dabimas-musume-tile__title,
+html.dabimas-dark .dabimas-category-name {
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .dabimas-home-action.v-btn--icon .v-icon,
+html.dabimas-dark .dabimas-home-section-title {
+  color: var(--dk-accent);
+}
+
+html.dabimas-dark .dabimas-home-empty,
+html.dabimas-dark .dabimas-category-count,
+html.dabimas-dark .dabimas-musume-tile__sub {
+  color: var(--dk-muted);
+}
+
+/* Vuetify の v-sheet が白を敷いているので上書きする。 */
+html.dabimas-dark .dabimas-home .dabimas-musume-tile.v-sheet,
+html.dabimas-dark .dabimas-home .dabimas-category-card.v-sheet {
+  background-color: var(--dk-raised) !important;
+  border: 1px solid var(--dk-line) !important;
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .dabimas-home .dabimas-musume-tile.v-sheet .v-icon,
+html.dabimas-dark .dabimas-home .dabimas-category-card.v-sheet .v-icon {
+  color: var(--dk-accent);
+}
+
+/* ===== 設定画面 ===== */
+html.dabimas-dark .dabimas-settings {
+  background-color: var(--dk-bg);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .dabimas-settings-appbar {
+  background-color: var(--dk-raised) !important;
+  border-bottom-color: var(--dk-line);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .dabimas-settings-title,
+html.dabimas-dark .dabimas-settings .v-list-item__title {
+  color: var(--dk-text);
+}
+
+/* Vuetify の .theme--light.v-list-item .v-list-item__subtitle が
+   rgba(0,0,0,.6) を当ててくるので、こちらを強く指定する。 */
+html.dabimas-dark .dabimas-settings-empty,
+html.dabimas-dark .dabimas-settings .v-list-item__subtitle {
+  color: var(--dk-muted) !important;
+}
+
+/* リストは地を持たせず、画面の地に溶かす。中途半端な境目を作らない。 */
+html.dabimas-dark .dabimas-settings .v-list {
+  background-color: transparent !important;
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .dabimas-settings .v-card {
+  background-color: var(--dk-surface) !important;
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .dabimas-settings .v-icon:not([class*="--text"]),
+html.dabimas-dark .dabimas-settings .v-btn:not(.v-btn--has-bg):not([class*="--text"]) {
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .dabimas-settings .v-divider {
+  border-color: var(--dk-line);
+}
+
+/* ===== エディット種牡馬のダイアログ =====
+   見出しだけ白いラベル地のままで、本文の黒から浮いていた。 */
+html.dabimas-dark .edit-stallion-dialog .edit-stallion-dialog-title {
+  color: var(--dk-text);
+  background: var(--dk-raised);
+  border-bottom-color: var(--dk-line);
+  border-left-color: #7d6cc0;
+}
+
+/* ===== 配合理論補助 ===== */
+html.dabimas-dark .assist-screen {
+  background: var(--dk-bg);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .assist-head p,
+html.dabimas-dark .assist-role,
+html.dabimas-dark .assist-block-title,
+html.dabimas-dark .assist-horse-meta,
+html.dabimas-dark .assist-placeholder,
+html.dabimas-dark .assist-foot {
+  color: var(--dk-muted);
+}
+
+html.dabimas-dark .assist-gen {
+  background: var(--dk-raised);
+  border-color: var(--dk-line);
+}
+
+html.dabimas-dark .assist-horse,
+html.dabimas-dark .assist-placeholder {
+  background: #2a2739;
+  border-color: var(--dk-line);
+}
+
+html.dabimas-dark .assist-line-code {
+  color: #241f33;
+  background: #f2f0f8;
+  border-color: #4a4560;
+}
+
+html.dabimas-dark .assist-screen .assist-pick.v-btn,
+html.dabimas-dark .assist-cross {
+  color: var(--dk-accent);
+  background: #2f2a44;
+}
+
+html.dabimas-dark .assist-screen .assist-pick.v-btn {
+  border-color: #7d6cc0;
+}
+
+html.dabimas-dark .assist-waiting {
+  border-color: #3c3752;
+  color: #8f8aa6;
+}
+
+html.dabimas-dark .assist-result {
+  border-top-color: var(--dk-line);
+}
+
+html.dabimas-dark .assist-foot {
+  border-top-color: var(--dk-line);
+  background: rgba(21, 19, 29, .92);
+}
+
+html.dabimas-dark .assist-screen .assist-back.v-btn {
+  color: var(--dk-text);
+  background: #2a2739;
+  border-color: #4a4560;
+}
+
+html.dabimas-dark .assist-screen .assist-reselect.v-btn {
+  color: var(--dk-accent);
+  background: #33304a;
+  border-color: #574f78;
+}
+
+/* テーマ切り替えのボタン群 */
+html.dabimas-dark .dabimas-theme-toggle .v-btn {
+  color: var(--dk-text);
+  background-color: var(--dk-raised) !important;
+  border-color: var(--dk-line) !important;
+}
+
+html.dabimas-dark .dabimas-theme-toggle .v-btn.v-btn--active {
+  color: #241f33;
+  background-color: var(--dk-accent) !important;
 }

@@ -6,7 +6,15 @@
   var SettingsPage = {
     name: "settings-page",
     data: function () {
-      return { activeMenu: null };
+      var theme = window.Dabimas.logic.theme;
+      return { activeMenu: null, themeMode: theme ? theme.get() : "dark" };
+    },
+    watch: {
+      // 押した瞬間に画面へ反映し、次に開いたときも同じになるよう覚える。
+      themeMode: function (mode) {
+        var theme = window.Dabimas.logic.theme;
+        if (theme) theme.set(mode);
+      },
     },
     methods: {
       goHome: function () {
@@ -39,6 +47,18 @@
                 <v-list-item-subtitle>登録・編集・削除</v-list-item-subtitle>
               </v-list-item-content>
               <v-list-item-icon><v-icon>mdi-chevron-right</v-icon></v-list-item-icon>
+            </v-list-item>
+            <v-list-item class="dabimas-theme-item">
+              <v-list-item-icon><v-icon>mdi-theme-light-dark</v-icon></v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>表示テーマ</v-list-item-title>
+                <v-list-item-subtitle>画面全体の明るさ</v-list-item-subtitle>
+                <v-btn-toggle v-model="themeMode" mandatory dense class="dabimas-theme-toggle">
+                  <v-btn value="dark" small>ダーク</v-btn>
+                  <v-btn value="light" small>ライト</v-btn>
+                  <v-btn value="auto" small>端末に合わせる</v-btn>
+                </v-btn-toggle>
+              </v-list-item-content>
             </v-list-item>
             <v-list-item @click="activeMenu = 'sire-line-colors'">
               <v-list-item-icon><v-icon>mdi-palette</v-icon></v-list-item-icon>
