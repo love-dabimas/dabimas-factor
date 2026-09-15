@@ -358,3 +358,130 @@ html.dabimas-dark .dabimas-theme-toggle .v-btn.v-btn--active {
   color: #241f33;
   background-color: var(--dk-accent) !important;
 }
+
+/* ===== 馬選択ダイアログ（血統表のセルをタップして出るもの）=====
+   因子の色チップ（.f01〜）や子系統カラーは意味を持つ色なので触らない。
+   暗くするのは地・入力欄・一覧といった器だけにする。 */
+html.dabimas-dark .exp-mobile-picker-dialog .v-card,
+html.dabimas-dark .exp-mobile-picker-body {
+  background: var(--dk-bg);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .exp-mobile-search-label {
+  color: var(--dk-muted);
+}
+
+html.dabimas-dark .exp-mobile-search-shell {
+  background: var(--dk-raised);
+  border-color: var(--dk-line);
+  box-shadow: none;
+}
+
+html.dabimas-dark .exp-mobile-search-input,
+html.dabimas-dark .exp-mobile-search-shell .mdi,
+html.dabimas-dark .exp-mobile-search-clear {
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .exp-mobile-search-input::placeholder {
+  color: var(--dk-muted);
+}
+
+html.dabimas-dark .exp-mobile-option-list {
+  background: var(--dk-surface);
+  border-color: var(--dk-line);
+}
+
+html.dabimas-dark .exp-mobile-option-btn,
+html.dabimas-dark .exp-option-item {
+  color: var(--dk-text);
+  border-color: var(--dk-line);
+}
+
+html.dabimas-dark .exp-mobile-option-btn--selected {
+  background: #2f3a4d;
+}
+
+html.dabimas-dark .exp-mobile-option-btn:active {
+  background: var(--dk-raised);
+}
+
+html.dabimas-dark .exp-mobile-picker-action--clear {
+  background: var(--dk-raised);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .exp-mobile-fav-only-chip {
+  background: var(--dk-raised);
+  border-color: var(--dk-line);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .exp-mobile-fav-only-chip.is-on {
+  background: #3a2733;
+}
+
+html.dabimas-dark .exp-mobile-layout .exp-mobile-text-btn {
+  background: var(--dk-raised);
+  color: var(--dk-text);
+  border-color: var(--dk-line);
+}
+
+/* ===== ダビ娘の外枠（中身の iframe は明るいまま）===== */
+html.dabimas-dark .musume-screen {
+  background: var(--dk-bg);
+}
+
+html.dabimas-dark .musume-sheet-grip {
+  background: var(--dk-line);
+}
+
+/* ===== 子系統カラーの設定 ===== */
+html.dabimas-dark .sire-line-color-group-header {
+  background: var(--dk-raised);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .sire-line-color-option:not([class*="sire-color-"]) {
+  background: var(--dk-surface);
+  color: var(--dk-text);
+}
+
+/* ===== 因子ダイアログ ===== */
+html.dabimas-dark .refined-factor-dialog .selection-info {
+  background: var(--dk-raised);
+  color: var(--dk-text);
+}
+
+/* ===== 組み合わせの保存・読み込み ===== */
+html.dabimas-dark .combination-input-area,
+html.dabimas-dark .combination-list-area {
+  background: var(--dk-surface) !important;
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .combination-list-item {
+  background: var(--dk-raised);
+  border-color: var(--dk-line);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .combination-list-item:hover {
+  background: #2f2a44;
+}
+
+html.dabimas-dark .combination-saved-list::-webkit-scrollbar-track {
+  background: var(--dk-surface);
+}
+
+/* ===== 血統表まわりの取りこぼし ===== */
+html.dabimas-dark div.horse_spec {
+  background: var(--dk-surface);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark footer {
+  background: var(--dk-raised);
+  color: var(--dk-text);
+}
