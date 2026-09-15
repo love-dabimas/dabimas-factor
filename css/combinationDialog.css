@@ -199,39 +199,56 @@
 }
 
 .combination-factor-select.v-text-field--outlined .v-input__slot {
-  padding: 0 8px !important;
+  padding: 0 6px !important;
 }
 
 .combination-factor-select .v-select__selections {
   min-height: 34px !important;
   flex-wrap: nowrap;
-  padding: 0 !important;
+  padding: 0 2px !important;
 }
 
 .combination-factor-select .v-input__append-inner {
   margin-top: 6px !important;
 }
 
-/* トグルと同じ行に収めて幅が狭くなるため、ラベルは省略記号で切る
-   （はみ出して隣のトグルに重なるのを防ぐ）。 */
+/* トグルと同じ行に収めるため枠が狭い。既定の 16px だと「付与する因子（…」と
+   切れてしまい、浮いたときも右端の ✕ に重なる。文字を小さくして全文を入れる。
+   はみ出し対策の省略記号は保険として残す。 */
 .combination-factor-select .v-label {
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: calc(100% - 24px);
+  max-width: calc(100% - 10px);
 }
 
-/* 付与する因子のチップ。セレクト1行に2つ並ぶ大きさにする */
+/* Vuetify は浮いたラベルを 0.75 倍にする（12px なら 9px）。小さすぎるので
+   縮小率を戻す。戻しすぎると右端の ✕ に重なるので 0.85（実効 10px）で止める。
+   transform-origin は top left なので、倍率を変えても上端は動かない。
+   Vuetify 側が .v-text-field--outlined.v-input--dense .v-label--active で
+   指定しているので、同じ強さまで詳細度を上げる。 */
+.combination-factor-select.v-text-field--outlined.v-input--dense .v-label--active {
+  transform: translateY(-16px) scale(0.85);
+}
+
+/* 付与する因子のチップ。セレクト1行に2つ並ぶ大きさにする。
+   枠いっぱいに詰まっていて窮屈だったので、チップ自体を一回り小さくして
+   左右と互いのあいだに隙間を作る。 */
 .combination-factor-select .manual-factor-chip.v-chip {
-  height: 22px !important;
-  margin: 0 4px 0 0;
-  padding: 0 6px;
+  height: 20px !important;
+  margin: 0 6px 0 0;
+  padding: 0 5px;
   font-size: 12px;
 }
 
+.combination-factor-select .manual-factor-chip.v-chip:last-child {
+  margin-right: 0;
+}
+
 .combination-factor-select .manual-factor-chip .v-chip__close.v-icon {
-  font-size: 14px;
-  margin-left: 2px;
+  font-size: 13px;
+  margin-left: 3px;
 }
 
 /* 種牡馬・繁殖牝馬の選択色を配合表の父（青）・母（赤）に合わせる */

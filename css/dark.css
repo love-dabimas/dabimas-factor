@@ -153,6 +153,15 @@ html.dabimas-dark .v-application .v-dialog .v-icon:not([class*="--text"]) {
   color: var(--dk-text);
 }
 
+/* text ボタン（v-btn--text）は「枠なしボタン」の意味で、色を指定する
+   クラス（primary--text など）ではない。上の :not([class*="--text"]) が
+   これも一緒に弾いてしまい、工程診断の「閉じる」などが rgba(0,0,0,.87) の
+   まま残って 1.2:1 になっていた。色指定のクラスは !important なので、
+   ここで塗っても色付きのものは上書きしない。 */
+html.dabimas-dark .v-application .v-dialog .v-btn.v-btn--text:not(.v-btn--disabled) {
+  color: var(--dk-text);
+}
+
 /* アイコンを丸で囲う選択肢は、枠が黒だと見えない。 */
 html.dabimas-dark .v-application .v-dialog .v-btn--outlined:not([class*="--text"]) {
   border-color: var(--dk-line);
