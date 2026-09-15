@@ -374,7 +374,8 @@ html.dabimas-dark .assist-foot {
   background: rgba(21, 19, 29, .92);
 }
 
-html.dabimas-dark .assist-screen .assist-back.v-btn {
+html.dabimas-dark .assist-screen .assist-back.v-btn,
+html.dabimas-dark .assist-screen .assist-shot.v-btn {
   color: var(--dk-text);
   background: #2a2739;
   border-color: #4a4560;
