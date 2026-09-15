@@ -918,8 +918,17 @@
   letter-spacing: normal;
 }
 
+/* ホームと「画像を保存」を1行に並べる。 */
+.assist-head-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* ホームへ戻る。薄いテキストボタンだと沈むので、枠付きにして浮かせる。 */
-.assist-screen .assist-back.v-btn {
+.assist-screen .assist-back.v-btn,
+.assist-screen .assist-shot.v-btn {
   color: #33324a;
   background: #fff;
   border: 1px solid #e2ddec;

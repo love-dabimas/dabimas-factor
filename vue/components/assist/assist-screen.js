@@ -10,6 +10,7 @@
       return {
         plan: null, baseMare: null,
         busy: false, error: "", requestVersion: 0,
+        capturing: false,
       };
     },
     computed: {
@@ -93,12 +94,67 @@
           this.error = "ホームを開けませんでした。もう一度お試しください。";
         });
       },
+      // 画面は3代ぶんあって1画面に収まらないので、見えている範囲ではなく
+      // .assist-page の全高を撮る。血統表の撮影（ui-viewport.js）と違い、
+      // 実画面のレイアウトは触らない。html2canvas は複製した DOM を描くので、
+      // onclone でその複製だけスクロール枠を外せば、画面はちらつかない。
+      async captureScreen() {
+        if (this.capturing) return;
+        this.capturing = true;
+        this.error = "";
+        try {
+          var html2canvas = await this.$root.loadHtml2Canvas();
+          var page = this.$el.querySelector(".assist-page");
+          var width = Math.ceil(page.scrollWidth);
+          var height = Math.ceil(page.scrollHeight);
+          var canvas = await html2canvas(page, {
+            // ダークのときに白地で抜けないよう、実際の地の色をそのまま使う。
+            backgroundColor: window.getComputedStyle(this.$el).backgroundColor,
+            scale: Math.min(window.devicePixelRatio || 1, 3),
+            width: width,
+            height: height,
+            windowWidth: Math.max(document.documentElement.clientWidth, width),
+            windowHeight: height + 64,
+            scrollX: 0,
+            scrollY: 0,
+            ignoreElements: (element) => element.hasAttribute("data-html2canvas-ignore"),
+            onclone: (doc) => {
+              var screen = doc.querySelector(".assist-screen");
+              if (screen) {
+                screen.style.height = "auto";
+                screen.style.overflow = "visible";
+              }
+              // 下部の説明文は sticky。全高で撮ると本文に重なるので普通の流れに戻す。
+              var foot = doc.querySelector(".assist-foot");
+              if (foot) {
+                foot.style.position = "static";
+                foot.style.backdropFilter = "none";
+              }
+            },
+          });
+          var blob = await this.$root.canvasToPngBlob(canvas);
+          if (!blob) throw new Error("Failed to create screenshot blob");
+          await this.$root.saveScreenshotBlob(blob, this.$root.buildScreenshotFileName());
+        } catch (error) {
+          // 共有シートを閉じただけ（AbortError）は失敗ではない。
+          if (!error || error.name !== "AbortError") {
+            this.error = "画像を保存できませんでした。もう一度お試しください。";
+          }
+        } finally {
+          this.capturing = false;
+        }
+      },
     },
     template: `
       <div class="assist-screen">
         <div class="assist-page">
           <div class="assist-head">
-            <v-btn text small class="align-self-start assist-back" @click="goHome"><v-icon left small>mdi-arrow-left</v-icon>ホーム</v-btn>
+            <div class="assist-head-bar">
+              <v-btn text small class="assist-back" @click="goHome"><v-icon left small>mdi-arrow-left</v-icon>ホーム</v-btn>
+              <v-btn text small class="assist-shot" data-html2canvas-ignore
+                :loading="capturing" :disabled="busy || capturing" @click="captureScreen"
+              ><v-icon left small>mdi-camera</v-icon>画像を保存</v-btn>
+            </div>
             <h1>配合理論補助</h1>
             <p>繁殖牝馬を起点に、代ごとに種牡馬を選び、その組み合わせで成立する配合理論を確認する画面です。</p>
           </div>
