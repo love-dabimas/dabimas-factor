@@ -69,15 +69,28 @@ html.dabimas-dark .pedigree-card-shell .factor_horse input {
   background-color: transparent;
 }
 
-/* 罫線 */
+/* 罫線。
+   セルは border-collapse: collapse の中にいて、各セルが自前で
+   `border-bottom: 1px solid #DDDDDD` を引いている。詳細度で上回るだけでは
+   隣接セルとの解決に負けて白い線が残ったので、!important で押し切る。 */
 html.dabimas-dark .pedigree-card-shell table,
+html.dabimas-dark .pedigree-card-shell tr,
 html.dabimas-dark .pedigree-card-shell td,
 html.dabimas-dark .pedigree-card-shell th {
-  border-color: var(--dk-line);
+  border-color: var(--dk-line) !important;
+}
+
+/* そのうち因子色が付いていないセルは、Vuetify 既定の黒文字のままで
+   黒地に黒になっていた（世代番号の①〜⑯が読めない）。
+   因子色が付いているもの（f00〜f16）は黒文字のままで正しいので触らない。
+   .styleParentLine（Ro / Te / Ha …）は色付きのときしか字が入らないので
+   ここでは触らない。明るくすると色の上で読めなくなる。 */
+html.dabimas-dark .styleFactorClassMain:not([class*="f0"]):not([class*="f1"]) {
+  color: var(--dk-text);
 }
 
 /* ===== ニトロ・クロスの数値セル ===== */
-td.factorNumCell {
+html.dabimas-dark td.factorNumCell {
   background-color: var(--dk-surface) !important;
   color: var(--dk-text) !important;
   border-color: var(--dk-line) !important;
@@ -454,6 +467,24 @@ html.dabimas-dark .refined-factor-dialog .selection-info {
   color: var(--dk-text);
 }
 
+/* 因子の選択肢（因子ダイアログと配合の保存ダイアログで共用）。
+   選んでいない項目は白地・黒文字で固定されていたので、黒地に置くと
+   真っ白な帯になって文字も飛んでいた。**選んだ項目の因子色は触らない** */
+html.dabimas-dark .v-menu__content .v-list-item.manual-factor-option:not(.v-list-item--active):not(.manual-factor-option--selected) {
+  background: var(--dk-raised) !important;
+  color: var(--dk-text) !important;
+}
+
+html.dabimas-dark .v-menu__content .v-list-item.manual-factor-option:not(.v-list-item--active):not(.manual-factor-option--selected):hover {
+  background: #2f2a44 !important;
+}
+
+/* 文字色は項目に合わせる。選択中は因子色の上の黒のまま、
+   未選択はいま入れた明るい文字になる。 */
+html.dabimas-dark .v-menu__content .v-list-item.manual-factor-option .v-list-item__title {
+  color: inherit !important;
+}
+
 /* ===== 組み合わせの保存・読み込み ===== */
 html.dabimas-dark .combination-input-area,
 html.dabimas-dark .combination-list-area {
@@ -473,6 +504,90 @@ html.dabimas-dark .combination-list-item:hover {
 
 html.dabimas-dark .combination-saved-list::-webkit-scrollbar-track {
   background: var(--dk-surface);
+}
+
+/* 2px の白枠が黒地で光っていた（入力欄・一覧・フッターの3本） */
+html.dabimas-dark .combination-input-area,
+html.dabimas-dark .combination-list-area {
+  border-color: var(--dk-line) !important;
+}
+
+html.dabimas-dark .combination-dialog-actions {
+  border-top-color: var(--dk-line);
+}
+
+/* 「新規保存」「保存済み配合」の見出し。#495057 は黒地だと読めない */
+html.dabimas-dark .combination-section-title {
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .combination-empty-message,
+html.dabimas-dark .combination-list-item-date,
+html.dabimas-dark .combination-title-hint {
+  color: var(--dk-muted);
+}
+
+/* 保存済み配合の見出し行。#212529 のままだと黒地に黒で消える */
+html.dabimas-dark .combination-list-item-title {
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .combination-list-item.selected {
+  background: #2e2748;
+  border-color: var(--dk-accent);
+}
+
+/* 種牡馬／繁殖牝馬のトグル。選んでいない側が白のままだった。
+   Vuetify は枠（v-btn-toggle）自体を白で塗るので、枠と中の両方を落とす。
+   選択中の色（父の青・母の赤）はそのまま残す。 */
+html.dabimas-dark .combination-save-kind-toggle.v-btn-toggle {
+  background-color: var(--dk-raised) !important;
+}
+
+html.dabimas-dark .combination-save-kind-toggle.v-btn-toggle > .v-btn.v-btn:not(.v-btn--active) {
+  background-color: var(--dk-raised) !important;
+  border-color: var(--dk-line) !important;
+  color: var(--dk-muted) !important;
+}
+
+/* 無効なボタン（保存する・復元する・削除する）。Vuetify は黒の半透明で
+   描くので、黒地では地も文字も沈んで押せないことすら分からなくなる。 */
+html.dabimas-dark .v-application .v-dialog .v-btn.v-btn--disabled.v-btn--has-bg {
+  background-color: #2a2637 !important;
+}
+
+html.dabimas-dark .v-application .v-dialog .v-btn.v-btn--disabled,
+html.dabimas-dark .v-application .v-dialog .v-btn.v-btn--disabled .v-icon {
+  color: #8d88a3 !important;
+}
+
+/* ===== プレースホルダ ===== */
+/* Vuetify は rgba(0,0,0,.38) で描くので、黒地では消える。 */
+html.dabimas-dark .v-application .v-input input::placeholder,
+html.dabimas-dark .v-application .v-input textarea::placeholder {
+  color: rgba(220, 217, 230, 0.45);
+}
+
+/* ===== 子系統カラー（9色） ===== */
+/* 色そのものは情報なので変えない。淡い色の上に黒地用の明るい文字が
+   乗って読めなくなっていたので、この9色の上だけ文字を黒に戻す。 */
+html.dabimas-dark .sire-color-1,
+html.dabimas-dark .sire-color-2,
+html.dabimas-dark .sire-color-3,
+html.dabimas-dark .sire-color-4,
+html.dabimas-dark .sire-color-5,
+html.dabimas-dark .sire-color-6,
+html.dabimas-dark .sire-color-7,
+html.dabimas-dark .sire-color-8,
+html.dabimas-dark .sire-color-9,
+html.dabimas-dark .sire-color-cell input {
+  color: #1b1b22 !important;
+}
+
+/* .sire-color-cell は色が付いたときだけ出るクラスなので（memo-cell.js の
+   colorCellClass）、色なしの暗いセルを黒文字にしてしまう心配はない。 */
+html.dabimas-dark .sire-color-cell input::placeholder {
+  color: rgba(0, 0, 0, 0.45) !important;
 }
 
 /* ===== 血統表まわりの取りこぼし ===== */
