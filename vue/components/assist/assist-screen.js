@@ -95,9 +95,11 @@
         });
       },
       // 画面は3代ぶんあって1画面に収まらないので、見えている範囲ではなく
-      // .assist-page の全高を撮る。血統表の撮影（ui-viewport.js）と違い、
+      // 画面まるごとの全高を撮る。血統表の撮影（ui-viewport.js）と違い、
       // 実画面のレイアウトは触らない。html2canvas は複製した DOM を描くので、
       // onclone でその複製だけスクロール枠を外せば、画面はちらつかない。
+      // 上のバーごと撮るのは、題名（配合理論補助）を画像に残すため。
+      // バーのボタンは data-html2canvas-ignore で写らない。
       async captureScreen() {
         if (this.capturing) return;
         this.capturing = true;
@@ -105,9 +107,10 @@
         try {
           var html2canvas = await this.$root.loadHtml2Canvas();
           var page = this.$el.querySelector(".assist-page");
+          var bar = this.$el.querySelector(".assist-bar");
           var width = Math.ceil(page.scrollWidth);
-          var height = Math.ceil(page.scrollHeight);
-          var canvas = await html2canvas(page, {
+          var height = Math.ceil(bar.getBoundingClientRect().height) + Math.ceil(page.scrollHeight);
+          var canvas = await html2canvas(this.$el, {
             // ダークのときに白地で抜けないよう、実際の地の色をそのまま使う。
             backgroundColor: window.getComputedStyle(this.$el).backgroundColor,
             scale: Math.min(window.devicePixelRatio || 1, 3),
@@ -123,6 +126,12 @@
               if (screen) {
                 screen.style.height = "auto";
                 screen.style.overflow = "visible";
+              }
+              var scroll = doc.querySelector(".assist-scroll");
+              if (scroll) {
+                scroll.style.height = "auto";
+                scroll.style.overflow = "visible";
+                scroll.style.flex = "none";
               }
               // 下部の説明文は sticky。全高で撮ると本文に重なるので普通の流れに戻す。
               var foot = doc.querySelector(".assist-foot");
@@ -147,17 +156,17 @@
     },
     template: `
       <div class="assist-screen">
+        <header class="dabimas-appbar assist-bar">
+          <button type="button" class="assist-bar-back" aria-label="ホームへ戻る"
+            data-html2canvas-ignore @click="goHome"><span class="mdi mdi-arrow-left"></span></button>
+          <span class="dabimas-appbar-title">配合理論補助</span>
+          <v-btn text small class="assist-shot" data-html2canvas-ignore
+            :loading="capturing" :disabled="busy || capturing" @click="captureScreen"
+          ><v-icon left small>mdi-camera</v-icon>画像を保存</v-btn>
+        </header>
+        <div class="assist-scroll">
         <div class="assist-page">
-          <div class="assist-head">
-            <div class="assist-head-bar">
-              <v-btn text small class="assist-back" @click="goHome"><v-icon left small>mdi-arrow-left</v-icon>ホーム</v-btn>
-              <v-btn text small class="assist-shot" data-html2canvas-ignore
-                :loading="capturing" :disabled="busy || capturing" @click="captureScreen"
-              ><v-icon left small>mdi-camera</v-icon>画像を保存</v-btn>
-            </div>
-            <h1>配合理論補助</h1>
-            <p>繁殖牝馬を起点に、代ごとに種牡馬を選び、その組み合わせで成立する配合理論を確認する画面です。</p>
-          </div>
+          <p class="assist-lead">繁殖牝馬を起点に、代ごとに種牡馬を選び、その組み合わせで成立する配合理論を確認する画面です。</p>
           <v-alert v-if="error" dense outlined type="error" role="alert">{{ error }}</v-alert>
           <section v-for="step in steps" :key="step.stepNo" class="assist-gen"
             :class="['assist-gen--' + step.stepNo, { 'is-locked': step.stepNo > 1 && !step.mareLines }]">
@@ -216,6 +225,7 @@
             </div>
           </section>
           <footer class="assist-foot">1代目で選んだ種牡馬と繁殖牝馬から生まれる産駒が、そのまま2代目の繁殖牝馬になります。前の代を変えると、後ろの代は組み直しになります。</footer>
+        </div>
         </div>
       </div>
     `,

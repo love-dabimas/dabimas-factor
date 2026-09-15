@@ -146,11 +146,9 @@ html.dabimas-dark .musume-frame-header {
   border-color: var(--dk-line);
 }
 
-/* 白地のままだと白文字が乗って何も読めない（地も一緒に落とす）。 */
+/* ← のアイコンボタン。地は持たないので文字色だけでよい。 */
 html.dabimas-dark .musume-frame-back {
   color: var(--dk-text);
-  background: var(--dk-surface);
-  border-color: var(--dk-line);
 }
 
 /* 見出しの脇の小さい説明（#666）は黒地だと 2.8:1 で沈む。 */
@@ -340,7 +338,7 @@ html.dabimas-dark .assist-screen {
   color: var(--dk-text);
 }
 
-html.dabimas-dark .assist-head p,
+html.dabimas-dark .assist-lead,
 html.dabimas-dark .assist-role,
 html.dabimas-dark .assist-block-title,
 html.dabimas-dark .assist-horse-meta,
@@ -390,11 +388,21 @@ html.dabimas-dark .assist-foot {
   background: rgba(21, 19, 29, .92);
 }
 
-html.dabimas-dark .assist-screen .assist-back.v-btn,
 html.dabimas-dark .assist-screen .assist-shot.v-btn {
   color: var(--dk-text);
   background: #2a2739;
   border-color: #4a4560;
+}
+
+/* 上のバー。他の画面のバーと同じ地・同じ罫線にする。 */
+html.dabimas-dark .assist-bar {
+  background: var(--dk-raised);
+  border-bottom-color: var(--dk-line);
+}
+
+html.dabimas-dark .assist-bar-back,
+html.dabimas-dark .assist-bar .dabimas-appbar-title {
+  color: var(--dk-text);
 }
 
 html.dabimas-dark .assist-screen .assist-reselect.v-btn {
