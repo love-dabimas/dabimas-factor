@@ -139,6 +139,22 @@ git で追跡されていて（週次ワークフローがコミットする）�
 真っ白になる**（エラーも出ない）。Git Bash で打つときは前に `MSYS_NO_PATHCONV=1` を付ける。
 PowerShell なら `$env:VITE_BASE_PATH='/dabimas-data/dist/'` としてから `npm run build`。
 
+**置き換えは一気にやること。** `dabimas-data/dist/` を消してからコピーすると、その
+数秒のあいだに読み込んだ端末には index.html か assets のどちらかが 404 で返り、
+**ダビ娘が真っ白になる**（エラーも出ない）。トンネル越しに実機で確認してもらって
+いる最中はこれを踏みやすい。別名で作ってから入れ替える。
+
+```
+cp -r "$TEMP/musume-embed" dabimas-data/dist.new
+ls dabimas-data/dist.new/index.html   # 出来ているか確かめてから
+mv dabimas-data/dist dabimas-data/dist.old && mv dabimas-data/dist.new dabimas-data/dist
+rm -rf dabimas-data/dist.old
+```
+
+ダビ娘は `/dabimas-data/dist/` を scope に**自前の Service Worker** を登録する
+（`src/main.tsx`）。index.html は network-first なので、入れ替え後は再読み込みで
+新しい assets を取りに行く。ダビふぁく側の SW は `/dabimas-data/` に手を出さない。
+
 化けていないかは、コピー後に配信して確かめられる。
 
 ```
