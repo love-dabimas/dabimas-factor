@@ -131,6 +131,14 @@ html.dabimas-dark .v-application .v-dialog .v-input__slot fieldset {
   border-color: var(--dk-line);
 }
 
+/* トグル（v-btn-toggle）の枠。Vuetify は枠そのものを白で塗るので、
+   中のボタンだけ暗くしても白い帯が残る。配合の保存の種牡馬／繁殖牝馬、
+   設定の表示テーマ、と同じ取りこぼしを2度出したので一括で落とす。
+   枠を持たない --group 版は Vuetify 側も透明なので触らない。 */
+html.dabimas-dark .v-application .v-btn-toggle:not(.v-btn-toggle--group) {
+  background-color: var(--dk-raised);
+}
+
 /* ===== ダビ娘の枠まわり（中身の iframe は明るいまま） ===== */
 html.dabimas-dark .musume-frame-header {
   background-color: var(--dk-raised);
@@ -138,8 +146,16 @@ html.dabimas-dark .musume-frame-header {
   border-color: var(--dk-line);
 }
 
+/* 白地のままだと白文字が乗って何も読めない（地も一緒に落とす）。 */
 html.dabimas-dark .musume-frame-back {
   color: var(--dk-text);
+  background: var(--dk-surface);
+  border-color: var(--dk-line);
+}
+
+/* 見出しの脇の小さい説明（#666）は黒地だと 2.8:1 で沈む。 */
+html.dabimas-dark .musume-frame-title small {
+  color: var(--dk-muted);
 }
 
 html.dabimas-dark .musume-sheet {
@@ -569,12 +585,8 @@ html.dabimas-dark .combination-list-item.selected {
 }
 
 /* 種牡馬／繁殖牝馬のトグル。選んでいない側が白のままだった。
-   Vuetify は枠（v-btn-toggle）自体を白で塗るので、枠と中の両方を落とす。
+   枠（.v-btn-toggle）自体の白は下の一括ルールで落としている。
    選択中の色（父の青・母の赤）はそのまま残す。 */
-html.dabimas-dark .combination-save-kind-toggle.v-btn-toggle {
-  background-color: var(--dk-raised) !important;
-}
-
 html.dabimas-dark .combination-save-kind-toggle.v-btn-toggle > .v-btn.v-btn:not(.v-btn--active) {
   background-color: var(--dk-raised) !important;
   border-color: var(--dk-line) !important;
