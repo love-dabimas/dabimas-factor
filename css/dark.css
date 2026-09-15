@@ -1,0 +1,140 @@
+/* ダビふぁくの黒ベース。
+   既存の style.css / mobile.css / unified.css には手を入れず、最後に読み込んで
+   上から塗り替える。やめたくなったら index.html の1行を外せば元に戻る。
+
+   方針:
+   - 血統表の色は情報そのもの（緑＝面白枠、黄＝見事枠、紺＝父、臙脂＝母、
+     水色＝自身、サーモン＝繁殖牝馬）なので、**一切変えない。**
+   - 白く見えていたのは「色を持たない透明なセル」が白い土台を透かしていたところ。
+     土台を暗くし、その透明なセルにだけ暗い地と明るい文字を与える。
+   - 触るのは土台・ヘッダー・タブバー・数値セル・ダイアログに限る。 */
+
+:root {
+  --dk-bg: #15131d;        /* いちばん奥の地 */
+  --dk-surface: #1d1b27;   /* カード・表の土台 */
+  --dk-raised: #221f2e;    /* ヘッダー・タブなど一段手前 */
+  --dk-line: #332f45;      /* 罫線 */
+  --dk-text: #eceaf4;      /* 本文 */
+  --dk-muted: #a49fb8;     /* 補助の文字 */
+  --dk-accent: #cbbcf5;    /* ブランド色（黒地でも読める明るさ） */
+}
+
+/* ===== アプリ全体の地 ===== */
+/* 文字色はここでは触らない。ここで明るくすると、血統表の色付きセル
+   （黄・緑・水色・サーモン）の黒文字まで白くなって読めなくなる。
+   明るい文字は、地を暗くした要素にだけ個別に与える。 */
+.v-application.theme--light {
+  background-color: var(--dk-bg) !important;
+}
+
+/* ===== 作業枠のヘッダーとタブバー ===== */
+.v-application header,
+.v-application .dabimas-tab-bar {
+  background-color: var(--dk-raised) !important;
+  color: var(--dk-text);
+  border-color: var(--dk-line) !important;
+}
+
+.v-application header .v-btn,
+.v-application header .v-icon,
+.v-application .dabimas-tab-bar .v-btn,
+.v-application .dabimas-tab-bar .v-icon {
+  color: var(--dk-text);
+}
+
+/* ===== 血統表の土台 ===== */
+.pedigree-card-shell.v-card {
+  background-color: var(--dk-surface) !important;
+  border-color: var(--dk-line) !important;
+}
+
+/* 色を持たないセル（horse 系）だけを暗くする。
+   色付きのセルは触らないので、緑・黄・紺・臙脂・水色・サーモンは
+   今までどおりの色と黒文字のまま残る。 */
+/* .Broodmare は background-color を持たず linear-gradient（黄→緑）で塗るので、
+   background-color を見ただけでは「透明」に見える。これも色付きなので外す。 */
+.pedigree-card-shell :is(.horse_0, .factor_horse, .horse_all):not(.Broodmare):not([class*="AliceBlue"]):not([class*="SalmonPink"]):not([class*="migoto"]):not([class*="omoshiro"]) {
+  background-color: var(--dk-surface);
+  color: var(--dk-text);
+}
+
+/* セルの中の文字・入力・アイコンも合わせる */
+.pedigree-card-shell .horse_0 select,
+.pedigree-card-shell .horse_0 input,
+.pedigree-card-shell .factor_horse select,
+.pedigree-card-shell .factor_horse input {
+  color: var(--dk-text);
+  background-color: transparent;
+}
+
+/* 罫線 */
+.pedigree-card-shell table,
+.pedigree-card-shell td,
+.pedigree-card-shell th {
+  border-color: var(--dk-line);
+}
+
+/* ===== ニトロ・クロスの数値セル ===== */
+td.factorNumCell {
+  background-color: var(--dk-surface) !important;
+  color: var(--dk-text) !important;
+  border-color: var(--dk-line) !important;
+}
+
+/* ===== ダイアログ・メニュー ===== */
+.v-application .v-dialog > .v-card,
+.v-application .v-menu__content .v-list,
+.v-application .v-menu__content .v-sheet,
+.v-application .v-bottom-sheet .v-sheet {
+  background-color: var(--dk-surface) !important;
+  color: var(--dk-text);
+}
+
+.v-application .v-dialog .v-card__title,
+.v-application .v-dialog .v-card__text,
+.v-application .v-menu__content .v-list-item__title {
+  color: var(--dk-text);
+}
+
+.v-application .v-dialog .v-card__text,
+.v-application .dabimas-field-label {
+  color: var(--dk-muted);
+}
+
+/* 入力欄。コンパクト版 Vuetify は枠と文字を黒前提で塗っている。 */
+.v-application .v-dialog .v-input input,
+.v-application .v-dialog .v-input textarea,
+.v-application .v-dialog .v-label {
+  color: var(--dk-text);
+}
+
+.v-application .v-dialog .v-input__slot fieldset {
+  border-color: var(--dk-line);
+}
+
+/* ===== ダビ娘の枠まわり（中身の iframe は明るいまま） ===== */
+.musume-frame-header {
+  background-color: var(--dk-raised);
+  color: var(--dk-text);
+  border-color: var(--dk-line);
+}
+
+.musume-frame-back {
+  color: var(--dk-text);
+}
+
+.musume-sheet {
+  background-color: var(--dk-surface) !important;
+}
+
+/* ダイアログのボタンとアイコン。Vuetify の既定色（黒）だと黒地で沈む。
+   色付きのもの（選択中のアイコンなど *--text）はそのまま残す。 */
+.v-application .v-dialog .v-btn:not([class*="--text"]):not(.v-btn--disabled),
+.v-application .v-dialog .v-icon:not([class*="--text"]) {
+  color: var(--dk-text);
+}
+
+/* アイコンを丸で囲う選択肢は、枠が黒だと見えない。 */
+.v-application .v-dialog .v-btn--outlined:not([class*="--text"]) {
+  border-color: var(--dk-line);
+}
