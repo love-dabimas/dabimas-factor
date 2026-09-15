@@ -17,7 +17,7 @@
     },
     computed: {
       isMusumeScreen() { return this.$root.currentScreen === "musume"; },
-      embedUrl() { return link.embedUrl(); },
+      embedUrl() { return link.embedUrl(this.$root.musumePedigreeOpen); },
       targetLabel() { return this.target ? this.target.label : ""; },
       // horsesBase は root の data に無くリアクティブでないので、buildHorseLists() で
       // 直後に代入される stallionsBase（data にある）で読み込み完了を判定する。
@@ -150,7 +150,8 @@
         // 母が変わっても iframe は作り直さない。作り直すとダビ娘の起動に毎回
         // 1.4〜1.8 秒かかる（8MB の検索データを読み直すため）。母が変わったことは
         // mareKey で伝わり、理論を出さない検索へ戻すときは空のチップを送る。
-        var src = link.BASE_URL + "?picker=1&sex=" + sex;
+        var src = link.BASE_URL + "?picker=1&sex=" + sex +
+          link.pedigreeParam(this.$root.musumePedigreeOpen);
         if (src !== this.sheetSrc) {
           var previous = this.$refs.sheetFrame && this.$refs.sheetFrame.contentWindow;
           this.readySources.delete(previous);

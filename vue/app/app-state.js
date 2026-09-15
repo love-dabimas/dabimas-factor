@@ -41,6 +41,10 @@
           currentScreen:
             (window.Dabimas.workspaceSync && window.Dabimas.workspaceSync.resolvedInitialScreen) ||
             "category",
+          // ダビ娘で血統表を最初から開くか。設定画面から変える。
+          // iframe の URL に載せるので、変えると読み直しになる。
+          musumePedigreeOpen:
+            !!(window.Dabimas.logic.musumeLink && window.Dabimas.logic.musumeLink.pedigreeOpen()),
           nicksReady: false,
           onNicksReadyHandler: null,
           windowSize: 0,

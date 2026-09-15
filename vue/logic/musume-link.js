@@ -6,6 +6,28 @@
   window.Dabimas = window.Dabimas || {};
   window.Dabimas.logic = window.Dabimas.logic || {};
   var BASE_URL = "/dabimas-data/dist/";
+  var PEDIGREE_KEY = "dabimasMusumePedigreeOpen";
+
+  // 血統表を最初から開くかどうか。既定は畳む。
+  // 1枚あたり15行あって、一覧をスクロールするときの重さの本体になっている。
+  function pedigreeOpen() {
+    try {
+      return window.localStorage.getItem(PEDIGREE_KEY) === "1";
+    } catch (error) {
+      return false;
+    }
+  }
+  function setPedigreeOpen(value) {
+    try {
+      window.localStorage.setItem(PEDIGREE_KEY, value ? "1" : "0");
+    } catch (error) {
+      // 保存できなくても、この画面では切り替わるようにする。
+    }
+    return !!value;
+  }
+  function pedigreeParam(open) {
+    return open ? "&pedigree=open" : "";
+  }
   function allowedSexForCell(index) {
     if (index === 16) return "1";
     return [3, 5, 7, 9, 11, 13, 15].includes(index % 16) ? "any" : "0";
@@ -32,8 +54,13 @@
   }
   window.Dabimas.logic.musumeLink = {
     BASE_URL: BASE_URL,
-    embedUrl: function () { return BASE_URL + "?embed=1"; },
-    pickerUrl: function (index) { return BASE_URL + "?picker=1&sex=" + allowedSexForCell(index); },
+    embedUrl: function (open) { return BASE_URL + "?embed=1" + pedigreeParam(open); },
+    pickerUrl: function (index, open) {
+      return BASE_URL + "?picker=1&sex=" + allowedSexForCell(index) + pedigreeParam(open);
+    },
+    pedigreeParam: pedigreeParam,
+    pedigreeOpen: pedigreeOpen,
+    setPedigreeOpen: setPedigreeOpen,
     allowedSexForCell: allowedSexForCell,
     isMasterHorseId: isMasterHorseId,
     toMusumeKey: toMusumeKey,
