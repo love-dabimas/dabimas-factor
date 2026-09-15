@@ -117,7 +117,7 @@
                     <b>{{ step.stepNo === 1 ? horseName(baseMare) : step.mareLabel }}</b>
                     <span v-if="step.stepNo > 1" class="assist-virtual">仮想</span>
                     <span v-else-if="baseMare.rare" class="assist-rare">{{ baseMare.rare }}</span>
-                    <v-btn v-if="step.stepNo === 1" text x-small :disabled="busy" @click="openPicker(0)">選び直す</v-btn>
+                    <v-btn v-if="step.stepNo === 1" text x-small class="assist-reselect" :disabled="busy" @click="openPicker(0)">選び直す</v-btn>
                   </div>
                   <div class="assist-horse-meta">{{ step.stepNo === 1 ? baseMare.son : '仮想の繁殖牝馬' }}　繁殖牝馬</div>
                   <div v-if="step.stepNo === 1 && factorBadges(baseMare).length" class="assist-horse-factors">
@@ -135,7 +135,7 @@
                     <div class="assist-role">種牡馬（選択済み）</div>
                     <div class="assist-horse-name"><b>{{ horseName(step.sire) }}</b>
                       <span v-if="step.sire.rare" class="assist-rare">{{ step.sire.rare }}</span>
-                      <v-btn text x-small :disabled="busy" @click="openPicker(step.stepNo)">選び直す</v-btn>
+                      <v-btn text x-small class="assist-reselect" :disabled="busy" @click="openPicker(step.stepNo)">選び直す</v-btn>
                     </div>
                     <div class="assist-horse-meta">{{ step.sire.son }}　種牡馬</div>
                     <div v-if="factorBadges(step.sire).length" class="assist-horse-factors">
