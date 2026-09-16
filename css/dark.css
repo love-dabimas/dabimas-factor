@@ -94,10 +94,20 @@ html.dabimas-dark .styleFactorClassMain:not([class*="f0"]):not([class*="f1"]) {
 }
 
 /* ===== ニトロ・クロスの数値セル ===== */
+/* ライトは1列おきに白と #eee を敷いて、桁を目で追えるようにしている
+   （style.css の :nth-child(2n) / (2n-1)）。ダークでも同じように1列おきに
+   濃さを変える。段差はライトと同じくらい（明度比 1.1 前後）に留める。 */
 html.dabimas-dark td.factorNumCell {
-  background-color: var(--dk-surface) !important;
   color: var(--dk-text) !important;
   border-color: var(--dk-line) !important;
+}
+
+html.dabimas-dark td.factorNumCell:nth-child(2n-1) {
+  background: var(--dk-surface) !important;
+}
+
+html.dabimas-dark td.factorNumCell:nth-child(2n) {
+  background: #272433 !important;
 }
 
 /* ===== ダイアログ・メニュー ===== */
@@ -120,11 +130,19 @@ html.dabimas-dark .v-application .dabimas-field-label {
   color: var(--dk-muted);
 }
 
-/* 入力欄。コンパクト版 Vuetify は枠と文字を黒前提で塗っている。 */
+/* 入力欄。コンパクト版 Vuetify は枠と文字を黒前提で塗っている。
+   v-select の「選んでいる値」は input ではなく .v-select__selection なので、
+   別に指定しないと黒のまま残る（エディット種牡馬の「なし」が 1.2:1 だった）。 */
 html.dabimas-dark .v-application .v-dialog .v-input input,
 html.dabimas-dark .v-application .v-dialog .v-input textarea,
+html.dabimas-dark .v-application .v-dialog .v-select__selections,
 html.dabimas-dark .v-application .v-dialog .v-label {
   color: var(--dk-text);
+}
+
+/* Vuetify の grey--text は黒地だと 3.7:1 まで落ちる。 */
+html.dabimas-dark .v-application .v-dialog .grey--text {
+  color: var(--dk-muted) !important;
 }
 
 html.dabimas-dark .v-application .v-dialog .v-input__slot fieldset {
@@ -162,7 +180,7 @@ html.dabimas-dark .musume-sheet {
 
 /* ダイアログのボタンとアイコン。Vuetify の既定色（黒）だと黒地で沈む。
    色付きのもの（選択中のアイコンなど *--text）はそのまま残す。 */
-html.dabimas-dark .v-application .v-dialog .v-btn:not([class*="--text"]):not(.v-btn--disabled),
+html.dabimas-dark .v-application .v-dialog .v-btn:not([class*="--text"]):not(.v-btn--disabled):not(.v-btn--has-bg),
 html.dabimas-dark .v-application .v-dialog .v-icon:not([class*="--text"]) {
   color: var(--dk-text);
 }
@@ -468,8 +486,16 @@ html.dabimas-dark .exp-option-item {
   border-color: var(--dk-line);
 }
 
+/* 選択中の行。地を少し暗くしただけでは、素の CSS が付ける濃紺の文字
+   （#0d4e78）が黒地に埋もれて「どれを選んでいるか」が読めなかった。
+   地・左の帯・文字をまとめて、選択中だと一目で分かる強さにする。 */
 html.dabimas-dark .exp-mobile-option-btn--selected {
-  background: #2f3a4d;
+  background: #27405e;
+  box-shadow: inset 4px 0 0 #6fb7e8;
+}
+
+html.dabimas-dark .exp-mobile-option-btn--selected .exp-option-label {
+  color: #bfe3ff;
 }
 
 html.dabimas-dark .exp-mobile-option-btn:active {
@@ -653,6 +679,12 @@ html.dabimas-dark .sire-color-cell input {
 
 /* .sire-color-cell は色が付いたときだけ出るクラスなので（memo-cell.js の
    colorCellClass）、色なしの暗いセルを黒文字にしてしまう心配はない。 */
+/* 設定の子系統カラー。色を割り当てた行は淡い地なので、見出しも黒に戻す
+   （.dabimas-settings .v-list-item__title が明るい文字を当ててくるため）。 */
+html.dabimas-dark .sire-line-color-row[class*="sire-color-"] .v-list-item__title {
+  color: #1b1b22;
+}
+
 html.dabimas-dark .sire-color-cell input::placeholder {
   color: rgba(0, 0, 0, 0.45) !important;
 }
