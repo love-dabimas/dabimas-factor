@@ -5,11 +5,11 @@
   function buildTheoryMap(input) {
     var constants = window.Dabimas.constants.breedingTheories;
     var keys = Object.keys(constants.PRIORITY).filter(function (key) {
-      return ["PERFECT", "SUPER_PERFECT", "MIRACLE", "SUPREME"].includes(key);
+      return ["PERFECT", "SUPER_PERFECT", "MIRACLE"].includes(key);
     }).sort(function (a, b) { return constants.PRIORITY[a] - constants.PRIORITY[b]; });
     var chips = keys.map(function (key, index) {
       return { key: key, label: constants.DISPLAY_NAME[key].replace(/な配合$|の配合$/, ""),
-        bit: 1 << index, pending: key === "SUPREME" };
+        bit: 1 << index, pending: false };
     });
     var rows = input.rows.concat((input.customHorses || []).map(function (horse) {
       return [horse.key, horse.paternalT, horse.paternalHt, horse.paternalJik, horse.paternalMig];

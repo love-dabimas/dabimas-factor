@@ -1,29 +1,18 @@
-// 分割計算の1回分。入力mapは変更せず、完成前の結果を外へ漏らさない。
+// 軽い判定でチップが立った候補だけを診断する。入力mapは変更しない。
 (function (window) {
   var logic = window.Dabimas.logic;
   logic.musume = logic.musume || {};
-  // boardsは16セルの配列。options.candidateKeysが同じ添字の送信キーを持つ。
-  logic.musume.refineTheoryMapStep = function (state) {
-    var entries = new Map(state.map.entries);
-    var supreme = state.map.chips.find(function (chip) { return chip.key === "SUPREME"; });
-    var cursor = state.cursor;
-    var end = Math.min(state.boards.length, cursor + Math.max(1, state.limit || 1));
-    for (; cursor < end; cursor += 1) {
-      var board = state.boards[cursor];
-      var key = state.options.candidateKeys[cursor];
-      if (!board) { entries.delete(key); continue; }
-      var diagnosis = logic.plan.diagnoseStep(board, state.mareBoard, state.options);
-      if (diagnosis.dangerous) entries.delete(key);
-      else if (diagnosis.sameNameSpecialChecks.length) {
-        entries.set(key, (entries.get(key) || 0) | supreme.bit);
-      }
-    }
-    var done = cursor === state.boards.length;
-    return { cursor: cursor, done: done, map: Object.assign({}, state.map, {
-      entries: Array.from(entries),
-      chips: state.map.chips.map(function (chip) {
-        return Object.assign({}, chip, { pending: chip.key === "SUPREME" && !done });
-      }),
-    }) };
+  // candidatesは { key, board } の配列。boardは16セルの種牡馬盤面。
+  logic.musume.refineTheoryMap = function (map, candidates, mareBoard, options) {
+    var boards = new Map(candidates.map(function (candidate) { return [candidate.key, candidate.board]; }));
+    var diagnosedCount = 0;
+    var entries = map.entries.filter(function (entry) {
+      if (!entry[1]) return false;
+      var board = boards.get(entry[0]);
+      if (!board) return false;
+      diagnosedCount += 1;
+      return !logic.plan.diagnoseStep(board, mareBoard, options).dangerous;
+    });
+    return { map: Object.assign({}, map, { entries: entries }), diagnosedCount: diagnosedCount };
   };
 })(window);

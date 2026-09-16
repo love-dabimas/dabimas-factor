@@ -35,41 +35,40 @@
     const sent = [];
     const send = host.send;
     host.send = function(source,message) { if(message.type === 'dabimas:theory-map') sent.push(message); return send.call(this,source,message); };
-    const longTasks = [];
-    new win.PerformanceObserver(list => longTasks.push(...list.getEntries().map(e=>({start:e.startTime,duration:e.duration})))).observe({type:'longtask'});
-    await Promise.all(root.horsesBase.filter(h=>h.sex==='0').map(h=>root.ensureHorseDetail(h)));
+    // 詳細を事前取得し、実データ2,433頭の行を作る（計測区間の外）。
+    const logic = win.Dabimas.logic;
+    const sires = root.horsesBase.filter(h=>h.sex==='0');
+    check(sires.length===2433,'実データの頭数');
+    const details = await Promise.all(sires.map(h=>root.ensureHorseDetail(h)));
+    const rows = details.map(h=>{
+      const b = logic.plan.expandHorseBoard(h,root.brosData);
+      return [logic.musumeLink.toMusumeKey(h.id),b[1].parentLine,b[3].parentLine,
+        b[5].parentLine+b[7].parentLine,[9,11,13,15].map(i=>b[i].parentLine).join('')];
+    });
     screen.openPicker(1);
     while (!sent.length && !host.snackbar.show) await wait();
-    await wait();
-    const pendingButton = [...host.$refs.sheetFrame.contentDocument.querySelectorAll('button')]
-      .find(b=>b.textContent.includes('至高'));
-    check(pendingButton && pendingButton.disabled,'至高は計算中に操作不可');
-    while (!host.lastTheoryMetrics && !host.snackbar.show) await wait();
     check(!host.snackbar.show,host.snackbar.text);
     await wait();
-    const final = sent.at(-1);
-    check(sent[0].chips.length===4 && sent[0].chips[3].pending, 'first map');
-    check(final.chips.every(c=>!c.pending),'final map');
-    check(final.entries.filter(entry=>entry[1]&8).length===0,'至高の期待件数（phase5bと同じ実データ）');
-    const doc = host.$refs.sheetFrame.contentDocument;
-    const buttons = [...doc.querySelectorAll('button')];
-    const supremeButton = buttons.find(b=>b.textContent.includes('至高'));
-    check(supremeButton && !supremeButton.disabled,'supreme enabled');
-    supremeButton.click(); await wait();
-    const metrics = host.lastTheoryMetrics;
-    const output = {count:metrics.count, maxMs:Math.max(...metrics.slices), totalMs:metrics.totalMs,
-      maxLongTask:Math.max(0,...longTasks.map(e=>e.duration)),
-      maxCalculationLongTask:Math.max(0,...longTasks.filter(e=>e.start>=metrics.started).map(e=>e.duration)),
-      supreme:final.entries.filter(e=>e[1]&8).length,
-      iframeText:doc.body.innerText.slice(0,1500)};
+    host.candidateRows = rows;
+    const measurements = [];
+    for (const [name,count] of [['アイウィルフォロー',1],['アイシテマース',3],['アイムホーム',0]]) {
+      const mare = await root.ensureHorseDetail(root.horsesBase.find(h=>h.name===name && h.sex==='1'));
+      const mareBoard = logic.plan.expandHorseBoard(mare,root.brosData);
+      host.target = {theoryMap:{mareKey:mare.id,mareBoard,damLines:logic.theory.prepareMareLines(mareBoard)}};
+      const before = sent.length;
+      await host.sendCustomAndTheory(host.$refs.sheetFrame.contentWindow);
+      check(sent.length===before+1,'判定後に1回だけ送信');
+      check(host.lastTheoryMetrics.diagnosedCount===count,'診断対象数 '+name);
+      const map = sent.at(-1);
+      check(map.chips.length===3 && map.chips.every(c=>!c.pending),'3チップ・待ちなし');
+      measurements.push({mare:name,...host.lastTheoryMetrics});
+      await wait();
+      const buttons = [...host.$refs.sheetFrame.contentDocument.querySelectorAll('button')];
+      for (const label of ['完璧','超完璧','奇跡']) check(buttons.some(b=>b.textContent.includes(label)),label+'チップ');
+      check(!buttons.some(b=>b.textContent.includes('至高')),'至高チップなし');
+    }
     host.sheetOpen=false; await root.$nextTick();
-    const before = host.lastTheoryMetrics;
-    screen.openPicker(1); await wait();
-    check(host.lastTheoryMetrics===before && !host.theoryJob,'cache reuse');
-    host.sheetOpen=false; await root.$nextTick(); host.theoryMapCache.clear();
-    screen.openPicker(1); await wait(); host.sheetOpen=false; await root.$nextTick(); await wait();
-    check(!host.theoryJob,'cancel');
-    document.querySelector('#result').textContent='PASS phase5b '+JSON.stringify(output);
+    document.querySelector('#result').textContent='PASS phase5b '+JSON.stringify({measurements,part1:{nitro:first.diagnosis.nitro,width:screen.$el.scrollWidth}});
   } catch(e) {document.querySelector('#result').textContent = 'FAIL ' + e.stack;}
 })();
 </script>

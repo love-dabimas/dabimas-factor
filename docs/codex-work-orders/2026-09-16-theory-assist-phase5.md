@@ -1,6 +1,6 @@
 # 作業指示書: 因子・クロス・至高・危険を出す（配合理論補助 Phase 5）
 
-- status: 実装・機能検証済み（パート2の性能基準7-a・7-cは未達）
+- status: 差し戻し対応済み（2026-09-16、更新後の基準11〜15で検証）
 - 作成日: 2026-09-16
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 対象リポジトリ: **`dabimasFactor_new`（ダビふぁく）**。ダビ娘側は触らない
@@ -382,7 +382,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-i
 
 ---
 
-## 完了報告（Codex が記入する）
+## 初回の完了報告（差し戻し前の記録）
 
 ### 変更ファイル一覧
 
@@ -555,3 +555,61 @@ CPU4倍の実測で 73 秒だった Codex の値は、この 24.9 秒とよく�
 14. 重い判定に回した候補の数を数えられるようにし、実データの母3頭ぶんを完了報告に書く。
 
 15. 基準1〜5（パート1）が引き続き通る。
+
+
+---
+
+## 差し戻し対応の完了報告（2026-09-16）
+
+### 変更内容
+
+- `theory-map.js`: 完璧・超完璧・奇跡の3チップに戻し、すべて `pending: false`。
+- `theory-map-heavy.js`: `refineTheoryMap(map, candidates, mareBoard, options)` に単純化。
+  軽い判定の `entries` にある候補だけ `diagnoseStep` を呼び、危険ならentry全体を除去する。
+  戻り値は `{ map, diagnosedCount }`。入力mapは変更せず、至高ビットは追加しない。
+- `musume-host.js`: 該当候補だけ `ensureHorseDetail` で詳細を取得し、危険判定が済んだ
+  mapを1回送信する。スライス・タイマー・ジョブ・母別mapキャッシュ・種牡馬盤面キャッシュを削除。
+  詳細取得中の母・候補・保存馬の変更やシート閉鎖による古い結果の誤送信チェックは維持。
+- `assist-factor-table.js` のレイアウトを `css/unified.css` に移設。
+  配色は既存クラスを使い、暗い側の追加は不要だった。
+- `service-worker.js` のキャッシュを `v20260916-08` に更新。
+- phase4a/phase5bのテスト、画面fixture、計測スクリプトの説明を新しい要件へ更新。
+  `index.html`、判定本体、既存ヘッダ、ダビ娘側、DebugPort対応は変更していない。
+
+### 基準13・14の実測
+
+ChromeのCDPでCPUを4倍に制限。実データの種牡馬2,433頭を使用し、
+`nodeTable` / `resolver` を渡す実際の `sendCustomAndTheory` 経路で計測した。
+詳細取得は事前に済ませた。計測区間は軽い判定の直前から危険判定完了までで、
+候補の検索・`ensureHorseDetail`・盤面展開を含む。iframe起動やpostMessage後の描画は含まない。
+
+| 母 | 候補数 | 重い判定に回した頭数 | 軽い判定＋重い判定 |
+| --- | ---: | ---: | ---: |
+| アイウィルフォロー | 2,433 | 1 | 66.5ms |
+| アイシテマース | 2,433 | 3 | 158.2ms |
+| アイムホーム | 2,433 | 0 | 90.3ms |
+
+3頭とも500ms以内。計測値は `host.lastTheoryMetrics` の `candidateCount` /
+`diagnosedCount` / `totalMs` で確認できる。記録は `tmp/phase5-metrics.txt`。
+以前の全候補計算73秒・スライス82.1msは差し戻し前の記録であり、今回の実装には適用しない。
+母によって該当候補数は変わるため、上表はこの3頭での実測値である。
+
+再現は初回報告と同じ8794番サーバー・9224番DebugPort・
+`node scripts/measure-theory-assist-phase5.cjs`。fixtureが母3頭を順に測定する。
+
+### 検証
+
+- 共通部品を除く `scripts/verify-*.cjs` 22本すべてPASS。
+  `verify-index-exp .\index.html`、`git diff --check` もPASS。
+- 1組の `diagnoseStep`（Node、nodeTable/resolverあり）: 初回37.85ms、
+  100回平均14.45ms。パート1の50ms基準以内。
+- phase5b: 実在父娘（トニービン×エアグルーヴ）の危険候補が全ビットから消える。
+  安全な候補のビット維持、入力map不変、非該当候補・0ビットの診断省略、
+  詳細取得が該当3頭だけになること、1回だけの送信、詳細待ち中の変更による誤送信防止を確認。
+- Chrome CPU4倍: 3チップ・pendingなし・至高チップなし・各母につき1回送信を確認。
+  JavaScript未捕捉例外は0件。
+- パート1の画面: 未計算表示の消失、因子値、クロス件数と開閉、
+  選び直しで後続解除、375px枠内での横スクロールなしを確認。
+  `tmp/phase5-rework-375.png` も目視確認済み。
+- 規約レビュー: 指摘0件。仕様レビュー: コードの指摘0件、要求された実測報告を本節に追記。
+- push・mainへのマージは行っていない。

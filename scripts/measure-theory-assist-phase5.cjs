@@ -1,5 +1,5 @@
 // サーバーと codex-powershell.ps1 dump-dom <URL> 375 844 300000 9224 を起動後に実行。
-// デバッグ指定時はChromeをCDP計測用に維持する。CPU4倍で完了まで待つ。
+// デバッグ指定時はChromeをCDP計測用に維持する。CPU4倍・2,433頭・母3頭を測る。
 const fs=require('node:fs');
 (async()=>{
  const targets=await (await fetch('http://127.0.0.1:9224/json')).json();
