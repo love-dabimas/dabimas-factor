@@ -1,0 +1,75 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0}iframe{border:0;width:375px;height:844px}pre{white-space:pre-wrap}</style>
+<iframe></iframe><pre id="result">RUNNING</pre>
+<script>
+(async function () {
+  const frame = document.querySelector('iframe');
+  const wait = () => new Promise(r => setTimeout(r, 100));
+  try {
+    frame.src = '/index.html';
+    while (!frame.contentDocument.querySelector('#app')?.__vue__?.$root?.stallionsBase?.length) await wait();
+    const win = frame.contentWindow, root = frame.contentDocument.querySelector('#app').__vue__.$root;
+    root.currentScreen = 'assist'; await root.$nextTick();
+    const screen = frame.contentDocument.querySelector('.assist-screen').__vue__;
+    const horses = (await (await fetch('/json/dabimasFactor.json')).json()).horseLists;
+    await screen.confirmSelection(0, horses.find(h => h.name === 'スターベガ' && h.sex === '1'));
+    const sire = horses.find(h => h.name === 'スターアルタイル' && h.subName === '瓏覇');
+    await screen.confirmSelection(1, sire); await screen.$nextTick();
+    const first = screen.plan.steps[0];
+    const check = (value, label) => {if (!value) throw Error(label);};
+    check(!screen.$el.textContent.includes('未計算'), 'placeholder');
+    check(screen.$el.textContent.includes('ニトロ'), 'factor table');
+    const button = screen.$el.querySelector('.assist-cross button');
+    check(button.getAttribute('aria-expanded') === 'false', 'collapsed');
+    button.click(); await screen.$nextTick();
+    check(button.getAttribute('aria-expanded') === 'true', 'expanded');
+    check(screen.$el.textContent.includes(first.diagnosis.crosses[0].name), 'cross name');
+    await screen.confirmSelection(2, sire); await screen.confirmSelection(1, sire);
+    check(!screen.plan.steps[1].result && !screen.plan.steps[0].crossOpen, 'reset');
+    await screen.$nextTick();
+    check(screen.$el.scrollWidth <= 375, 'horizontal overflow ' + screen.$el.scrollWidth);
+    document.querySelector('#result').textContent = 'PASS phase5a ' + JSON.stringify({nitro:first.diagnosis.nitro,crosses:first.diagnosis.crosses.length,width:screen.$el.scrollWidth});
+    if (!location.search.includes('heavy')) return;
+    while (!window.startHeavy) await wait();
+    const host = frame.contentDocument.querySelector('.musume-host').__vue__;
+    const sent = [];
+    const send = host.send;
+    host.send = function(source,message) { if(message.type === 'dabimas:theory-map') sent.push(message); return send.call(this,source,message); };
+    const longTasks = [];
+    new win.PerformanceObserver(list => longTasks.push(...list.getEntries().map(e=>({start:e.startTime,duration:e.duration})))).observe({type:'longtask'});
+    await Promise.all(root.horsesBase.filter(h=>h.sex==='0').map(h=>root.ensureHorseDetail(h)));
+    screen.openPicker(1);
+    while (!sent.length && !host.snackbar.show) await wait();
+    await wait();
+    const pendingButton = [...host.$refs.sheetFrame.contentDocument.querySelectorAll('button')]
+      .find(b=>b.textContent.includes('至高'));
+    check(pendingButton && pendingButton.disabled,'至高は計算中に操作不可');
+    while (!host.lastTheoryMetrics && !host.snackbar.show) await wait();
+    check(!host.snackbar.show,host.snackbar.text);
+    await wait();
+    const final = sent.at(-1);
+    check(sent[0].chips.length===4 && sent[0].chips[3].pending, 'first map');
+    check(final.chips.every(c=>!c.pending),'final map');
+    check(final.entries.filter(entry=>entry[1]&8).length===0,'至高の期待件数（phase5bと同じ実データ）');
+    const doc = host.$refs.sheetFrame.contentDocument;
+    const buttons = [...doc.querySelectorAll('button')];
+    const supremeButton = buttons.find(b=>b.textContent.includes('至高'));
+    check(supremeButton && !supremeButton.disabled,'supreme enabled');
+    supremeButton.click(); await wait();
+    const metrics = host.lastTheoryMetrics;
+    const output = {count:metrics.count, maxMs:Math.max(...metrics.slices), totalMs:metrics.totalMs,
+      maxLongTask:Math.max(0,...longTasks.map(e=>e.duration)),
+      maxCalculationLongTask:Math.max(0,...longTasks.filter(e=>e.start>=metrics.started).map(e=>e.duration)),
+      supreme:final.entries.filter(e=>e[1]&8).length,
+      iframeText:doc.body.innerText.slice(0,1500)};
+    host.sheetOpen=false; await root.$nextTick();
+    const before = host.lastTheoryMetrics;
+    screen.openPicker(1); await wait();
+    check(host.lastTheoryMetrics===before && !host.theoryJob,'cache reuse');
+    host.sheetOpen=false; await root.$nextTick(); host.theoryMapCache.clear();
+    screen.openPicker(1); await wait(); host.sheetOpen=false; await root.$nextTick(); await wait();
+    check(!host.theoryJob,'cancel');
+    document.querySelector('#result').textContent='PASS phase5b '+JSON.stringify(output);
+  } catch(e) {document.querySelector('#result').textContent = 'FAIL ' + e.stack;}
+})();
+</script>

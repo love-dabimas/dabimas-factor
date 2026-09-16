@@ -1,6 +1,6 @@
 # 作業指示書: 因子・クロス・至高・危険を出す（配合理論補助 Phase 5）
 
-- status: 依頼中
+- status: 実装・機能検証済み（パート2の性能基準7-a・7-cは未達）
 - 作成日: 2026-09-16
 - 依頼元: Claude Code セッション（`codex-implement` 依頼モード）
 - 対象リポジトリ: **`dabimasFactor_new`（ダビふぁく）**。ダビ娘側は触らない
@@ -386,8 +386,66 @@ powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 verify-i
 
 ### 変更ファイル一覧
 
+- `vue/logic/plan/assist-diagnosis.js`（新規）: 1組のクロス・因子集計。
+- `vue/logic/plan/assist-plan.js`: 診断結果、危険・至高の理論表示、工程ごとの開閉状態と解除。
+- `vue/components/assist/assist-factor-table.js`（新規） / `assist-screen.js`: 本体と同じ14列の表、クロス詳細、危険表示、候補検索への母盤面の受け渡し。
+- `vue/logic/musume/theory-map-heavy.js`（新規） / `theory-map.js`: 至高の計算待ちチップ、分割判定、危険候補の全ビット除外。
+- `vue/components/musume/musume-host.js`: 2段階送信、実測による処理頭数調整、中断、母別結果・種牡馬盤面キャッシュ。
+- `index.html` / `service-worker.js`: 新規3ファイルの登録、キャッシュを `v20260916-07` に更新。
+- `scripts/verify-theory-assist-phase5a.cjs` / `phase5b.cjs`（新規）: 実データ・純粋関数の検証。
+- `scripts/verify-theory-assist.cjs` / `verify-theory-assist-screen.cjs` / `verify-theory-assist-phase4a.cjs`: 新依存の読込と4チップへの期待値更新。
+- `scripts/fixtures/theory-assist-phase5.html` / `scripts/measure-theory-assist-phase5.cjs`（新規）: 375px画面検証、CPU4倍のCDP計測。
+- `scripts/codex-powershell.ps1` / `scripts/run-headless-chrome.ps1`: 任意のデバッグポート指定。通常のスクリーンショット・DOM取得は従来どおり。指定時は仮想時間による終了を止め、CDP接続用にChromeを維持する。
+
 ### 設計判断
+
+- 判定本体・因子本体・既存ヘッダ・ダビ娘側は変更していない。重い候補判定も `diagnoseStep` を呼ぶ。
+- 現行 `judgeInbreed` は `inbreedList` を返さないため、未返却時は本体が判定前に初期化するのと同じ空の32枠を渡す。手動クロスは持ち込まない。
+- 仮想母は保存台帳に存在しない固定のcustom IDではなく、既存 `composeVirtualMareBoard` の親参照つきimplied参照を使い、後工程でも両親を解決できるようにした。
+- `refineTheoryMapStep` の `boards[i]` は16セルの種牡馬盤面。対応する送信キーは `options.candidateKeys[i]` で渡す。入力mapは変更せず、中断時に送信済みの軽い結果や完成済みキャッシュを汚さない。
+- スライスは初回1頭から開始し、実測最大時間から `max(1, floor(8 / maxPerHorse))` を決める。次の1頭で8ms予算に届く場合は `setTimeout(..., 0)` へ譲る。4倍CPUの実測では1頭/スライスまで下がった。
+- 保存馬の変更・候補集合の変更時は完成mapを無効化。詳細取得後にも中断判定を行う。取得できない詳細を0件として完成扱いにせず、エラーを表示する。ダビふぁくに対応しないマスター候補のビットは落とす。
+- 名前重複だけで判定を飛ばす最適化は入れていない（受け入れ基準8は対象外）。
 
 ### 実行した検証と結果
 
+- パート1を先に実装し、既存20本＋phase5aの21本と375pxの画面検証を通してからパート2に着手。
+- 最終の `verify-*.cjs` は共通部品を除く **22本すべてPASS**。その後追加したphase5bの実データ2,433頭の期待件数検証もPASS。
+- `verify-index-exp .\\index.html`: PASS。index編集前のbackup、各編集後のverifyを実行。`git diff --check` と計測スクリプトの構文チェックもPASS。
+- phase5a: スターベガ×スターアルタイル（瓏覇）の集計が本体と一致。ニトロの期待値は `01,17,12,04,03,01,00,00,01,01,00,00,00,00`。実在するクロス0件/ありの組、エアグルーヴ×トニービンの危険表示、resolver/nodeTableなしを確認。
+- 1組の診断時間（Node、同じ実データ、nodeTable/resolverあり）: 初回 **42.51ms**、100回平均 **15.61ms**。この測定の初回は50ms以内。4倍CPUでは候補1頭でも50msを超えるスライスあり。
+- phase5b: limit=1と一括の結果一致、実在父娘の危険候補の全ビット除外、至高の合成盤面1頭、入力map不変を確認。実マスター2,433頭×スターベガでは至高0頭で、画面の絞り込み件数とも一致。
+- Chrome画面: ニトロ/クロス表示、詳細の初期折り畳みと開閉、件数、選び直しによる後続解除、375pxでの画面内横スクロールなしを確認。至高は計算中disabled、完了後クリック可能で「0件・該当なし」を表示。同じ母の再表示で再計算なし、計算途中の閉鎖でジョブ破棄を確認。計測中に未捕捉のJavaScript例外は観測されなかった。
+- ダビ娘の `src/features/embed/store/useEmbedStore.ts` を読み取り確認。`receiveTheoryMap` は2通目で `theoryMap` を置き換える。ダビ娘側の変更なし。
+- 規約/仕様の独立レビュー: 各0件の修正必須指摘。性能は下記の実測で別途判定。
+
+#### CPU4倍の測定結果（詳細を事前取得、候補2,480頭、母スターベガ）
+
+| 項目 | 再測定結果 | 判定 |
+| --- | ---: | --- |
+| 最長スライス | **82.1ms** | 16ms以内を満たさない |
+| 全処理時間 | **73,041.3ms** | 記録値 |
+| 計算開始以降の最長タスク | **425ms** | 250ms超なしを満たさない |
+| シート起動等も含む観測区間の最長タスク | 588ms | 参考 |
+| 至高の結果 | 0頭 | テスト・画面と一致 |
+
+初回測定も最長72.7ms・全体69,734.1msで、16msを超えた。再測定では通常テスト全件の実行完了後に確認した。単一候補の既存同期判定は途中で分割できず、1頭/スライスでもこの環境の条件を満たせない。**受け入れ基準7-a/7-cは未達であり、性能面を合格扱いにしない。** Worker化・判定本体の変更は今回の対象外のため未実施。
+
+再現手順（統合検証用のダビ娘ビルドが `dabimas-data/dist/` に必要）:
+
+```powershell
+python scripts/lan_server.py 8794 --bind 127.0.0.1
+# 別ターミナル。DebugPort指定時はChromeを維持する。
+powershell -ExecutionPolicy Bypass -File .\scripts\codex-powershell.ps1 dump-dom "http://127.0.0.1:8794/scripts/fixtures/theory-assist-phase5.html?heavy" 375 844 300000 9224
+# さらに別ターミナル
+node scripts/measure-theory-assist-phase5.cjs
+```
+
+計測結果は `tmp/phase5-metrics.txt` に保存される。画面検証のPASSと性能基準の合否は別で、数値を上の閾値と比較する。
+
 ### 残課題・気づき
+
+- 性能基準7-a/7-cの達成には、Worker化または判定関数内部を中断可能にするなど、今回の制約を超える対応の検討が必要。
+- 詳細未取得時は `ensureHorseDetail` の非同期待ちもスライスの経過時間に含む。上表は事前取得後の値であり、通信待ちだけが超過理由ではない。
+- 長いタスクは埋め込み画面の処理も含む観測値。425msのすべてを診断関数自身の実行時間とは断定していない。
+- `main` へのマージ、push、ダビ娘側の編集は行っていない。

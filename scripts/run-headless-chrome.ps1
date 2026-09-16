@@ -5,7 +5,8 @@ param(
   [int]$Width = 390,
   [int]$Height = 844,
   [int]$VirtualTimeBudget = 12000,
-  [switch]$DumpDom
+  [switch]$DumpDom,
+  [int]$DebugPort = 0
 )
 
 Set-StrictMode -Version Latest
@@ -37,11 +38,17 @@ $arguments = @(
   "--allow-file-access-from-files"
   "--user-data-dir=$userDataDir"
   "--window-size=$Width,$Height"
-  "--virtual-time-budget=$VirtualTimeBudget"
 )
 
-if ($DumpDom) {
+if ($DebugPort -eq 0) {
+  $arguments += "--virtual-time-budget=$VirtualTimeBudget"
+}
+# Keep the page alive for CDP measurement when a debug port is specified.
+if ($DumpDom -and $DebugPort -eq 0) {
   $arguments += "--dump-dom"
+}
+if ($DebugPort -gt 0) {
+  $arguments += "--remote-debugging-port=$DebugPort"
 }
 
 if ($OutputPath) {

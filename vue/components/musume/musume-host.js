@@ -26,6 +26,7 @@
       favoritesOnly() { return favorites.state.only; },
     },
     watch: {
+      sheetOpen(open) { if (!open) this.cancelTheoryRefinement(); },
       "$root.currentScreen": {
         immediate: true,
         handler(screen, previous) {
@@ -51,6 +52,9 @@
         deep: true,
         handler() {
           this.customPayloadPromise = null;
+          this.theoryMapCache.clear();
+          this.sireBoardCache.clear();
+          this.cancelTheoryRefinement();
           this.readySources.forEach(source => {
             if (this.sources().includes(source)) this.sendCustomAndTheory(source);
           });
@@ -64,10 +68,14 @@
       this.readySources = new Set();
       this.candidateRows = null;
       this.customPayloadPromise = null;
+      this.theoryJob = null;
+      this.theoryMapCache = new Map();
+      this.sireBoardCache = new Map();
       this.$root.$on("musume:open-search", this.openSearch);
       window.addEventListener("message", this.onMessage);
     },
     beforeDestroy() {
+      this.cancelTheoryRefinement();
       this.$root.$off("musume:open-search", this.openSearch);
       window.removeEventListener("message", this.onMessage);
       this.pendingHello.clear();
@@ -75,6 +83,79 @@
       this.customPayloadPromise = null;
     },
     methods: {
+      cancelTheoryRefinement() {
+        if (this.theoryJob) clearTimeout(this.theoryJob.timer);
+        this.theoryJob = null;
+      },
+      // 1頭を計測してから頭数を決める。予算の半分を余裕として残し、
+      // 詳細の取得・盤面展開も同じスライス内で行う。
+      startTheoryRefinement(source, target, map, horses) {
+        this.cancelTheoryRefinement();
+        var input = target.theoryMap;
+        if (!input.mareBoard) return;
+        var cached = this.theoryMapCache.get(input.mareKey);
+        if (cached) { this.send(source, cached); return; }
+        var logic = window.Dabimas.logic;
+        var keys = this.candidateRows.map(row => row[0]).concat(horses.map(horse => horse.key))
+          .filter(key => key.endsWith("-0"));
+        var summaries = new Map(this.$root.horsesBase.concat(this.$root.savedHorseSummaries || [])
+          .map(horse => [link.toMusumeKey(horse.id, horse.sex), horse]));
+        var job = { timer: null, maxPerHorse: 0, metrics: { slices: [], started: performance.now(), count: keys.length } };
+        this.theoryJob = job;
+        var state = { map: map, boards: new Array(keys.length), mareBoard: input.mareBoard,
+          cursor: 0, limit: 1, options: { candidateKeys: keys,
+            inbreedExceptions: this.$root.inbreedExceptions,
+            nodeTable: window.Dabimas.pedigreeNodes || null,
+            resolver: this.$root.identityResolver || null } };
+        var current = () => this.theoryJob === job && this.sheetOpen && this.target === target &&
+          this.sources().includes(source);
+        var run = async () => {
+          if (!current()) return;
+          try {
+            var started = performance.now();
+            var limit = job.maxPerHorse ? Math.max(1, Math.floor(8 / job.maxPerHorse)) : 1;
+            var processed = 0;
+            while (state.cursor < keys.length && processed < limit) {
+              var key = keys[state.cursor];
+              var board = this.sireBoardCache.get(key);
+              if (!board && summaries.has(key)) {
+                var detail = await this.$root.ensureHorseDetail(summaries.get(key));
+                if (!current()) return;
+                if (!detail || !Array.isArray(detail.descendants) || detail.descendants.length !== 15) {
+                  throw new Error("候補の血統が取得できませんでした");
+                }
+                board = logic.plan.expandHorseBoard(detail, this.$root.brosData);
+                this.sireBoardCache.set(key, board);
+              }
+              state.boards[state.cursor] = board || null;
+              var result = logic.musume.refineTheoryMapStep(state);
+              state.cursor = result.cursor;
+              state.map = result.map;
+              processed += 1;
+              // 実測から予算を超えそうな次の1頭は次スライスへ回す。
+              var elapsed = performance.now() - started;
+              job.maxPerHorse = Math.max(job.maxPerHorse, elapsed / processed);
+              if (elapsed + job.maxPerHorse >= 8) break;
+            }
+            job.metrics.slices.push(performance.now() - started);
+            if (!current()) return;
+            if (state.cursor === keys.length) {
+              // 候補0件でもpendingを解除する。
+              state.map = logic.musume.refineTheoryMapStep(state).map;
+              job.metrics.totalMs = performance.now() - job.metrics.started;
+              this.lastTheoryMetrics = job.metrics;
+              this.theoryMapCache.set(input.mareKey, state.map);
+              this.theoryJob = null;
+              this.send(source, state.map);
+            } else job.timer = setTimeout(run, 0);
+          } catch (error) {
+            if (!current()) return;
+            this.cancelTheoryRefinement();
+            this.showError("配合理論を計算できませんでした。もう一度開いてください");
+          }
+        };
+        job.timer = setTimeout(run, 0);
+      },
       sources() {
         return [this.$refs.screenFrame, this.$refs.sheetFrame].filter(Boolean).map(frame => frame.contentWindow);
       },
@@ -132,10 +213,12 @@
           // 一瞬消えて見える。
           if (!this.candidateRows) return;
           var input = target.theoryMap;
-          this.send(source, input.entries ? input : window.Dabimas.logic.musume.buildTheoryMap({
+          var map = input.entries ? input : window.Dabimas.logic.musume.buildTheoryMap({
             mareKey: input.mareKey, damLines: input.damLines,
             rows: this.candidateRows, customHorses: horses,
-          }));
+          });
+          this.send(source, map);
+          if (!input.entries) this.startTheoryRefinement(source, target, map, horses);
         } catch (error) {
           if (pending !== this.customPayloadPromise || !this.sources().includes(source)) return;
           this.customPayloadPromise = null;
@@ -146,6 +229,7 @@
       openSearch({ index, label, select, sex, theoryMap }) {
         sex = sex === undefined ? link.allowedSexForCell(index) : sex;
         if (!["0", "1", "any"].includes(sex)) return;
+        this.cancelTheoryRefinement();
         this.target = { index, label, select, sex, theoryMap };
         // 母が変わっても iframe は作り直さない。作り直すとダビ娘の起動に毎回
         // 1.4〜1.8 秒かかる（8MB の検索データを読み直すため）。母が変わったことは
@@ -184,6 +268,8 @@
               /^[A-Za-z]{2}$/.test(row[1]) && /^[A-Za-z]{2}$/.test(row[2]) &&
               /^[A-Za-z]{4}$/.test(row[3]) && /^[A-Za-z]{6}([A-Za-z]{2})?$/.test(row[4]))) return;
           this.candidateRows = data.rows;
+          this.theoryMapCache.clear();
+          this.cancelTheoryRefinement();
           var source = this.$refs.sheetFrame && this.$refs.sheetFrame.contentWindow;
           if (this.readySources.has(source)) this.sendCustomAndTheory(source);
           return;

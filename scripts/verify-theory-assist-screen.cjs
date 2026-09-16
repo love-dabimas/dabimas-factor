@@ -31,6 +31,8 @@ const context = vm.createContext({ window: { Vue: { component() {} } }, console 
   'logic/pedigree/board-refs.js', 'logic/theory/compatibility.js',
   'logic/theory/theory-session.js', 'logic/plan/plan-diagnosis.js',
   'logic/plan/assist-plan.js', 'logic/musume-link.js', 'components/assist/assist-screen.js',
+  'constants/factor-definitions.js', 'logic/factor/factor-map.js', 'logic/factor/factor-counts.js',
+  'logic/inbreed/inbreed-detector.js', 'logic/inbreed/inbreed-counts.js', 'logic/plan/assist-diagnosis.js',
 ].forEach(file => vm.runInContext(read('vue/' + file), context, { filename: file }));
 const definition = context.window.Dabimas.components.AssistScreen;
 const horses = JSON.parse(read('json/dabimasFactor.json')).horseLists;

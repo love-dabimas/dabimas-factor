@@ -4,14 +4,12 @@
   logic.musume = logic.musume || {};
   function buildTheoryMap(input) {
     var constants = window.Dabimas.constants.breedingTheories;
-    // 至高はまだ計算していない（クロス判定が要る。設計書 §7）。チップを
-    // pending で出すと「計算中」のまま止まって見えるので、計算を入れるまで出さない。
     var keys = Object.keys(constants.PRIORITY).filter(function (key) {
-      return ["PERFECT", "SUPER_PERFECT", "MIRACLE"].includes(key);
+      return ["PERFECT", "SUPER_PERFECT", "MIRACLE", "SUPREME"].includes(key);
     }).sort(function (a, b) { return constants.PRIORITY[a] - constants.PRIORITY[b]; });
     var chips = keys.map(function (key, index) {
       return { key: key, label: constants.DISPLAY_NAME[key].replace(/な配合$|の配合$/, ""),
-        bit: 1 << index, pending: false };
+        bit: 1 << index, pending: key === "SUPREME" };
     });
     var rows = input.rows.concat((input.customHorses || []).map(function (horse) {
       return [horse.key, horse.paternalT, horse.paternalHt, horse.paternalJik, horse.paternalMig];

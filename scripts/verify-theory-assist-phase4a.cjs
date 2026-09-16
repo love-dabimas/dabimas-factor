@@ -44,12 +44,12 @@ assert.deepEqual(plain(map.entries), expected);
 const perfect = map.entries.filter(entry => entry[1] & 1);
 assert.equal(perfect.length, 6);
 perfect.forEach(([key]) => assert.equal(sires.find(h => link.toMusumeKey(h.id) === key).name, 'スターアルタイル'));
-// 至高はクロス判定が要るのでまだ出さない（Phase 5）。pending で出すと
-// 「計算中」のまま止まって見える、と実機で指摘された。
+// 軽い1通目では至高だけ計算待ち。完了した2通目はPhase 5bで検証する。
 assert.deepEqual(plain(map.chips), [
   { key: 'PERFECT', label: '完璧', bit: 1, pending: false },
   { key: 'SUPER_PERFECT', label: '超完璧', bit: 2, pending: false },
   { key: 'MIRACLE', label: '奇跡', bit: 4, pending: false },
+  { key: 'SUPREME', label: '至高', bit: 8, pending: true },
 ]);
 assert.ok(map.entries.every(entry => entry[1] > 0 && entry[1] < 8));
 assert.equal(link.fromMusume('ch_a1b2', '0'), 'a1b2');
