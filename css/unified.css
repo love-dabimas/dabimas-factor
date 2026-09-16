@@ -966,6 +966,92 @@
 .assist-placeholder { border: 1px solid #e2ddec; background: #faf9fc; border-radius: 9px; padding: 9px; text-align: center; font-size: 13px; color: #6d6880; }
 .assist-cross { color: #5b4b8a; background: #efeaf9; font-weight: 700; }
 
+/* ===== 仮想繁殖牝馬の血統表（見るだけのダイアログ） ===== */
+.assist-ped-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px 10px 16px !important;
+  border-bottom: 1px solid #e2ddec;
+}
+
+.assist-ped-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assist-ped-body { padding: 12px 14px !important; }
+
+.assist-ped-note {
+  margin: 0 0 10px;
+  color: #6d6880;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.assist-ped-list { margin: 0; padding: 0; list-style: none; }
+
+/* 名前は折り返さず1行、系統と因子はその下。狭い画面で馬名が
+   縦に割れて読めなくなるのを避ける。 */
+.assist-ped-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid #efedf4;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.assist-ped-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.assist-ped-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.assist-ped-row:last-child { border-bottom: 0; }
+
+/* 父・母の印。血統表と同じく父を紺、母を臙脂にして見分けられるようにする。 */
+.assist-ped-mark {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  width: 20px;
+  text-align: center;
+  border-radius: 4px;
+  background: #3e499c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.assist-ped-mark.is-dam { background: #b34e5f; }
+
+.assist-ped-name {
+  min-width: 0;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assist-ped-son { flex: 0 0 auto; color: #6d6880; font-size: 11.5px; }
+
+.assist-ped-actions { border-top: 1px solid #e2ddec; }
+
 /* 開けることが見て分かるように ▼ を付け、押せる幅いっぱいのボタンにする。 */
 .assist-cross-toggle {
   display: flex;

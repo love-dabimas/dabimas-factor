@@ -417,6 +417,21 @@ html.dabimas-dark .assist-screen .assist-shot.v-btn {
   border-color: #4a4560;
 }
 
+/* 仮想繁殖牝馬の血統表ダイアログ。 */
+html.dabimas-dark .assist-ped-head,
+html.dabimas-dark .assist-ped-actions {
+  border-color: var(--dk-line);
+}
+
+html.dabimas-dark .assist-ped-note,
+html.dabimas-dark .assist-ped-son {
+  color: var(--dk-muted);
+}
+
+html.dabimas-dark .assist-ped-row {
+  border-bottom-color: var(--dk-line);
+}
+
 /* 上のバー。他の画面のバーと同じ地・同じ罫線にする。 */
 html.dabimas-dark .assist-bar {
   background: var(--dk-raised);
