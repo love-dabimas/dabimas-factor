@@ -99,7 +99,7 @@
         if (!board) return;
         this.pedigreeDialog = { open: true, title: step.mareLabel || "仮想の繁殖牝馬",
           note: "1代目の種牡馬と繁殖牝馬から組み上がった血統です。ここでは選べません。",
-          sections: [{ label: "", board: board }] };
+          sections: [{ side: "broodmare", board: board }] };
       },
       // 選んだ1組の配合結果（32セル）。種牡馬側と繁殖牝馬側を並べて見せる。
       // diagnosis.selected が buildStepSelected の戻り値そのものなので、
@@ -110,8 +110,8 @@
         this.pedigreeDialog = { open: true, title: step.stepNo + "代目の配合結果",
           note: "選んだ1組の血統です。ここでは選べません。",
           sections: [
-            { label: "種牡馬", board: selected.slice(0, 16) },
-            { label: "繁殖牝馬", board: selected.slice(16, 32) },
+            { side: "stallion", board: selected.slice(0, 16) },
+            { side: "broodmare", board: selected.slice(16, 32) },
           ] };
       },
       goHome() {
