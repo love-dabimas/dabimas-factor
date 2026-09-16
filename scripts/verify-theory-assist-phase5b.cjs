@@ -119,7 +119,9 @@ async function verifyHost() {
   const before = { chips, entries: [['k-0', 1]] };
   const after = logic.musume.refineTheoryMap(before, [{ key: 'k-0', board: sireBoard }], mareBoard,
     { damLines, inbreedExceptions: [], nodeTable: null, resolver: null });
-  assert.deepEqual(plain(after.map.entries), [['k-0', 1 | 4]], '奇跡のビットが立っていない');
+  // 理論は 完璧 < 超完璧 < 奇跡 の序列。いちばん強い1つだけを立てる
+  // （奇跡の馬が完璧にも数えられて二重に出るのを防ぐ）。
+  assert.deepEqual(plain(after.map.entries), [['k-0', 4]], '奇跡のビットだけが立っていない');
   assert.deepEqual(plain(before.entries), [['k-0', 1]], '入力が変わっている');
 
   // 奇跡でない候補には立てない（軽い判定が誤って立てていたら落とす）。
