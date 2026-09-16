@@ -72,6 +72,9 @@ node scripts/verify-<名前>.cjs   # scripts/verify-*.cjs を 1 本ずつ実行�
 
 着手したら枝の名前を添える。終わったらこの一覧から消す。
 
+- 配合理論補助 Phase 5a（選んだ1組の因子・クロス・危険を出す）— `feature/theory-assist-phase5a`。
+  指示書は `docs/codex-work-orders/2026-09-14-theory-assist-phase5a.md`
+
 
 ## 片付け候補
 
