@@ -970,7 +970,9 @@
 /* 「配合結果を見る」。ニトロの表の上の余白に置く。 */
 .assist-result-bar { display: flex; justify-content: flex-end; }
 
-/* ===== 仮想繁殖牝馬の血統表（見るだけのダイアログ） ===== */
+/* ===== 見るだけの血統表ダイアログ ===== */
+/* 表そのものは本体のクラス（table_main / horse_0 / styleParentLine …）で
+   描くので、ここでは器と、操作を出さないぶんの調整だけを持つ。 */
 .assist-ped-head {
   display: flex;
   align-items: center;
@@ -989,96 +991,75 @@
   white-space: nowrap;
 }
 
-.assist-ped-body { padding: 12px 14px !important; }
+.assist-ped-body { padding: 10px 10px 14px !important; }
 
 .assist-ped-note {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: #6d6880;
   font-size: 12.5px;
   line-height: 1.5;
 }
 
-.assist-ped-list { margin: 0; padding: 0; list-style: none; }
-
-.assist-ped-block + .assist-ped-block { margin-top: 14px; }
-
-/* 種牡馬側・繁殖牝馬側の見出し。1組を見せるときだけ出る。 */
-.assist-ped-block-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 4px;
-  padding-bottom: 4px;
-  border-bottom: 2px solid #e2ddec;
-  font-size: 13px;
-  flex-wrap: wrap;
+.assist-ped-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
 }
 
-.assist-ped-block-role {
-  flex: 0 0 auto;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: #5b4b8a;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
+.assist-ped-table + .assist-ped-table { margin-top: 10px; }
+
+/* 列幅。本体の血統表は .exp-mobile-layout の下でしか colgroup が効かず、
+   ダイアログは v-app 直下へ出るのでここで同じ幅を持たせる。
+   本体の並び（父母の目印4・馬名・世代・系統・因子3）から ❤ 列だけ抜いてある。 */
+.assist-ped-table .assist-ped-col-label { width: 12px; }
+.assist-ped-table .assist-ped-col-horse { width: auto; }
+.assist-ped-table .assist-ped-col-gen { width: 12px; }
+.assist-ped-table .assist-ped-col-line { width: 16px; }
+.assist-ped-table .assist-ped-col-factor { width: 15px; }
+
+/* 父母の目印。本体は行高に合わせて縮めているので同じ大きさに揃える。 */
+.assist-ped-table .father_0,
+.assist-ped-table .father,
+.assist-ped-table .father_1,
+.assist-ped-table .mother_0,
+.assist-ped-table .mother,
+.assist-ped-table .mother_1 {
+  font-size: 9px;
+  line-height: 1;
+  padding: 0;
 }
 
-.assist-ped-block-name { font-weight: 800; overflow-wrap: anywhere; }
-
-/* 名前は折り返さず1行、系統と因子はその下。狭い画面で馬名が
-   縦に割れて読めなくなるのを避ける。 */
-.assist-ped-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  padding: 6px 0;
-  border-bottom: 1px solid #efedf4;
-  font-size: 13px;
+.assist-ped-table .styleFactorClassMain,
+.assist-ped-table .styleParentLine {
+  font-size: 10px;
   line-height: 1.4;
+  padding: 0;
 }
 
-.assist-ped-main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-  flex: 1 1 auto;
+/* 馬名のセル。本体は中に horse-cell（選択UI）が入るが、ここは
+   バッジ＋名前だけ。並びは本体と同じでバッジが先。 */
+.assist-ped-horse {
+  padding: 2px 4px;
+  overflow: hidden;
 }
 
-.assist-ped-meta {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
+.assist-ped-horse .exp-horse-badges { padding-left: 0; padding-right: 2px; }
+
+.assist-ped-horse .exp-horse-badge {
+  height: 13px;
+  min-width: 13px;
+  font-size: 9px;
 }
 
-.assist-ped-row:last-child { border-bottom: 0; }
-
-/* 父・母の印。血統表と同じく父を紺、母を臙脂にして見分けられるようにする。 */
-.assist-ped-mark {
-  flex: 0 0 auto;
-  margin-top: 1px;
-  width: 20px;
-  text-align: center;
-  border-radius: 4px;
-  background: #3e499c;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.assist-ped-mark.is-dam { background: #b34e5f; }
-
-.assist-ped-name {
-  min-width: 0;
-  font-weight: 700;
+.assist-ped-horse-name {
+  display: inline-block;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: middle;
 }
-
-.assist-ped-son { flex: 0 0 auto; color: #6d6880; font-size: 11.5px; }
 
 .assist-ped-actions { border-top: 1px solid #e2ddec; }
 

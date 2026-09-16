@@ -423,17 +423,11 @@ html.dabimas-dark .assist-ped-actions {
   border-color: var(--dk-line);
 }
 
-html.dabimas-dark .assist-ped-note,
-html.dabimas-dark .assist-ped-son {
+html.dabimas-dark .assist-ped-note {
   color: var(--dk-muted);
 }
 
-html.dabimas-dark .assist-ped-row {
-  border-bottom-color: var(--dk-line);
-}
-
-html.dabimas-dark .assist-ped-block-title {
-  border-bottom-color: var(--dk-line);
+html.dabimas-dark .assist-ped-horse {
   color: var(--dk-text);
 }
 
