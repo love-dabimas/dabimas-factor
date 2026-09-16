@@ -379,6 +379,11 @@ html.dabimas-dark .assist-waiting {
   color: #8f8aa6;
 }
 
+/* 危険の赤は黒地だと 1.3:1 なので、危険マークと同じ琥珀に寄せる。 */
+html.dabimas-dark .assist-cross-list strong {
+  color: #ffc24a;
+}
+
 html.dabimas-dark .assist-result {
   border-top-color: var(--dk-line);
 }

@@ -88,6 +88,47 @@ async function verifyHost() {
     invalidate(); waiting.forEach(f=>f()); await pending;
     assert.equal(messages.filter(m=>m.type==='dabimas:theory-map').length,before);
   }
-  console.log('[phase5b] PASS: 3チップ、危険除外、対象限定、1回送信、詳細待ち中の変更');
+  
+// 奇跡は盤面が要る（compatibility.js の isMiracleMatch が selected[4..7] と
+// selected[19] を見る）。軽い判定は盤面を渡さないので必ず落ちる。
+// refineTheoryMap が盤面ありで立て直していることを確かめる。
+{
+  const theory = logic.theory;
+  const sireLines = { omoshiro: ['Ne', 'Ro', 'Na', 'Ha'], migoto: ['Ha', 'Sw', 'He', 'Ns'] };
+  const damLines = ['Ns', 'Ha', 'He', 'Sw'];
+  const cheap = theory.detectMatchedTheories([sireLines.omoshiro, sireLines.migoto], [damLines, damLines], {});
+  assert.ok(cheap.includes('PERFECT'), '完璧が立つ組でないと意味がない');
+  assert.ok(!cheap.includes('MIRACLE'), '盤面なしで奇跡が出てしまっている');
+
+  // 4〜7 のうち1つだけが 19 と同じ馬になる盤面を作る。
+  const cell = (name, line) => ({ name, parentLine: line });
+  const sireBoard = new Array(16).fill(null).map((_, i) => cell('S' + i, 'Ne'));
+  [1, 3, 5, 7].forEach((c, i) => { sireBoard[c] = cell('S' + c, sireLines.omoshiro[i]); });
+  [9, 11, 13, 15].forEach((c, i) => { sireBoard[c] = cell('S' + c, sireLines.migoto[i]); });
+  sireBoard[5] = cell('ノーザンダンサー', sireLines.omoshiro[2]);
+  const mareBoard = new Array(16).fill(null).map((_, i) => cell('M' + i, 'Ne'));
+  [1, 3, 5, 7].forEach((c, i) => { mareBoard[c] = cell('M' + c, damLines[i]); });
+  mareBoard[3] = cell('ノーザンダンサー', damLines[1]);   // selected[19]
+
+  const full = theory.detectMatchedTheories([sireLines.omoshiro, sireLines.migoto], [damLines, damLines],
+    { selected: logic.plan.buildStepSelected(sireBoard, mareBoard) });
+  assert.ok(full.includes('MIRACLE'), 'この盤面は奇跡になるはず');
+
+  const chips = [{ key: 'PERFECT', bit: 1, pending: false },
+    { key: 'SUPER_PERFECT', bit: 2, pending: false }, { key: 'MIRACLE', bit: 4, pending: false }];
+  const before = { chips, entries: [['k-0', 1]] };
+  const after = logic.musume.refineTheoryMap(before, [{ key: 'k-0', board: sireBoard }], mareBoard,
+    { damLines, inbreedExceptions: [], nodeTable: null, resolver: null });
+  assert.deepEqual(plain(after.map.entries), [['k-0', 1 | 4]], '奇跡のビットが立っていない');
+  assert.deepEqual(plain(before.entries), [['k-0', 1]], '入力が変わっている');
+
+  // 奇跡でない候補には立てない（軽い判定が誤って立てていたら落とす）。
+  const notMiracle = logic.musume.refineTheoryMap({ chips, entries: [['k-0', 1 | 4]] },
+    [{ key: 'k-0', board: sireBoard.map((c, i) => (i === 5 ? cell('別の馬', 'Na') : c)) }],
+    mareBoard, { damLines, inbreedExceptions: [], nodeTable: null, resolver: null });
+  assert.deepEqual(plain(notMiracle.map.entries), [['k-0', 1]], '奇跡でない候補のビットが落ちていない');
+}
+
+console.log('[phase5b] PASS: 3チップ、危険除外、対象限定、1回送信、詳細待ち中の変更');
 }
 verifyHost().catch(error=>{console.error(error);process.exitCode=1;});
