@@ -965,6 +965,35 @@
 .assist-theory-badge { display: inline-block; font-size: 16px; font-weight: 800; color: #1f7a4d; background: #e4f4ec; border: 1.5px solid #1f7a4d; border-radius: 9px; padding: 5px 14px; }
 .assist-placeholder { border: 1px solid #e2ddec; background: #faf9fc; border-radius: 9px; padding: 9px; text-align: center; font-size: 13px; color: #6d6880; }
 .assist-cross { color: #5b4b8a; background: #efeaf9; font-weight: 700; }
+
+/* 開けることが見て分かるように ▼ を付け、押せる幅いっぱいのボタンにする。 */
+.assist-cross-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assist-cross-caret { font-size: 10px; line-height: 1; }
+
+/* クロスは1件1行で読むものなので、段落の余白をやめて行だけ並べる。 */
+.assist-cross-list {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.assist-cross-list li + li { margin-top: 2px; }
+.assist-cross-list strong { margin-left: 4px; color: #c62828; }
 .assist-foot {
   position: sticky;
   bottom: 0;

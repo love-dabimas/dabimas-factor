@@ -219,16 +219,17 @@
                   <div class="assist-result" aria-live="polite">
                     <assist-factor-table :diagnosis="step.diagnosis"></assist-factor-table>
                     <div class="assist-cross">
-                      <button type="button" :aria-expanded="String(step.crossOpen)"
-                        @click="step.crossOpen = !step.crossOpen">クロスの詳細（{{ step.diagnosis.crosses.length }}件）</button>
-                      <div v-if="step.crossOpen">
-                        <p v-if="!step.diagnosis.crosses.length">クロスなし</p>
-                        <p v-for="(cross, index) in step.diagnosis.crosses" :key="index">
+                      <button type="button" class="assist-cross-toggle" :aria-expanded="String(step.crossOpen)"
+                        @click="step.crossOpen = !step.crossOpen"
+                      ><span class="assist-cross-caret">{{ step.crossOpen ? '▲' : '▼' }}</span>クロスの詳細（{{ step.diagnosis.crosses.length }}件）</button>
+                      <ul v-if="step.crossOpen" class="assist-cross-list">
+                        <li v-if="!step.diagnosis.crosses.length">クロスなし</li>
+                        <li v-for="(cross, index) in step.diagnosis.crosses" :key="index">
                           {{ cross.name }}
                           {{ cross.generations.join(' × ') }}
                           <strong v-if="cross.bloodVolume >= 50000">危険</strong>
-                        </p>
-                      </div>
+                        </li>
+                      </ul>
                     </div>
                   </div>
                 </template>

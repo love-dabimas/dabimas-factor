@@ -154,6 +154,7 @@
             if (target !== this.target || !this.sheetOpen || rows !== this.candidateRows ||
                 pending !== this.customPayloadPromise || !this.sources().includes(source)) return;
             var result = logic.musume.refineTheoryMap(map, candidates, input.mareBoard, {
+              damLines: input.damLines,
               inbreedExceptions: this.$root.inbreedExceptions,
               nodeTable: window.Dabimas.pedigreeNodes || null,
               resolver: this.$root.identityResolver || null,
