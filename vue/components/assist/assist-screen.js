@@ -11,7 +11,7 @@
         plan: null, baseMare: null,
         busy: false, error: "", requestVersion: 0,
         capturing: false,
-        pedigreeDialog: { open: false, title: "", board: null },
+        pedigreeDialog: { open: false, title: "", note: "", sections: null },
       };
     },
     computed: {
@@ -97,7 +97,22 @@
       openPedigree(step) {
         var board = this.plan && this.plan.mareBoardFor(step.stepNo);
         if (!board) return;
-        this.pedigreeDialog = { open: true, title: step.mareLabel || "仮想の繁殖牝馬", board: board };
+        this.pedigreeDialog = { open: true, title: step.mareLabel || "仮想の繁殖牝馬",
+          note: "1代目の種牡馬と繁殖牝馬から組み上がった血統です。ここでは選べません。",
+          sections: [{ label: "", board: board }] };
+      },
+      // 選んだ1組の配合結果（32セル）。種牡馬側と繁殖牝馬側を並べて見せる。
+      // diagnosis.selected が buildStepSelected の戻り値そのものなので、
+      // 前半16が種牡馬、後半16が繁殖牝馬になっている。
+      openResult(step) {
+        var selected = step.diagnosis && step.diagnosis.selected;
+        if (!selected) return;
+        this.pedigreeDialog = { open: true, title: step.stepNo + "代目の配合結果",
+          note: "選んだ1組の血統です。ここでは選べません。",
+          sections: [
+            { label: "種牡馬", board: selected.slice(0, 16) },
+            { label: "繁殖牝馬", board: selected.slice(16, 32) },
+          ] };
       },
       goHome() {
         window.Dabimas.workspaceSync.goHome().catch(() => {
@@ -226,6 +241,10 @@
                     </div>
                   </div>
                   <div class="assist-result" aria-live="polite">
+                    <div class="assist-result-bar">
+                      <v-btn text x-small class="assist-reselect" data-html2canvas-ignore
+                        @click="openResult(step)">配合結果を見る</v-btn>
+                    </div>
                     <assist-factor-table :diagnosis="step.diagnosis"></assist-factor-table>
                     <div class="assist-cross">
                       <button type="button" class="assist-cross-toggle" :aria-expanded="String(step.crossOpen)"
@@ -249,7 +268,8 @@
             </div>
           </section>
           <assist-pedigree-dialog v-model="pedigreeDialog.open"
-            :title="pedigreeDialog.title" :board="pedigreeDialog.board"
+            :title="pedigreeDialog.title" :note="pedigreeDialog.note"
+            :sections="pedigreeDialog.sections"
             data-html2canvas-ignore></assist-pedigree-dialog>
           <footer class="assist-foot">1代目で選んだ種牡馬と繁殖牝馬から生まれる産駒が、そのまま2代目の繁殖牝馬になります。前の代を変えると、後ろの代は組み直しになります。</footer>
         </div>
