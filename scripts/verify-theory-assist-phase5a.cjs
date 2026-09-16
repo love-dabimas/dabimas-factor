@@ -40,6 +40,11 @@ function verify() {
   assert.deepEqual(plain(result.nitro), ['01','17','12','04','03','01','00','00','01','01','00','00','00','00']);
   assert.ok(result.crosses.length > 0);
   assert.ok(result.crosses.every(c => c.name));
+  // 配合結果の血統表が馬名を赤くするセル。本体の血統表（dispColor="inbreed"）と同じ。
+  assert.deepEqual(plain(result.crossCellIndexes), plain(cross.inbreedColorIndexes));
+  assert.ok(result.crossCellIndexes.length > 0);
+  assert.ok(result.crossCellIndexes.every(i => Number.isInteger(i) && i >= 0 && i < 32));
+  assert.deepEqual(plain(logic.plan.diagnoseStep(new Array(16).fill(null), new Array(16).fill(null), {}).crossCellIndexes), []);
   assert.equal(logic.plan.diagnoseStep(board(horses.find(h => h.name === 'アイアムアカペラオー')), mb, options).crosses.length, 0);
   assert.equal(logic.plan.diagnoseStep(new Array(16).fill(null), new Array(16).fill(null), {}).crosses.length, 0);
   assert.doesNotThrow(() => logic.plan.diagnoseStep(sb, mb, {nodeTable: null, resolver: null}));

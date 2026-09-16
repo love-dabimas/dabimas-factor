@@ -1004,7 +1004,17 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 12px;
+  font-size: 11.5px;
+}
+
+/* 32行あって1画面に収まらないので、本体の血統表（1行23px）より詰める。
+   本体は各セルに選択UIが入るぶん高さが要るが、ここは文字だけなので
+   18px でも切れない。 */
+.assist-ped-table td {
+  height: 18px;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1.15;
 }
 
 .assist-ped-table + .assist-ped-table { margin-top: 10px; }
@@ -1040,16 +1050,16 @@
 /* 馬名のセル。本体は中に horse-cell（選択UI）が入るが、ここは
    バッジ＋名前だけ。並びは本体と同じでバッジが先。 */
 .assist-ped-horse {
-  padding: 2px 4px;
+  padding: 0 4px;
   overflow: hidden;
 }
 
 .assist-ped-horse .exp-horse-badges { padding-left: 0; padding-right: 2px; }
 
 .assist-ped-horse .exp-horse-badge {
-  height: 13px;
-  min-width: 13px;
-  font-size: 9px;
+  height: 12px;
+  min-width: 12px;
+  font-size: 8.5px;
 }
 
 .assist-ped-horse-name {
@@ -1059,6 +1069,14 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: middle;
+}
+
+/* クロスが成立している馬。本体の血統表が馬名を赤くするのと同じ色にする
+   （css/vuetify.min.css の .v-input.inbreed input / css/mobile.css の
+   .exp-mobile-autocomplete-root.inbreed）。 */
+.assist-ped-horse-name--cross {
+  color: #ff1744;
+  font-weight: 700;
 }
 
 .assist-ped-actions { border-top: 1px solid #e2ddec; }

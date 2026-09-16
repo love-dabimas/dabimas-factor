@@ -27,6 +27,9 @@
         return Object.assign({}, item, { name: Array.from(new Set(names)).join(" × ") || item.representativeNodeId });
       }), count: cross.count, dangerous: cross.dangerous === true,
       sameNameSpecialChecks: cross.sameNameSpecialChecks, selected: selected,
+      // クロスが成立しているセル（0〜31）。本体の血統表が馬名を赤くするのに
+      // 使っている dispColor="inbreed" の対象と同じもの。
+      crossCellIndexes: cross.inbreedColorIndexes || [],
     };
   };
 })(window);
