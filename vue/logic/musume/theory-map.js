@@ -21,13 +21,26 @@
       }) });
     var entries = [];
     rows.forEach(function (row, index) {
-      var matched = session.get(index).matched;
-      var bits = chips.reduce(function (bits, chip) {
-        return !chip.pending && matched.includes(chip.key) ? bits | chip.bit : bits;
-      }, 0);
+      var bits = logic.musume.chipBitFor(session.get(index).matched, chips);
       if (bits) entries.push([row[0], bits]);
     });
     return { type: "dabimas:theory-map", v: 1, mareKey: input.mareKey, chips: chips, entries: entries };
   }
+  // 配合理論は 完璧 < 超完璧 < 奇跡 の序列があり（constants の PRIORITY）、
+  // 1つの組み合わせに対して本体が出す名前は selectDisplayedTheory が選ぶ1つだけ。
+  // チップも同じにする。成立した理論を全部立てると、奇跡の馬が完璧にも数えられて
+  // 「完璧10頭・奇跡10頭」のように中身が同じ2つの束ができてしまう。
+  // 至高（チップに無い）と危険は、ここでは無視して残りの中から一番強いものを選ぶ。
+  // 危険はこのあと refineTheoryMap が落とす。
+  logic.musume.chipBitFor = function (matched, chips) {
+    var priority = window.Dabimas.constants.breedingTheories.PRIORITY;
+    var best = null;
+    chips.forEach(function (chip) {
+      if (chip.pending || matched.indexOf(chip.key) === -1) return;
+      if (!best || priority[chip.key] > priority[best.key]) best = chip;
+    });
+    return best ? best.bit : 0;
+  };
+
   logic.musume.buildTheoryMap = buildTheoryMap;
 })(window);
