@@ -131,11 +131,38 @@
           // 候補が届くまでは送らない。空のチップを先に送ると、出るはずのチップが
           // 一瞬消えて見える。
           if (!this.candidateRows) return;
+          var started = performance.now();
+          var rows = this.candidateRows;
           var input = target.theoryMap;
-          this.send(source, input.entries ? input : window.Dabimas.logic.musume.buildTheoryMap({
+          var map = input.entries ? input : window.Dabimas.logic.musume.buildTheoryMap({
             mareKey: input.mareKey, damLines: input.damLines,
             rows: this.candidateRows, customHorses: horses,
-          }));
+          });
+          if (!input.entries && input.mareBoard) {
+            var logic = window.Dabimas.logic;
+            var summaries = new Map(this.$root.horsesBase.concat(this.$root.savedHorseSummaries || [])
+              .map(horse => [link.toMusumeKey(horse.id, horse.sex), horse]));
+            var candidates = await Promise.all(map.entries.map(async ([key]) => {
+              if (!summaries.has(key)) return { key: key, board: null };
+              var detail = await this.$root.ensureHorseDetail(summaries.get(key));
+              if (!detail || !Array.isArray(detail.descendants) || detail.descendants.length !== 15) {
+                throw new Error("候補の血統が取得できませんでした");
+              }
+              return { key: key, board: logic.plan.expandHorseBoard(detail, this.$root.brosData) };
+            }));
+            // 詳細取得を待つ間に検索先・候補・保存馬が変わった場合は送らない。
+            if (target !== this.target || !this.sheetOpen || rows !== this.candidateRows ||
+                pending !== this.customPayloadPromise || !this.sources().includes(source)) return;
+            var result = logic.musume.refineTheoryMap(map, candidates, input.mareBoard, {
+              inbreedExceptions: this.$root.inbreedExceptions,
+              nodeTable: window.Dabimas.pedigreeNodes || null,
+              resolver: this.$root.identityResolver || null,
+            });
+            map = result.map;
+            this.lastTheoryMetrics = { candidateCount: rows.filter(row => row[0].endsWith("-0")).length,
+              diagnosedCount: result.diagnosedCount, totalMs: performance.now() - started };
+          }
+          this.send(source, map);
         } catch (error) {
           if (pending !== this.customPayloadPromise || !this.sources().includes(source)) return;
           this.customPayloadPromise = null;

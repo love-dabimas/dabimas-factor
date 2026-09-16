@@ -4,8 +4,6 @@
   logic.musume = logic.musume || {};
   function buildTheoryMap(input) {
     var constants = window.Dabimas.constants.breedingTheories;
-    // 至高はまだ計算していない（クロス判定が要る。設計書 §7）。チップを
-    // pending で出すと「計算中」のまま止まって見えるので、計算を入れるまで出さない。
     var keys = Object.keys(constants.PRIORITY).filter(function (key) {
       return ["PERFECT", "SUPER_PERFECT", "MIRACLE"].includes(key);
     }).sort(function (a, b) { return constants.PRIORITY[a] - constants.PRIORITY[b]; });

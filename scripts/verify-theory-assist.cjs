@@ -15,6 +15,8 @@ const context = vm.createContext({ window: {}, console });
   "logic/theory/theory-session.js",
   "logic/plan/plan-diagnosis.js",
   "logic/plan/assist-plan.js",
+  "constants/factor-definitions.js", "logic/factor/factor-map.js", "logic/factor/factor-counts.js",
+  "logic/inbreed/inbreed-detector.js", "logic/inbreed/inbreed-counts.js", "logic/plan/assist-diagnosis.js",
 ].forEach((file) => vm.runInContext(
   fs.readFileSync(path.join(ROOT, "vue", file), "utf8"), context, { filename: file }
 ));
@@ -23,7 +25,7 @@ const horses = readJson("json/dabimasFactor.json").horseLists;
 const brosData = readJson("json/brosData.json").brosData;
 const { theory, plan } = context.window.Dabimas.logic;
 const priority = context.window.Dabimas.constants.breedingTheories.PRIORITY;
-const plain = (value) => JSON.parse(JSON.stringify(value));
+const plain = (value) => JSON.parse(JSON.stringify(value, (key, item) => key === "uuid" ? undefined : item));
 const sorted = (lines) => Array.from(lines).sort();
 const rangeError = (error) => error.name === "RangeError";
 const vega = horses.find((h) => h.name === "スターベガ" && h.sex === "1");

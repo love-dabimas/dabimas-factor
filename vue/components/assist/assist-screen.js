@@ -57,6 +57,7 @@
               mother, this.plan.steps.slice(0, stepNo - 1).map(step => step.sire.id),
             ]),
             damLines: this.plan.steps[stepNo - 1].mareLines.slice(),
+            mareBoard: this.plan.mareBoardFor(stepNo),
           };
         }
         this.$root.$emit("musume:open-search", request);
@@ -74,7 +75,9 @@
             throw new Error("horse detail is incomplete");
           }
           if (stepNo === 0) {
-            var nextPlan = logic.plan.createAssistPlan({ baseMare: detail, brosData: this.$root.brosData });
+            var nextPlan = logic.plan.createAssistPlan({ baseMare: detail, brosData: this.$root.brosData,
+              inbreedExceptions: this.$root.inbreedExceptions,
+              nodeTable: window.Dabimas.pedigreeNodes || null, resolver: this.$root.identityResolver || null });
             this.plan = nextPlan;
             this.baseMare = detail;
           } else {
@@ -214,8 +217,19 @@
                     </div>
                   </div>
                   <div class="assist-result" aria-live="polite">
-                    <div><div class="assist-block-title">因子</div><div class="assist-placeholder">未計算</div></div>
-                    <div class="assist-placeholder assist-cross">クロスの詳細 — 未計算</div>
+                    <assist-factor-table :diagnosis="step.diagnosis"></assist-factor-table>
+                    <div class="assist-cross">
+                      <button type="button" :aria-expanded="String(step.crossOpen)"
+                        @click="step.crossOpen = !step.crossOpen">クロスの詳細（{{ step.diagnosis.crosses.length }}件）</button>
+                      <div v-if="step.crossOpen">
+                        <p v-if="!step.diagnosis.crosses.length">クロスなし</p>
+                        <p v-for="(cross, index) in step.diagnosis.crosses" :key="index">
+                          {{ cross.name }}
+                          {{ cross.generations.join(' × ') }}
+                          <strong v-if="cross.bloodVolume >= 50000">危険</strong>
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </template>
                 <v-btn v-else block depressed class="assist-pick" :disabled="busy" @click="openPicker(step.stepNo)">＋ 種牡馬を選ぶ</v-btn>

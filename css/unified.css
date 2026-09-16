@@ -960,6 +960,8 @@
 .assist-waiting { border: 1.5px dashed #e2ddec; border-radius: 11px; padding: 15px; text-align: center; color: #6d6880; font-size: 13.5px; }
 .assist-result { border-top: 1px solid #e2ddec; padding-top: 11px; display: flex; flex-direction: column; gap: 10px; }
 .assist-block-title { margin-bottom: 5px; }
+.assist-factor-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.assist-factor-label { width: 44px; }
 .assist-theory-badge { display: inline-block; font-size: 16px; font-weight: 800; color: #1f7a4d; background: #e4f4ec; border: 1.5px solid #1f7a4d; border-radius: 9px; padding: 5px 14px; }
 .assist-placeholder { border: 1px solid #e2ddec; background: #faf9fc; border-radius: 9px; padding: 9px; text-align: center; font-size: 13px; color: #6d6880; }
 .assist-cross { color: #5b4b8a; background: #efeaf9; font-weight: 700; }

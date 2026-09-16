@@ -1,0 +1,74 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{margin:0}iframe{border:0;width:375px;height:844px}pre{white-space:pre-wrap}</style>
+<iframe></iframe><pre id="result">RUNNING</pre>
+<script>
+(async function () {
+  const frame = document.querySelector('iframe');
+  const wait = () => new Promise(r => setTimeout(r, 100));
+  try {
+    frame.src = '/index.html';
+    while (!frame.contentDocument.querySelector('#app')?.__vue__?.$root?.stallionsBase?.length) await wait();
+    const win = frame.contentWindow, root = frame.contentDocument.querySelector('#app').__vue__.$root;
+    root.currentScreen = 'assist'; await root.$nextTick();
+    const screen = frame.contentDocument.querySelector('.assist-screen').__vue__;
+    const horses = (await (await fetch('/json/dabimasFactor.json')).json()).horseLists;
+    await screen.confirmSelection(0, horses.find(h => h.name === 'スターベガ' && h.sex === '1'));
+    const sire = horses.find(h => h.name === 'スターアルタイル' && h.subName === '瓏覇');
+    await screen.confirmSelection(1, sire); await screen.$nextTick();
+    const first = screen.plan.steps[0];
+    const check = (value, label) => {if (!value) throw Error(label);};
+    check(!screen.$el.textContent.includes('未計算'), 'placeholder');
+    check(screen.$el.textContent.includes('ニトロ'), 'factor table');
+    const button = screen.$el.querySelector('.assist-cross button');
+    check(button.getAttribute('aria-expanded') === 'false', 'collapsed');
+    button.click(); await screen.$nextTick();
+    check(button.getAttribute('aria-expanded') === 'true', 'expanded');
+    check(screen.$el.textContent.includes(first.diagnosis.crosses[0].name), 'cross name');
+    await screen.confirmSelection(2, sire); await screen.confirmSelection(1, sire);
+    check(!screen.plan.steps[1].result && !screen.plan.steps[0].crossOpen, 'reset');
+    await screen.$nextTick();
+    check(screen.$el.scrollWidth <= 375, 'horizontal overflow ' + screen.$el.scrollWidth);
+    document.querySelector('#result').textContent = 'PASS phase5a ' + JSON.stringify({nitro:first.diagnosis.nitro,crosses:first.diagnosis.crosses.length,width:screen.$el.scrollWidth});
+    if (!location.search.includes('heavy')) return;
+    while (!window.startHeavy) await wait();
+    const host = frame.contentDocument.querySelector('.musume-host').__vue__;
+    const sent = [];
+    const send = host.send;
+    host.send = function(source,message) { if(message.type === 'dabimas:theory-map') sent.push(message); return send.call(this,source,message); };
+    // 詳細を事前取得し、実データ2,433頭の行を作る（計測区間の外）。
+    const logic = win.Dabimas.logic;
+    const sires = root.horsesBase.filter(h=>h.sex==='0');
+    check(sires.length===2433,'実データの頭数');
+    const details = await Promise.all(sires.map(h=>root.ensureHorseDetail(h)));
+    const rows = details.map(h=>{
+      const b = logic.plan.expandHorseBoard(h,root.brosData);
+      return [logic.musumeLink.toMusumeKey(h.id),b[1].parentLine,b[3].parentLine,
+        b[5].parentLine+b[7].parentLine,[9,11,13,15].map(i=>b[i].parentLine).join('')];
+    });
+    screen.openPicker(1);
+    while (!sent.length && !host.snackbar.show) await wait();
+    check(!host.snackbar.show,host.snackbar.text);
+    await wait();
+    host.candidateRows = rows;
+    const measurements = [];
+    for (const [name,count] of [['アイウィルフォロー',1],['アイシテマース',3],['アイムホーム',0]]) {
+      const mare = await root.ensureHorseDetail(root.horsesBase.find(h=>h.name===name && h.sex==='1'));
+      const mareBoard = logic.plan.expandHorseBoard(mare,root.brosData);
+      host.target = {theoryMap:{mareKey:mare.id,mareBoard,damLines:logic.theory.prepareMareLines(mareBoard)}};
+      const before = sent.length;
+      await host.sendCustomAndTheory(host.$refs.sheetFrame.contentWindow);
+      check(sent.length===before+1,'判定後に1回だけ送信');
+      check(host.lastTheoryMetrics.diagnosedCount===count,'診断対象数 '+name);
+      const map = sent.at(-1);
+      check(map.chips.length===3 && map.chips.every(c=>!c.pending),'3チップ・待ちなし');
+      measurements.push({mare:name,...host.lastTheoryMetrics});
+      await wait();
+      const buttons = [...host.$refs.sheetFrame.contentDocument.querySelectorAll('button')];
+      for (const label of ['完璧','超完璧','奇跡']) check(buttons.some(b=>b.textContent.includes(label)),label+'チップ');
+      check(!buttons.some(b=>b.textContent.includes('至高')),'至高チップなし');
+    }
+    host.sheetOpen=false; await root.$nextTick();
+    document.querySelector('#result').textContent='PASS phase5b '+JSON.stringify({measurements,part1:{nitro:first.diagnosis.nitro,width:screen.$el.scrollWidth}});
+  } catch(e) {document.querySelector('#result').textContent = 'FAIL ' + e.stack;}
+})();
+</script>

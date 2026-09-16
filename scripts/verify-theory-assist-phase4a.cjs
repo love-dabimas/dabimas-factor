@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const context = vm.createContext({ window: { Vue: { component() {} },
-  location: { origin: 'http://localhost' }, addEventListener() {}, removeEventListener() {} }, console });
+  location: { origin: 'http://localhost' }, addEventListener() {}, removeEventListener() {} }, console, performance });
 [
   'constants/pedigree-indexes.js', 'constants/breeding-theories.js',
   'constants/factor-definitions.js', 'logic/factor/factor-map.js',
@@ -44,8 +44,7 @@ assert.deepEqual(plain(map.entries), expected);
 const perfect = map.entries.filter(entry => entry[1] & 1);
 assert.equal(perfect.length, 6);
 perfect.forEach(([key]) => assert.equal(sires.find(h => link.toMusumeKey(h.id) === key).name, 'スターアルタイル'));
-// 至高はクロス判定が要るのでまだ出さない（Phase 5）。pending で出すと
-// 「計算中」のまま止まって見える、と実機で指摘された。
+// 至高は選んだ1組で表示し、候補のチップは3つとも計算待ちにしない。
 assert.deepEqual(plain(map.chips), [
   { key: 'PERFECT', label: '完璧', bit: 1, pending: false },
   { key: 'SUPER_PERFECT', label: '超完璧', bit: 2, pending: false },

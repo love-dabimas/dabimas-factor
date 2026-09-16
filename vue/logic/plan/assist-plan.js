@@ -12,7 +12,7 @@
     var mareBoards = new Array(STEP_COUNT).fill(null);
     var steps = [];
     for (var i = 0; i < STEP_COUNT; i += 1) {
-      steps.push({ stepNo: i + 1, mareLabel: null, mareLines: null, sire: null, sireLines: null, result: null });
+      steps.push({ stepNo: i + 1, mareLabel: null, mareLines: null, sire: null, sireLines: null, result: null, diagnosis: null, crossOpen: false });
     }
     mareBoards[0] = plan.expandHorseBoard(input.baseMare, input.brosData);
     steps[0].mareLabel = input.baseMare.name;
@@ -35,6 +35,8 @@
       steps[index].sire = null;
       steps[index].sireLines = null;
       steps[index].result = null;
+      steps[index].diagnosis = null;
+      steps[index].crossOpen = false;
       for (var later = index + 1; later < STEP_COUNT; later += 1) {
         mareBoards[later] = null;
         steps[later].mareLabel = null;
@@ -42,6 +44,8 @@
         steps[later].sire = null;
         steps[later].sireLines = null;
         steps[later].result = null;
+        steps[later].diagnosis = null;
+        steps[later].crossOpen = false;
       }
     }
 
@@ -50,20 +54,23 @@
       if (!isSelectable(stepNo)) throw new Error("前工程の種牡馬を選択してください");
       var sireBoard = plan.expandHorseBoard(sireDetail, input.brosData);
       var sireLines = theory.prepareSireOperands(sireBoard);
-      var result = theory.createTheorySession({
-        sires: [sireLines],
-        damLines: steps[index].mareLines,
-      }).get(0);
+      var diagnosis = plan.diagnoseStep(sireBoard, mareBoards[index], input);
+      var dam = steps[index].mareLines;
+      var matched = theory.detectMatchedTheories([sireLines.omoshiro, sireLines.migoto],
+        [dam, dam], diagnosis);
+      var result = { matched: matched, displayed: theory.selectDisplayedTheory(matched,
+        window.Dabimas.constants.breedingTheories.PRIORITY) };
       var label = stepNo + "代目配合の繁殖牝馬";
       var nextBoard = index + 1 < STEP_COUNT
         ? plan.composeVirtualMareBoard(sireBoard, mareBoards[index],
-          { kind: "custom", id: "assist:step:" + stepNo }, label)
+          null, label)
         : null;
 
       clearSire(stepNo);
       steps[index].sire = sireDetail;
       steps[index].sireLines = sireLines;
       steps[index].result = result;
+      steps[index].diagnosis = diagnosis;
       if (nextBoard) {
         mareBoards[index + 1] = nextBoard;
         steps[index + 1].mareLabel = label;
@@ -76,7 +83,8 @@
     }
 
     return { steps: steps, selectSire: selectSire, clearSire: clearSire,
-      mareLinesFor: mareLinesFor, isSelectable: isSelectable };
+      mareLinesFor: mareLinesFor, mareBoardFor: function (stepNo) { return mareBoards[stepIndex(stepNo)]; },
+      isSelectable: isSelectable };
   }
 
   plan.createAssistPlan = createAssistPlan;

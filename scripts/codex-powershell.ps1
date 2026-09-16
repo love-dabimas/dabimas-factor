@@ -148,18 +148,19 @@ switch ($Command) {
   }
   "dump-dom" {
     if ($remainingArgs.Count -lt 1) {
-      throw "Usage: codex-powershell.ps1 dump-dom <Url> [Width] [Height] [VirtualTimeBudget]"
+      throw "Usage: codex-powershell.ps1 dump-dom <Url> [Width] [Height] [VirtualTimeBudget] [DebugPort: keep Chrome open for CDP]"
     }
     $url = $remainingArgs[0]
     $width = if ($remainingArgs.Count -ge 2) { [int]$remainingArgs[1] } else { 390 }
     $height = if ($remainingArgs.Count -ge 3) { [int]$remainingArgs[2] } else { 844 }
     $virtualTimeBudget = if ($remainingArgs.Count -ge 4) { [int]$remainingArgs[3] } else { 12000 }
+    $debugPort = if ($remainingArgs.Count -ge 5) { [int]$remainingArgs[4] } else { 0 }
     & (Join-Path $scriptRoot "run-headless-chrome.ps1") `
       -Url $url `
       -Width $width `
       -Height $height `
       -VirtualTimeBudget $virtualTimeBudget `
-      -DumpDom
+      -DumpDom -DebugPort $debugPort
     break
   }
 }
