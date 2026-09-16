@@ -32,6 +32,8 @@
       note: { type: String, default: "" },
       // { side, board } の配列。side は "stallion" / "broodmare"、board は16セル。
       sections: { type: Array, default: null },
+      // クロスが成立しているセル番号（0〜31）。本体の血統表と同じく馬名を赤くする。
+      crossCells: { type: Array, default: null },
     },
     computed: {
       blocks: function () {
@@ -40,6 +42,7 @@
         var factorMap = logic.factor.factorMap;
         var generations =
           window.Dabimas.constants.pedigreeIndexes.INDEX_GENERATION_ASSIGNMENTS;
+        var crossCells = Array.isArray(this.crossCells) ? this.crossCells : [];
         return list.filter(function (section) { return Array.isArray(section.board); })
           .map(function (section) {
             var side = section.side === "broodmare" ? "broodmare" : "stallion";
@@ -69,6 +72,8 @@
                   generationClass: logic.pedigree.getCss(config.index) + " styleFactorClassMain",
                   generationLabel: generations[config.index] || "",
                   name: entry ? logic.horses.getHorseNameText(entry) : "",
+                  // 本体の血統表が dispColor="inbreed" で赤くしているのと同じセル。
+                  isCross: crossCells.indexOf(config.index) !== -1,
                   // 非凡・自家製・因名祭のバッジ。本体の horse-cell と同じ
                   // getHorseBadges を使うので、祖先セル（rare を持たない
                   // descendants レコード）には本体同様バッジが付かない。
@@ -130,7 +135,9 @@
                           :class="['exp-horse-badge', badge.className]"
                           :title="badge.title">{{ badge.text }}</span>
                       </span>
-                      <span class="assist-ped-horse-name">{{ row.name }}</span>
+                      <span class="assist-ped-horse-name"
+                        :class="{ 'assist-ped-horse-name--cross': row.isCross }"
+                        :title="row.isCross ? 'クロス' : null">{{ row.name }}</span>
                     </td>
                     <td :class="row.generationClass">{{ row.generationLabel }}</td>
                     <td :class="row.parentLineClass">

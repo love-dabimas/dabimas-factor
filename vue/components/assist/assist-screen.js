@@ -99,7 +99,9 @@
         if (!board) return;
         this.pedigreeDialog = { open: true, title: step.mareLabel || "仮想の繁殖牝馬",
           note: "1代目の種牡馬と繁殖牝馬から組み上がった血統です。ここでは選べません。",
-          sections: [{ side: "broodmare", board: board }] };
+          // クロスは「種牡馬＋繁殖牝馬の32セル」に対して出るもので、
+          // 組み上がった産駒1頭の16セルには対応する番号が無いので渡さない。
+          sections: [{ side: "broodmare", board: board }], crossCells: [] };
       },
       // 選んだ1組の配合結果（32セル）。種牡馬側と繁殖牝馬側を並べて見せる。
       // diagnosis.selected が buildStepSelected の戻り値そのものなので、
@@ -112,7 +114,8 @@
           sections: [
             { side: "stallion", board: selected.slice(0, 16) },
             { side: "broodmare", board: selected.slice(16, 32) },
-          ] };
+          ],
+          crossCells: step.diagnosis.crossCellIndexes || [] };
       },
       goHome() {
         window.Dabimas.workspaceSync.goHome().catch(() => {
@@ -269,7 +272,7 @@
           </section>
           <assist-pedigree-dialog v-model="pedigreeDialog.open"
             :title="pedigreeDialog.title" :note="pedigreeDialog.note"
-            :sections="pedigreeDialog.sections"
+            :sections="pedigreeDialog.sections" :cross-cells="pedigreeDialog.crossCells"
             data-html2canvas-ignore></assist-pedigree-dialog>
           <footer class="assist-foot">1代目で選んだ種牡馬と繁殖牝馬から生まれる産駒が、そのまま2代目の繁殖牝馬になります。前の代を変えると、後ろの代は組み直しになります。</footer>
         </div>
