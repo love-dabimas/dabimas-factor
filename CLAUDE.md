@@ -72,7 +72,7 @@ node scripts/verify-<名前>.cjs   # scripts/verify-*.cjs を 1 本ずつ実行�
 
 着手したら枝の名前を添える。終わったらこの一覧から消す。
 
-
+- （まだ無し）
 
 ## 片付け候補
 
