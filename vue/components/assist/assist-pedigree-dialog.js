@@ -21,14 +21,16 @@
     props: {
       value: { type: Boolean, default: false },
       title: { type: String, default: "" },
-      board: { type: Array, default: null },
+      note: { type: String, default: "" },
+      // { label, board } の配列。board は16セル。1組を見せるときは種牡馬側と
+      // 繁殖牝馬側の2つを渡す。
+      sections: { type: Array, default: null },
     },
     computed: {
-      rows: function () {
-        var board = this.board;
-        if (!Array.isArray(board)) return [];
+      blocks: function () {
+        var list = Array.isArray(this.sections) ? this.sections : [];
         var logic = window.Dabimas.logic;
-        return logic.pedigree.DESCENDANT_SLOTS.map(function (cell) {
+        var cellOf = function (board, cell) {
           var entry = board[cell];
           return {
             cell: cell,
@@ -40,7 +42,19 @@
             son: (entry && entry.son) || "",
             factors: entry ? logic.horses.getHorseFactorBadges(entry) : [],
           };
-        });
+        };
+        return list.filter(function (section) { return Array.isArray(section.board); })
+          .map(function (section) {
+            var head = section.board[0];
+            return {
+              label: section.label || "",
+              headName: head ? logic.horses.getHorseNameText(head) : (section.label || ""),
+              headSon: (head && head.son) || "",
+              rows: logic.pedigree.DESCENDANT_SLOTS.map(function (cell) {
+                return cellOf(section.board, cell);
+              }),
+            };
+          });
       },
     },
     methods: {
@@ -56,21 +70,28 @@
             <v-btn icon aria-label="閉じる" @click="close"><v-icon>mdi-close</v-icon></v-btn>
           </v-card-title>
           <v-card-text class="assist-ped-body">
-            <p class="assist-ped-note">1代目の種牡馬と繁殖牝馬から組み上がった血統です。ここでは選べません。</p>
-            <ul class="assist-ped-list">
-              <li v-for="row in rows" :key="row.cell" class="assist-ped-row"
-                :style="{ paddingLeft: (row.depth * 12) + 'px' }">
-                <span class="assist-ped-mark" :class="row.mark === '母' ? 'is-dam' : ''">{{ row.mark }}</span>
-                <span class="assist-ped-main">
-                  <span class="assist-ped-name">{{ row.name || 'ー' }}</span>
-                  <span class="assist-ped-meta">
-                    <span class="assist-ped-son">{{ row.son }}</span>
-                    <span v-for="factor in row.factors" :key="factor.key"
-                      :class="['exp-option-factor-badge', factor.className]">{{ factor.text }}</span>
+            <p class="assist-ped-note">{{ note }}</p>
+            <section v-for="(block, index) in blocks" :key="index" class="assist-ped-block">
+              <h3 v-if="block.label" class="assist-ped-block-title">
+                <span class="assist-ped-block-role">{{ block.label }}</span>
+                <span class="assist-ped-block-name">{{ block.headName }}</span>
+                <span class="assist-ped-son">{{ block.headSon }}</span>
+              </h3>
+              <ul class="assist-ped-list">
+                <li v-for="row in block.rows" :key="row.cell" class="assist-ped-row"
+                  :style="{ paddingLeft: (row.depth * 12) + 'px' }">
+                  <span class="assist-ped-mark" :class="row.mark === '母' ? 'is-dam' : ''">{{ row.mark }}</span>
+                  <span class="assist-ped-main">
+                    <span class="assist-ped-name">{{ row.name || 'ー' }}</span>
+                    <span class="assist-ped-meta">
+                      <span class="assist-ped-son">{{ row.son }}</span>
+                      <span v-for="factor in row.factors" :key="factor.key"
+                        :class="['exp-option-factor-badge', factor.className]">{{ factor.text }}</span>
+                    </span>
                   </span>
-                </span>
-              </li>
-            </ul>
+                </li>
+              </ul>
+            </section>
           </v-card-text>
           <v-card-actions class="assist-ped-actions">
             <v-spacer></v-spacer>

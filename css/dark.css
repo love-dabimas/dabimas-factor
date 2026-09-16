@@ -432,6 +432,11 @@ html.dabimas-dark .assist-ped-row {
   border-bottom-color: var(--dk-line);
 }
 
+html.dabimas-dark .assist-ped-block-title {
+  border-bottom-color: var(--dk-line);
+  color: var(--dk-text);
+}
+
 /* 上のバー。他の画面のバーと同じ地・同じ罫線にする。 */
 html.dabimas-dark .assist-bar {
   background: var(--dk-raised);
