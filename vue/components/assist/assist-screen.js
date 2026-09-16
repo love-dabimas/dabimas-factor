@@ -11,6 +11,7 @@
         plan: null, baseMare: null,
         busy: false, error: "", requestVersion: 0,
         capturing: false,
+        pedigreeDialog: { open: false, title: "", board: null },
       };
     },
     computed: {
@@ -91,6 +92,12 @@
             this.busy = false;
           }
         }
+      },
+      // 仮想繁殖牝馬の中身を見せるだけ。選ばせない。
+      openPedigree(step) {
+        var board = this.plan && this.plan.mareBoardFor(step.stepNo);
+        if (!board) return;
+        this.pedigreeDialog = { open: true, title: step.mareLabel || "仮想の繁殖牝馬", board: board };
       },
       goHome() {
         window.Dabimas.workspaceSync.goHome().catch(() => {
@@ -184,6 +191,8 @@
                   <div class="assist-horse-name">
                     <b>{{ step.stepNo === 1 ? horseName(baseMare) : step.mareLabel }}</b>
                     <span v-if="step.stepNo > 1" class="assist-virtual">仮想</span>
+                    <v-btn v-if="step.stepNo > 1" text x-small class="assist-reselect"
+                      @click="openPedigree(step)">血統表を見る</v-btn>
                     <span v-else-if="baseMare.rare" class="assist-rare">{{ baseMare.rare }}</span>
                     <v-btn v-if="step.stepNo === 1" text x-small class="assist-reselect" :disabled="busy" @click="openPicker(0)">選び直す</v-btn>
                   </div>
@@ -239,6 +248,9 @@
               <div v-else class="assist-waiting">{{ step.stepNo - 1 }}代目の種牡馬を選ぶと使えるようになります</div>
             </div>
           </section>
+          <assist-pedigree-dialog v-model="pedigreeDialog.open"
+            :title="pedigreeDialog.title" :board="pedigreeDialog.board"
+            data-html2canvas-ignore></assist-pedigree-dialog>
           <footer class="assist-foot">1代目で選んだ種牡馬と繁殖牝馬から生まれる産駒が、そのまま2代目の繁殖牝馬になります。前の代を変えると、後ろの代は組み直しになります。</footer>
         </div>
         </div>
