@@ -431,6 +431,22 @@ html.dabimas-dark .assist-ped-horse {
   color: var(--dk-text);
 }
 
+/* 父母カラーバーの段の区切り。css/mobile.css が白1px の box-shadow で
+   描いているが、紺・臙脂のバーは情報そのものなので暗くしておらず、
+   区切りだけが白のまま残って浮いていた。区切りは「バーの切れ目」なので、
+   他の罫線と同じ色にする（PC版は border-top で描いていて、そちらは
+   上の .pedigree-card-shell td の border-color でもう暗くなっている）。 */
+html.dabimas-dark .exp-mobile-layout .table_main > tbody > tr > td.father_0,
+html.dabimas-dark .exp-mobile-layout .table_main > tbody > tr > td.father,
+html.dabimas-dark .exp-mobile-layout .table_main > tbody > tr > td.mother_0,
+html.dabimas-dark .exp-mobile-layout .table_main > tbody > tr > td.mother {
+  box-shadow: inset 0 1px 0 0 var(--dk-line);
+}
+
+html.dabimas-dark .exp-mobile-layout .table_main > tbody > tr > td.exp-mobile-colorseg-edge {
+  box-shadow: none;
+}
+
 /* ===== クロスの馬名（赤） ===== */
 /* 明るい側の #ff1744 は、暗くした見事枠（#4a4520）の上だと 4.4 までしか
    出ず読みにくい。色相は動かさず明度だけ上げ、さらに色付きのセルの上でも
