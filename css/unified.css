@@ -1071,12 +1071,31 @@
   vertical-align: middle;
 }
 
-/* クロスが成立している馬。本体の血統表が馬名を赤くするのと同じ色にする
-   （css/vuetify.min.css の .v-input.inbreed input / css/mobile.css の
-   .exp-mobile-autocomplete-root.inbreed）。 */
+/* クロスが成立している馬。本体の血統表が馬名を赤くするのと同じ扱いにする。 */
 .assist-ped-horse-name--cross {
-  color: #ff1744;
   font-weight: 700;
+}
+
+/* ===== クロスの馬名の赤（明るい側） ===== */
+/* もとの #ff1744 は白地で 3.8、見事枠（#fffcaa）の上だと 3.5 しか出ない。
+   色相は動かさず明度だけ落として、血統表に出るどの地の上でも 4.5 を超える
+   ようにする。本体の血統表（ケータイ版のトリガー・PC版の入力欄）と
+   配合結果のダイアログの3か所に同じ色を当てる。
+   css/mobile.css と css/vuetify.min.css の指定より後に読まれる。 */
+.exp-mobile-autocomplete-root.inbreed > .exp-mobile-horse-trigger,
+.exp-mobile-autocomplete-root.inbreed > .exp-mobile-horse-trigger .exp-mobile-horse-text,
+.exp-mobile-autocomplete-root.inbreed > .exp-mobile-horse-trigger .mdi,
+.exp-mobile-autocomplete-root.inbreed > .v-input input,
+.exp-mobile-autocomplete-root.inbreed > .v-input .v-select__selection,
+.exp-mobile-autocomplete-root.supreme > .exp-mobile-horse-trigger,
+.exp-mobile-autocomplete-root.supreme > .exp-mobile-horse-trigger .exp-mobile-horse-text,
+.exp-mobile-autocomplete-root.supreme > .exp-mobile-horse-trigger .mdi,
+.exp-mobile-autocomplete-root.supreme > .v-input input,
+.exp-mobile-autocomplete-root.supreme > .v-input .v-select__selection,
+.pedigree-card-shell .v-input.inbreed input,
+.pedigree-card-shell .v-input.supreme input,
+.assist-ped-horse-name--cross {
+  color: #d0002b !important;
 }
 
 .assist-ped-actions { border-top: 1px solid #e2ddec; }
