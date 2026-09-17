@@ -431,6 +431,35 @@ html.dabimas-dark .assist-ped-horse {
   color: var(--dk-text);
 }
 
+/* ===== クロスの馬名（赤） ===== */
+/* 明るい側の #ff1744 は、暗くした見事枠（#4a4520）の上だと 4.4 までしか
+   出ず読みにくい。色相は動かさず明度だけ上げ、さらに色付きのセルの上でも
+   浮くように黒い縁を足す（.plan-danger-mark と同じ手）。
+   本体の血統表（ケータイ版のトリガー・PC版の入力欄）と、配合結果の
+   ダイアログの3か所に同じ色を当てる。 */
+html.dabimas-dark .exp-mobile-autocomplete-root.inbreed > .exp-mobile-horse-trigger,
+html.dabimas-dark .exp-mobile-autocomplete-root.inbreed > .exp-mobile-horse-trigger .exp-mobile-horse-text,
+html.dabimas-dark .exp-mobile-autocomplete-root.inbreed > .exp-mobile-horse-trigger .mdi,
+html.dabimas-dark .exp-mobile-autocomplete-root.inbreed > .v-input input,
+html.dabimas-dark .exp-mobile-autocomplete-root.inbreed > .v-input .v-select__selection,
+html.dabimas-dark .exp-mobile-autocomplete-root.supreme > .exp-mobile-horse-trigger,
+html.dabimas-dark .exp-mobile-autocomplete-root.supreme > .exp-mobile-horse-trigger .exp-mobile-horse-text,
+html.dabimas-dark .exp-mobile-autocomplete-root.supreme > .exp-mobile-horse-trigger .mdi,
+html.dabimas-dark .exp-mobile-autocomplete-root.supreme > .v-input input,
+html.dabimas-dark .exp-mobile-autocomplete-root.supreme > .v-input .v-select__selection,
+html.dabimas-dark .pedigree-card-shell .v-input.inbreed input,
+html.dabimas-dark .pedigree-card-shell .v-input.supreme input,
+html.dabimas-dark .assist-ped-horse-name--cross {
+  color: #ff6b7d !important;
+  /* 見事枠（#4a4520）の上だと色を上げただけでは 3.5 までしか出ないので、
+     父母の目印（.father_0）と同じ 1px の黒い縁で字の周りを黒地にする。
+     縁の外側はぼかしでなじませる。 */
+  text-shadow:
+    1px 1px 0 #000, -1px 1px 0 #000, 1px -1px 0 #000, -1px -1px 0 #000,
+    1px 0 0 #000, -1px 0 0 #000, 0 1px 0 #000, 0 -1px 0 #000,
+    0 0 3px #000;
+}
+
 /* 上のバー。他の画面のバーと同じ地・同じ罫線にする。 */
 html.dabimas-dark .assist-bar {
   background: var(--dk-raised);
