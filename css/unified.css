@@ -973,19 +973,27 @@
 /* ===== 見るだけの血統表ダイアログ ===== */
 /* 表そのものは本体のクラス（table_main / horse_0 / styleParentLine …）で
    描くので、ここでは器と、操作を出さないぶんの調整だけを持つ。 */
+/* 血統表が32行あるので、器（ヘッダーと余白）は要る分だけにして
+   表に高さを回す。Vuetify の既定は max-height 90% ＋ 上下 24px の余白。 */
+.v-dialog.assist-ped-dialog {
+  max-height: 95%;
+  margin: 12px 24px;
+}
+
 .assist-ped-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 8px 10px 16px !important;
+  gap: 6px;
+  padding: 4px 6px 4px 14px !important;
   border-bottom: 1px solid #e2ddec;
 }
 
 .assist-ped-title {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
+  line-height: 1.3;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1106,8 +1114,6 @@
 .assist-ped-horse-name--cross {
   color: #d0002b !important;
 }
-
-.assist-ped-actions { border-top: 1px solid #e2ddec; }
 
 /* 開けることが見て分かるように ▼ を付け、押せる幅いっぱいのボタンにする。 */
 .assist-cross-toggle {

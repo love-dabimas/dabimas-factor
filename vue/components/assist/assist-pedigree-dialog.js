@@ -101,11 +101,12 @@
       },
     },
     template: `
-      <v-dialog :value="value" scrollable max-width="560" @input="$emit('input', $event)">
+      <v-dialog :value="value" scrollable max-width="560"
+        content-class="assist-ped-dialog" @input="$emit('input', $event)">
         <v-card class="assist-ped-card">
           <v-card-title class="assist-ped-head">
             <span class="assist-ped-title">{{ title }}</span>
-            <v-btn icon aria-label="閉じる" @click="close"><v-icon>mdi-close</v-icon></v-btn>
+            <v-btn icon small aria-label="閉じる" @click="close"><v-icon small>mdi-close</v-icon></v-btn>
           </v-card-title>
           <v-card-text class="assist-ped-body">
             <p v-if="note" class="assist-ped-note">{{ note }}</p>
@@ -155,10 +156,6 @@
               </table>
             </div>
           </v-card-text>
-          <v-card-actions class="assist-ped-actions">
-            <v-spacer></v-spacer>
-            <v-btn text @click="close">閉じる</v-btn>
-          </v-card-actions>
         </v-card>
       </v-dialog>
     `,
