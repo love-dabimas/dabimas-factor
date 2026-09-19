@@ -97,17 +97,28 @@ html.dabimas-dark .styleFactorClassMain:not([class*="f0"]):not([class*="f1"]) {
 /* ライトは1列おきに白と #eee を敷いて、桁を目で追えるようにしている
    （style.css の :nth-child(2n) / (2n-1)）。ダークでも同じように1列おきに
    濃さを変える。段差はライトと同じくらい（明度比 1.1 前後）に留める。 */
-html.dabimas-dark td.factorNumCell {
+/* PC版のニトロ・クロスは th、ケータイ版と子系統の集計は td で同じクラスを
+   使っている。td だけを見ていたので、PC版の数値が白地に明るい文字
+   （1.1:1）のまま残っていた。どちらも同じ扱いにする。 */
+html.dabimas-dark .factorNumCell {
   color: var(--dk-text) !important;
   border-color: var(--dk-line) !important;
 }
 
-html.dabimas-dark td.factorNumCell:nth-child(2n-1) {
+html.dabimas-dark .factorNumCell:nth-child(2n-1) {
   background: var(--dk-surface) !important;
 }
 
-html.dabimas-dark td.factorNumCell:nth-child(2n) {
+html.dabimas-dark .factorNumCell:nth-child(2n) {
   background: #272433 !important;
+}
+
+/* 「理論」「相性」の見出し。ライトは #bbb の薄い灰色で、ダークだと
+   明るい文字が乗って 1.2:1 しか出ていなかった。ヘッダーの一段手前の
+   地に合わせる（数値セルより少しだけ明るくして見出しだと分かるように）。 */
+html.dabimas-dark .table_footer_TH_theory {
+  background: #3a3550 !important;
+  color: var(--dk-text) !important;
 }
 
 /* ===== ダイアログ・メニュー ===== */
@@ -155,6 +166,31 @@ html.dabimas-dark .v-application .v-dialog .v-input__slot fieldset {
    枠を持たない --group 版は Vuetify 側も透明なので触らない。 */
 html.dabimas-dark .v-application .v-btn-toggle:not(.v-btn-toggle--group) {
   background-color: var(--dk-raised);
+  /* 枠と仕切りが rgba(0,0,0,.12)（＝黒地では見えない）なので、
+     3つのボタンが1枚の板に見えて押せると分からなかった。 */
+  border: 1px solid var(--dk-line);
+}
+
+html.dabimas-dark .v-application .v-btn-toggle:not(.v-btn-toggle--group) > .v-btn + .v-btn {
+  border-left: 1px solid var(--dk-line) !important;
+}
+
+/* ===== スイッチ（設定のトグル） ===== */
+/* Vuetify の溝は「黒の 38%」を opacity .32 で敷くだけなので、黒地だと
+   消えてつまみしか見えず、入り切りも分からなかった。溝を明るい灰にして、
+   入のときはこのアプリの差し色（既定の Vuetify 青ではなく）にする。 */
+html.dabimas-dark .v-input--switch .v-input--switch__track {
+  color: #8f89ad !important;
+  opacity: 0.8;
+}
+
+html.dabimas-dark .v-input--switch.primary--text .v-input--switch__track {
+  color: var(--dk-accent) !important;
+  opacity: 0.75;
+}
+
+html.dabimas-dark .v-input--switch.primary--text .v-input--switch__thumb {
+  color: var(--dk-accent) !important;
 }
 
 /* ===== ダビ娘の枠まわり（中身の iframe は明るいまま） ===== */
