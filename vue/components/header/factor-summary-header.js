@@ -195,14 +195,19 @@
                 class="f00_inbreed sire-line-summary-back"
                 @click="$emit('toggle-category')"
               ><span>系統</span></th>
-              <th class="f00_inbreed_header">色</th>
+              <!-- 見出しの列（色／系統数／出現数）に幅を指定しないと、colspan の
+                   ぶんを割り振ったあとの余りが全部ここへ来て、PC幅では 790px の
+                   赤い帯になっていた（1366px のうち6割）。ニトロ・クロス側の
+                   見出しと同じ 1% にして、余りは①〜⑨の列へ回す。 -->
+              <th width="5%" class="f00_inbreed_header">色</th>
               <th
                 v-for="bucket in sireLineBuckets"
                 :key="'desktop-head-' + bucket.index"
                 colspan="3"
+                width="8%"
                 :class="bucket.className"
               >{{ bucket.label }}</th>
-              <th rowspan="2" class="table_footer_TH_theory">相性</th>
+              <th width="5%" rowspan="2" class="table_footer_TH_theory">相性</th>
               <th
                 rowspan="3"
                 width="3%"
@@ -231,7 +236,7 @@
               ><v-icon size="x-large" color="white">mdi-reload</v-icon></th>
             </tr>
             <tr>
-              <th class="f00_nitro">系統数</th>
+              <th width="5%" class="f00_nitro">系統数</th>
               <td
                 v-for="bucket in sireLineBuckets"
                 :key="'desktop-distinct-' + bucket.index"
@@ -240,7 +245,7 @@
               >{{ sireLineBucketValue('distinct', bucket.index) }}</td>
             </tr>
             <tr>
-              <th class="f00_inbreed">出現数</th>
+              <th width="5%" class="f00_inbreed">出現数</th>
               <td
                 v-for="bucket in sireLineBuckets"
                 :key="'desktop-total-' + bucket.index"

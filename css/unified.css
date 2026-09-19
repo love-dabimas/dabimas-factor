@@ -368,6 +368,15 @@
     line-height: var(--exp-pc-row-height);
   }
 
+  /* 右端の固定幅セル（世代・因子3つ・❤）は style.css で 30px／20px。
+     中身は1文字なので 24px／17px で足り、1表あたり 30px を馬名へ回せる。
+     系統コード（.styleParentLine）だけは "Ro" の2文字が入るので触らない。 */
+  .table_main .styleFactorClassMain,
+  .table_main .styleInbreedButton {
+    width: 24px;
+    font-size: 17px;
+  }
+
   /* 因子セルの「因」ボタン（★エディット種牡馬の手動因子）は v-btn の既定の
      min-width:64px / padding:0 16px のせいで、そのセルだけ列幅が広がって
      隣の因子セルと揃わない。行高だけ合わせて左右は詰める。 */
