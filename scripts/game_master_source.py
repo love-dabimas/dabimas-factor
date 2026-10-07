@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+from copy import deepcopy
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import json
@@ -9,7 +10,14 @@ from pathlib import Path
 import sys
 
 # CLI と importlib で同じ変換規則・警告カウンタを共有する。
-import build_dabimas_stream as conversion
+try:
+    import build_dabimas_stream as conversion
+except ModuleNotFoundError:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('build_dabimas_stream', Path(__file__).with_name('build_dabimas_stream.py'))
+    conversion = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = conversion
+    spec.loader.exec_module(conversion)
 
 JST = timezone(timedelta(hours=9))
 STALLION_ID_PREFIX = 'sg'
@@ -227,3 +235,117 @@ class BroodmareMasterSource:
             raise ValueError(f'broodmare_grade unverified or unknown: {grade}')
         return self.fields.entry(record, 'bg' + str(record['game_broodmare_id']), record['name'], '', '1',
                                  None, None, '', GRADE_CATEGORY_ICON[grade['code']], ['', '', ''], name_hints)
+
+
+class GameUpdate:
+    """日次の追記と金曜のID引き継ぎ・持ち越しを、監査記録と一緒に扱う。"""
+    def __init__(self, bundle, source, previous, mode, as_of, exclusions):
+        self.source, self.previous, self.mode, self.as_of = source, previous, mode, as_of
+        self.stallions = StallionMasterSource(bundle.stallion, bundle.ability, source)
+        self.mares = BroodmareMasterSource(bundle.broodmare, source) if bundle.broodmare else None
+        if self.mares:
+            self.mares.fields = self.stallions.fields
+        self.exclusions = exclusions
+        self.hints = build_name_hints(previous)
+        reason = ('broodmare master not supplied' if self.mares is None else
+                  'broodmare schema lacks verified start dates' if not self.mares.start_dates_available() else None)
+        self.mares_enabled = reason is None
+        if reason:
+            print(f'[warn] mares: {reason}', file=sys.stderr)
+        self.audit = dict(mode=mode, as_of_utc=datetime.fromtimestamp(as_of, timezone.utc).isoformat(),
+                          as_of_jst=datetime.fromtimestamp(as_of, JST).isoformat(),
+                          dataset_version=source.dataset_version, previous_count=len(previous), output_count=0,
+                          added=[], skipped_future={'stallion': [], 'broodmare': []},
+                          skipped_duplicate_node=[], excluded=[], adopted_ids=[], carried_sg=[], carried_bg=[],
+                          dropped=[], mares_disabled_reason=reason, ancestor_name_updates=[])
+        self.adopted = set()
+        self.id_index = {}
+        if mode == 'weekly':
+            for entry in previous:
+                if entry['id'].startswith(('sg', 'bg')):
+                    self.rebuild(entry)
+                    key = self.match_key(entry)
+                    if entry.get('nodeId'):
+                        self.id_index[key] = entry['id']
+
+    @staticmethod
+    def match_key(entry):
+        return (('1', entry.get('nodeId')) if entry['sex'] == '1' else
+                ('0', entry.get('nodeId'), entry['name'], entry['subName']))
+
+    def rebuild(self, entry):
+        old = deepcopy(entry['descendants'])
+        self.stallions.rebuild_pedigree_fields(entry, self.hints)
+        for before, after in zip(old, entry['descendants']):
+            if before['name'] != after['name']:
+                self.audit['ancestor_name_updates'].append(dict(pedigree_id=after['pedigreeId'],
+                                                               old=before['name'], new=after['name']))
+
+    def daily_entries(self):
+        entries = deepcopy(self.previous)
+        for entry in entries:
+            self.rebuild(entry)
+        known = {e['nodeId'] for e in entries if e.get('nodeId')}
+        for kind, source, excluded in [('stallion', self.stallions, self.exclusions[0]),
+                                       ('broodmare', self.mares, self.exclusions[1])]:
+            if kind == 'broodmare' and not self.mares_enabled:
+                continue
+            selection = source.select_new(self.as_of, known, excluded)
+            self.audit['skipped_future'][kind] = selection.skipped_future[:50]
+            for key in ('skipped_duplicate_node', 'excluded'):
+                self.audit[key].extend(dict(kind=kind, game_id=i[0], name=i[1], display_start_at=i[2])
+                                       for i in getattr(selection, key))
+            for game_id, _, start in selection.selected:
+                entry = source.build_entry(source.find_record(game_id), self.hints)
+                entries.append(entry)
+                known.add(entry['nodeId'])
+                self.audit['added'].append(dict(id=entry['id'], kind=kind, name=entry['name'],
+                                               subName=entry['subName'], game_id=game_id, display_start_at=start))
+        return entries
+
+    def weekly_entry(self, entry):
+        self.rebuild(entry)
+        identifier = self.id_index.get(self.match_key(entry))
+        if identifier and identifier not in self.adopted:
+            self.audit['adopted_ids'].append(dict(old=entry['id'], new=identifier))
+            entry['id'] = identifier
+            self.adopted.add(identifier)
+
+    def carried_entries(self):
+        result = []
+        for old in self.previous:
+            identifier = old['id']
+            if not identifier.startswith(('sg', 'bg')) or identifier in self.adopted:
+                continue
+            is_mare = identifier.startswith('bg')
+            source = self.mares if is_mare else self.stallions
+            excluded = self.exclusions[int(is_mare)]
+            record = source.find_record(identifier[2:]) if source else None
+            if is_mare and not self.mares_enabled:
+                entry = old
+            elif (record is not None and record['active'] and identifier[2:] not in excluded
+                  and is_eligible(source.start_epoch(record), self.as_of)):
+                entry = source.build_entry(record, self.hints)
+            else:
+                self.audit['dropped'].append(dict(id=identifier, reason='missing, inactive, future or excluded'))
+                continue
+            result.append(entry)
+            self.audit['carried_bg' if is_mare else 'carried_sg'].append(identifier)
+        return result
+
+    def pedigree_ids(self, entries):
+        touched = set()
+        for entry in entries:
+            ids = [entry.get('pedigreeId')] + [a.get('pedigreeId') for a in entry['descendants']]
+            ids += [self.source.node_pedigree_id(nid) for nid in (entry.get('mares') or [])]
+            touched.update(pid for pid in ids if pid is not None)
+        return touched
+
+    def finish(self, entries, audit_path):
+        self.audit['output_count'] = len(entries)
+        if audit_path:
+            path = Path(audit_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(self.audit, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
+        print(f'mode={self.mode} as_of={self.audit["as_of_jst"]} ' + ' '.join(
+            f'{key}={len(self.audit[key])}' for key in ('added', 'carried_sg', 'carried_bg', 'adopted_ids')))
