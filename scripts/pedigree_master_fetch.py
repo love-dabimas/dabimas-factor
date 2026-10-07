@@ -9,6 +9,8 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
+from datetime import datetime
 from typing import Any
 
 from botocore.exceptions import ClientError
@@ -22,6 +24,10 @@ class PedigreeMasterError(RuntimeError):
     """血統マスターの検証に失敗したことを表す。"""
 
 
+class PedigreeMasterVersionMismatch(PedigreeMasterError):
+    """順次配置中にマスターの版が食い違っている。"""
+
+
 @dataclass(frozen=True)
 class PedigreeMasterBundle:
     """検証済みの血統マスター 2 ファイルを保持する。"""
@@ -33,11 +39,11 @@ class PedigreeMasterBundle:
     from_cache: bool
 
 
-def _raise_violations(label: str, violations: list[str]) -> None:
+def _raise_violations(label: str, violations: list[str], error_type=PedigreeMasterError) -> None:
     """違反件数と先頭サンプルを含む検証例外を送出する。"""
     if violations:
         samples = ", ".join(violations[:5])
-        raise PedigreeMasterError(
+        raise error_type(
             f"{label}: 違反 {len(violations)} 件（先頭最大5件: {samples}）"
         )
 
@@ -85,6 +91,7 @@ def validate_bundle(
         [f"master={master_version!r}, game={game_version!r}"]
         if dataset_version_invalid
         else [],
+        PedigreeMasterVersionMismatch,
     )
     master_sha256 = master.get("source", {}).get("sha256")
     game_sha256 = game.get("source", {}).get("sha256")
@@ -100,6 +107,7 @@ def validate_bundle(
         [f"master={master_sha256!r}, game={game_sha256!r}"]
         if source_sha256_invalid
         else [],
+        PedigreeMasterVersionMismatch,
     )
     _raise_violations(
         "V05 dataset_version 不一致",
@@ -326,6 +334,128 @@ def load_pedigree_master(
         expected_dataset_version,
         from_cache=master_cached and game_cached,
     )
+
+
+@dataclass(frozen=True)
+class GameMasterBundle:
+    pedigree: PedigreeMasterBundle
+    stallion: dict
+    ability: dict
+    broodmare: dict | None
+
+    @property
+    def broodmare_start_dates_available(self) -> bool:
+        return bool(self.broodmare and self.broodmare['schema_version'] >= 6
+                    and self.broodmare.get('display_start_at_field_map'))
+
+
+def validate_game_masters(pedigree_master, pedigree_game, stallion, ability,
+                          broodmare=None, expected_dataset_version=None,
+                          allow_mixed_versions=False) -> GameMasterBundle:
+    documents = dict(pedigree=pedigree_master, game=pedigree_game,
+                     stallion=stallion, ability=ability)
+    if broodmare is not None:
+        documents['broodmare'] = broodmare
+    violations = []
+    for name, doc in documents.items():
+        if not isinstance(doc.get('source'), dict) or not doc['source'].get('sha256'):
+            violations.append(f'{name}.source.sha256 missing')
+        if not isinstance(doc.get('dataset_version'), str) or not doc['dataset_version']:
+            violations.append(f'{name}.dataset_version missing')
+    _raise_violations('game metadata', violations)
+    # 血統2ファイルの内部整合性はローカル混在モードでも必須。
+    validate_bundle(pedigree_master, pedigree_game, expected_dataset_version)
+    for field in ('dataset_version', 'source.sha256'):
+        values = {name: (doc['source']['sha256'] if field == 'source.sha256'
+                         else doc[field]) for name, doc in documents.items()}
+        if not allow_mixed_versions and len(set(values.values())) != 1:
+            _raise_violations(field, [repr(values)], PedigreeMasterVersionMismatch)
+    for name, minimum in [('stallion', 7), ('ability', 3), ('broodmare', 5)]:
+        if name not in documents:
+            continue
+        doc = documents[name]
+        version = doc.get('schema_version')
+        _raise_violations(f'{name}.schema', [repr((doc.get('schema'), version))]
+                          if doc.get('schema') != f'dabimas-{name}-game-master'
+                          or type(version) is not int or version < minimum else [])
+    policy = stallion.get('time_policy', {})
+    _raise_violations('stallion.time_policy', [repr(policy)] if
+                      policy.get('display_start_at_raw') != 'Unix seconds' or
+                      policy.get('eligible_when') != 'display_start_at <= current time' else [])
+    nodes = {node['node_id'] for node in pedigree_game['nodes']}
+    for kind, plural in [('stallion', 'stallions'), ('ability', 'abilities'), ('broodmare', 'broodmares')]:
+        if kind not in documents:
+            continue
+        doc = documents[kind]
+        records = doc.get(plural)
+        _raise_violations(plural, ['required list'] if not isinstance(records, list) else [])
+        problems = []
+        if doc.get(f'{kind}_count') != len(records):
+            problems.append(f'{kind}_count != {len(records)}')
+        id_key = f'game_{kind}_id'
+        problems.extend(f'{id_key} duplicate {v}' for v in _duplicate_values([r.get(id_key) for r in records]))
+        for r in records:
+            required = [id_key, 'name']
+            if kind != 'ability':
+                required += ['node_id', 'pedigree_id', 'active']
+            if kind == 'stallion':
+                required += ['rarity', 'nonordinary_ability_id', 'sub_ability_id', 'display_start_at_raw']
+            for key in required:
+                if key not in r:
+                    problems.append(f'{r.get(id_key)} missing {key}')
+            if kind != 'ability':
+                try:
+                    int(r.get(id_key))
+                except (TypeError, ValueError):
+                    problems.append(f'{id_key} invalid {r.get(id_key)}')
+                if (kind == 'stallion' or doc['schema_version'] >= 6) and r.get('node_id') not in nodes:
+                    problems.append(f'node_id missing {r.get("node_id")}')
+            if kind == 'stallion' and type(r.get('display_start_at_raw')) is not int:
+                problems.append(f'{r.get(id_key)} display_start_at_raw not integer')
+            if kind == 'broodmare' and doc['schema_version'] >= 6 and 'display_start_at' in r:
+                try:
+                    stamp = datetime.fromisoformat(r['display_start_at'].replace('Z', '+00:00'))
+                    if stamp.utcoffset() is None:
+                        raise ValueError('timezone missing')
+                except (AttributeError, TypeError, ValueError):
+                    problems.append(f'{r.get(id_key)} invalid display_start_at')
+        if kind == 'broodmare' and doc['schema_version'] >= 6:
+            mapping = doc.get('display_start_at_field_map', {})
+            dated = sum('display_start_at' in r for r in records)
+            if (mapping.get('status') != 'verified' or mapping.get('dated_count') != dated
+                    or mapping.get('unset_count') != len(records) - dated):
+                problems.append(f'display_start_at_field_map inconsistent: {mapping}')
+        _raise_violations(kind, problems)
+    return GameMasterBundle(_make_bundle(pedigree_master, pedigree_game,
+                            expected_dataset_version, from_cache=False), stallion, ability, broodmare)
+
+
+def load_game_masters(*, endpoint=None, bucket=None, master_key='pedigree_master.json',
+                      game_nodes_key='pedigree_master.game.json',
+                      stallion_key='stallion_master.game.json', ability_key='ability_master.game.json',
+                      broodmare_key='broodmare_master.game.json', cache_dir='.cache/pedigree',
+                      expected_dataset_version=None, client=None, mismatch_retries=0,
+                      mismatch_retry_wait=60.0, sleep=time.sleep) -> GameMasterBundle:
+    if mismatch_retries < 0 or mismatch_retry_wait < 0:
+        raise ValueError('mismatch retry settings must be non-negative')
+    if client is None:
+        client = _build_r2_client(endpoint or os.environ.get('R2_ENDPOINT_URL', DEFAULT_R2_ENDPOINT))
+    for attempt in range(mismatch_retries + 1):
+        payloads = [_fetch_object(client=client, bucket=bucket or os.environ.get('R2_BUCKET', DEFAULT_R2_BUCKET),
+                    key=key, cache_dir=Path(cache_dir) if cache_dir is not None else None)
+                    for key in (master_key, game_nodes_key, stallion_key, ability_key, broodmare_key)]
+        try:
+            bundle = validate_game_masters(*(json.loads(p[0]) for p in payloads),
+                                           expected_dataset_version=expected_dataset_version)
+            pedigree = bundle.pedigree
+            return GameMasterBundle(PedigreeMasterBundle(pedigree.master, pedigree.game,
+                                    pedigree.dataset_version, pedigree.source_sha256,
+                                    all(p[1] for p in payloads)), bundle.stallion, bundle.ability, bundle.broodmare)
+        except PedigreeMasterVersionMismatch:
+            if attempt == mismatch_retries:
+                raise
+            print(f'[warn] master version mismatch; retry {attempt + 1}/{mismatch_retries}', file=sys.stderr)
+            sleep(mismatch_retry_wait)
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
