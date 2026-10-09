@@ -84,6 +84,19 @@ async function run() {
   const pc = {lists,selected:[{...lists[99]}],index:0};
   await f.setOnly(false); assert.equal(desktop.call(pc), lists);
   await f.setOnly(true); assert.deepEqual(desktop.call(pc), [...lists.slice(0,90),lists[99]]);
+  // ゲーム内 ID での突き合わせ（ダビ娘が R2 を正本にして採番が変わっても当たる）
+  assert.equal(link.gameKey("101305", "0"), "g101305-0");
+  assert.equal(link.gameKey("", "0"), null);
+  assert.equal(link.gameKey("101305", "2"), null);
+  const byGame = new Map([["g101305-0", "s2435330721"]]);
+  // ゲーム内 ID で引ければ、ダビ娘が送ってきた HorseId より優先する
+  assert.equal(link.resolveId({ horseId: "101305", gender: "0", gameId: "101305" }, byGame), "s2435330721");
+  // 引けなければ従来どおり s/b + HorseId
+  assert.equal(link.resolveId({ horseId: "2435330721", gender: "0", gameId: "999" }, byGame), "s2435330721");
+  assert.equal(link.resolveId({ horseId: "2435330721", gender: "0" }, byGame), "s2435330721");
+  assert.equal(link.resolveId({ horseId: "2435330721", gender: "0" }, null), "s2435330721");
+  // 自家製馬の経路は変わらない
+  assert.equal(link.resolveId({ horseId: "ch_abc", gender: "0" }, byGame), "abc");
   assert.equal(D.logic.storage.unifiedDb.DB_VERSION,3);
   assert.equal(D.logic.storage.unifiedDb.FAVORITE_STORE_NAME,'favorites');
   const html = read('index.html'), sw = read('service-worker.js');

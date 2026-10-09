@@ -59,6 +59,7 @@
     },
     created() {
       this.pendingHello = new Set();
+      this.idByGameKey = null;
       this.supportedIds = null;
       this.supportedKeys = [];
       this.readySources = new Set();
@@ -85,6 +86,17 @@
         if (this.supportedIds || !this.horsesReady) return;
         this.supportedIds = new Set(this.$root.horsesBase.map(horse => horse.id).filter(link.isMasterHorseId));
         this.supportedKeys = Array.from(this.supportedIds).map(link.toMusumeKey);
+        // ゲーム内 ID のキーも一緒に渡す。ダビ娘側は、自分の ID・以前の ID と
+        // あわせてこれでも照合するので、R2 を正本にして採番がずれた馬も当たる。
+        // ダビふぁくの馬に gameId が入るまでは、この組は空のままになる。
+        this.idByGameKey = new Map();
+        this.$root.horsesBase.forEach(horse => {
+          var key = link.gameKey(horse.gameId, horse.sex);
+          if (key && link.isMasterHorseId(horse.id)) {
+            this.idByGameKey.set(key, horse.id);
+            this.supportedKeys.push(key);
+          }
+        });
       },
       sendFavorites(source, includeSupported) {
         var message = { type: "dabimas:favorites", v: 1,
@@ -220,9 +232,9 @@
           favorites.setOnly(data.value === true);
           return;
         }
-        var id = link.fromMusume(data.horseId, data.gender);
+        this.prepareSupported();
+        var id = link.resolveId(data, this.idByGameKey);
         if (data.type === "dabimas:favorite-toggle") {
-          this.prepareSupported();
           if (!id || !this.supportedIds || !this.supportedIds.has(id)) return;
           favorites.toggle(id).catch(() => this.showError("お気に入りを保存できませんでした"));
           return;

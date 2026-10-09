@@ -46,6 +46,22 @@
     if (!/^\d+$/.test(horseId)) return null;
     return (gender === "0" ? "s" : "b") + horseId;
   }
+  // ゲーム内 ID（ゲーム本体が持つ番号）で作るキー。全書の更新や R2 の採取の
+  // タイミングに左右されないので、ダビ娘との突き合わせでいちばん安定する。
+  // ダビふぁくの馬に gameId が入るのは日次データ更新の実装後なので、
+  // それまでこの経路は黙って使われないままになる（害は無い）。
+  function gameKey(gameId, gender) {
+    if (gameId === undefined || gameId === null || gameId === "") return null;
+    return ["0", "1"].includes(gender) ? "g" + String(gameId) + "-" + gender : null;
+  }
+  // ダビ娘から届いた馬を、ダビふぁくの ID に直す。
+  // ゲーム内 ID で引ければそれを優先し、だめなら従来どおり s/b + HorseId にする。
+  // ダビ娘は、こちらが知っている ID（採番が変わる前の ID を含む）を送ってくる。
+  function resolveId(data, idByGameId) {
+    var byGame = idByGameId && data && gameKey(data.gameId, data.gender)
+      ? idByGameId.get(gameKey(data.gameId, data.gender)) : null;
+    return byGame || fromMusume(data && data.horseId, data && data.gender);
+  }
   function readMessage(event, sources, expectedOrigin) {
     if (!event || event.origin !== expectedOrigin || !event.source || !sources.includes(event.source)) return null;
     var data = event.data;
@@ -65,6 +81,8 @@
     isMasterHorseId: isMasterHorseId,
     toMusumeKey: toMusumeKey,
     fromMusume: fromMusume,
+    gameKey: gameKey,
+    resolveId: resolveId,
     readMessage: readMessage,
   };
 })(window);
