@@ -1,210 +1,224 @@
-# ダビマス更新の週次バッチ:
-# 1) 最新情報取得 2) 画像生成 3) JSON更新 4) リポジトリ反映 5) X投稿
-name: Weekly Dabimas Update
-
+# 日次: 00:47 UTC = 09:47 JST 起動 → 11:30 JST まで待機。
+# 金曜: 04:07 UTC = 13:07 JST 起動 → 18:30 JST まで待機。
+# schedule 遅延対策: docs/x-post-schedule-fix-plan.md。日次は全書を見ず R2 だけを使う。
+# dry_run=true は生成・検証・画像まで。未来の as_of も指定可能。
+# runner にキャッシュは復元しない。R2 取得失敗時はキャッシュへ逃げず失敗する。
+name: Dabimas Data Update
 on:
-  # GitHub Actions 画面から手動実行
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "daily = R2 から追加 / weekly = 全書を全件取り直す"
+        type: choice
+        options: [daily, weekly]
+        default: daily
+      as_of:
+        description: "基準時刻（例 2026-10-13T11:30:00+09:00）。空 = 現在。未来は dry_run のみ"
+        type: string
+        default: ""
+      dry_run:
+        description: "生成・検証・差分の確認だけ。commit・push・X 投稿をしない"
+        type: boolean
+        default: false
   schedule:
-    # cron は UTC 指定: 毎週金曜 04:07 UTC (= 13:07 JST) に前倒しで起動し、
-    # ジョブ先頭で 18:30 JST まで待機する（GitHub schedule の数時間遅延への対策）。
-    # 詳細: docs/x-post-schedule-fix-plan.md
+    - cron: "47 0 * * *"
     - cron: "7 4 * * 5"
-
 permissions:
-  # JSON 更新結果を commit/push するために必要
   contents: write
-
+  actions: read
 concurrency:
-  # 同時多重実行を避ける（先行ジョブはキャンセルしない）
-  group: weekly-dabimas-update
+  group: dabimas-data-update
   cancel-in-progress: false
-
 jobs:
-  weekly-pipeline:
-    # 実行環境と制限時間（18:30 JST までの待機 最大約5.5h + 実処理 1h をカバー）
+  data-pipeline:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     env:
-      # 血統マスター(R2)の読み取り専用トークン。これが無いと build が
-      # nodeId / pedigreeId / mares の無い json を生成して main へ push してしまう。
       R2_ENDPOINT_URL: ${{ secrets.R2_ENDPOINT_URL }}
       R2_BUCKET: ${{ secrets.R2_BUCKET }}
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
     steps:
-      # 前倒し起動からデータ公開後の 18:30 JST まで待つ。
-      # 起動が 18:30 を過ぎるほど遅延した場合は待たずに即実行する。
-      - name: Wait until 18:30 JST
-        if: github.event_name == 'schedule'
+      - name: モードと基準時刻を固定
+        id: ctx
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          INPUT_MODE: ${{ inputs.mode }}
+          INPUT_AS_OF: ${{ inputs.as_of }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
         run: |
-          target=$(TZ=Asia/Tokyo date -d 'today 18:30' +%s)
+          python - <<'PY'
+          from datetime import datetime, timedelta, timezone
+          import os
+          jst = timezone(timedelta(hours=9))
+          now = datetime.now(jst)
+          wait = ''
+          if os.environ['EVENT_NAME'] == 'workflow_dispatch':
+              mode = os.environ['INPUT_MODE'] or 'daily'
+              dry_run = os.environ['INPUT_DRY_RUN'].lower() == 'true'
+              text = os.environ['INPUT_AS_OF']
+              try:
+                  stamp = datetime.fromisoformat(text.replace('Z', '+00:00')) if text else now
+                  if stamp.utcoffset() is None:
+                      raise ValueError()
+              except ValueError:
+                  raise SystemExit('as_of must be timezone-aware ISO 8601')
+              if not dry_run and stamp > now:
+                  raise SystemExit('Future as_of requires dry_run=true')
+          else:
+              mode = 'weekly' if os.environ['SCHEDULE'] == '7 4 * * 5' else 'daily'
+              dry_run = False
+              wait = '18:30' if mode == 'weekly' else '11:30'
+              stamp = now.replace(hour=int(wait[:2]), minute=30, second=0, microsecond=0)
+          if mode not in ('daily', 'weekly'):
+              raise SystemExit('Unknown mode')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+              for key, value in dict(mode=mode, dry_run=str(dry_run).lower(), as_of=stamp.isoformat(), wait=wait).items():
+                  print(f'{key}={value}', file=out)
+          PY
+      - name: 予定時刻まで待機
+        if: steps.ctx.outputs.wait != ''
+        env:
+          WAIT: ${{ steps.ctx.outputs.wait }}
+          AS_OF: ${{ steps.ctx.outputs.as_of }}
+        run: |
+          target=$(date -d "$AS_OF" +%s)
           now=$(date +%s)
           if [ "$now" -lt "$target" ]; then
-            echo "Waiting $(( (target - now) / 60 )) minutes until 18:30 JST..."
+            echo "Waiting $(( (target - now) / 60 )) minutes until $WAIT JST"
             sleep $(( target - now ))
-          else
-            echo "Already past 18:30 JST. Run immediately."
           fi
-
-      # リポジトリのコードを runner に取得（待機後に取得して最新の main を使う）
       - uses: actions/checkout@v5
-
-      # Python 実行環境を準備
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
-      # スクリプト実行に必要な依存関係をインストール
-      - name: Install dependencies
+      - name: 依存導入
+        id: deps
         run: |
           python -m pip install --upgrade pip
           pip install -r scripts/requirements.txt
-
-      # 最新の種牡馬情報を収集してテキスト化
-      - name: Fetch latest news
-        run: |
-          python scripts/fetch_latest_news.py \
-            --out latest_stallions.txt \
-            --news-out latest_news_snapshot.txt
-
-      - name: Detect latest news changes
-        id: latest_news
-        shell: bash
-        run: |
-          SNAPSHOT=.github/state/latest_news_snapshot.txt
-          PREVIOUS_SNAPSHOT="$(mktemp)"
-          git fetch origin +refs/heads/main:refs/remotes/origin/main --depth=1
-          git show origin/main:"$SNAPSHOT" > "$PREVIOUS_SNAPSHOT" 2>/dev/null || true
-
-          if [ -s "$PREVIOUS_SNAPSHOT" ] && cmp -s latest_news_snapshot.txt "$PREVIOUS_SNAPSHOT"; then
-            echo "news_changed=false" >> "$GITHUB_OUTPUT"
-            echo "Latest news did not change. Skip data update steps."
-            rm -f "$PREVIOUS_SNAPSHOT"
-            exit 0
-          fi
-
-          mkdir -p "$(dirname "$SNAPSHOT")"
-          cp latest_news_snapshot.txt "$SNAPSHOT"
-          rm -f "$PREVIOUS_SNAPSHOT"
-          echo "news_changed=true" >> "$GITHUB_OUTPUT"
-
-      # 取得したテキストを投稿用画像に変換
-      - name: Render latest stallions image
-        if: ${{ steps.latest_news.outputs.news_changed == 'true' }}
-        run: |
-          python scripts/txt_to_png.py \
-            --input latest_stallions.txt \
-            --output latest_stallions.png \
-            --font-path fonts/NotoSansCJKjp-Regular.otf
-
-      # 公開用 json を生成（full + 初期ロード軽量化用の summary / detail 分割 + 血統ノード辞書）
-      # dataset_version はここでは固定しない。週次の自動実行なので、R2 側が
-      # 更新されるたびに落ちてしまう。2 ファイル間の版一致検査は常に効いている。
-      - name: Build dabimasFactor.json
-        if: ${{ steps.latest_news.outputs.news_changed == 'true' }}
+      - name: 公開候補を生成
+        id: build
+        env:
+          MODE: ${{ steps.ctx.outputs.mode }}
+          AS_OF: ${{ steps.ctx.outputs.as_of }}
         run: |
           python scripts/build_dabimas_stream.py \
-            --output json/dabimasFactor.json \
-            --summary-output json/dabimasFactor.summary.json \
-            --details-output-dir json/dabimasFactor-details \
-            --pedigree-nodes-output json/pedigreeNodes.json \
+            --mode "$MODE" --as-of "$AS_OF" --previous-json-dir json \
+            --output build_out/dabimasFactor.json \
+            --summary-output build_out/dabimasFactor.summary.json \
+            --details-output-dir build_out/dabimasFactor-details \
+            --pedigree-nodes-output build_out/pedigreeNodes.json \
+            --audit-output build_out/audit.json \
             --r2-endpoint "$R2_ENDPOINT_URL" \
-            --detail-chunk-size 128 \
-            --progress 200 \
-            --fail-on-error
-
-      # service-worker.js の CACHE_NAME を dabimas-factor-vYYYYMMDD-01 へ更新
-      - name: Update CACHE_NAME in service-worker.js
-        if: ${{ steps.latest_news.outputs.news_changed == 'true' }}
+            --pedigree-mismatch-retries 2 --pedigree-mismatch-wait 60 \
+            --detail-chunk-size 128 --progress 200 --fail-on-error
+      - name: 公開候補を検証
+        run: python scripts/verify_dabimas_outputs.py --staging build_out --published json
+      - name: 差分を比較
+        id: diff
         run: |
+          python scripts/diff_dabimas_outputs.py --staging build_out --published json \
+            --text-out update_lines.txt --json-out build_out/update_stats.json
           python - <<'PY'
-          import re
-          from datetime import datetime
+          import json, os
           from pathlib import Path
-          from zoneinfo import ZoneInfo
-
-          sw_path = Path("service-worker.js")
-          src = sw_path.read_text(encoding="utf-8")
-
-          ymd = datetime.now(ZoneInfo("Asia/Tokyo")).strftime("%Y%m%d")
-          cache_name = f"dabimas-factor-v{ymd}-01"
-
-          updated, count = re.subn(
-              r"(?m)^var CACHE_NAME = '.*';$",
-              f"var CACHE_NAME = '{cache_name}';",
-              src,
-              count=1,
-          )
-          if count != 1:
-              raise RuntimeError("CACHE_NAME line was not found in service-worker.js")
-
-          sw_path.write_text(updated, encoding="utf-8")
-          print(f"Updated CACHE_NAME: {cache_name}")
+          audit = json.loads(Path('build_out/audit.json').read_text(encoding='utf-8'))
+          stats = json.loads(Path('build_out/update_stats.json').read_text(encoding='utf-8'))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as out:
+              if stats['content_changed']:
+                  out.write(Path('update_lines.txt').read_text(encoding='utf-8') + '\n')
+                  print(f"mode={audit['mode']}, as_of={audit['as_of_jst']}", file=out)
+                  for key in ('added', 'carried_sg', 'carried_bg', 'dropped'):
+                      print(f'{key}={len(audit[key])}', file=out)
+              else:
+                  print(f"変更なし（mode={audit['mode']}, as_of={audit['as_of_jst']}）", file=out)
           PY
-
-      # json と service-worker.js を同じコミットで main に反映
-      - name: Commit and push JSON + service-worker cache name
-        if: ${{ steps.latest_news.outputs.news_changed == 'true' }}
+      - name: 更新画像を作成
+        if: steps.diff.outputs.content_changed == 'true'
         run: |
-          TODAY="$(TZ=Asia/Tokyo date +'%Y-%m-%d')"
+          python scripts/txt_to_png.py --input update_lines.txt --output update_summary.png \
+            --font-path fonts/NotoSansCJKjp-Regular.otf \
+            --title "ダビふぁく 更新内容 $(TZ=Asia/Tokyo date +%Y-%m-%d)"
+      - name: 検証済みデータを反映
+        if: steps.diff.outputs.content_changed == 'true' && steps.ctx.outputs.dry_run != 'true'
+        run: |
+          rm -rf json/dabimasFactor-details
+          cp -R build_out/dabimasFactor-details json/dabimasFactor-details
+          cp build_out/dabimasFactor.json build_out/dabimasFactor.summary.json build_out/pedigreeNodes.json json/
+          python scripts/bump_cache_name.py
+      - name: commit と push
+        id: push
+        if: steps.diff.outputs.content_changed == 'true' && steps.ctx.outputs.dry_run != 'true'
+        env:
+          MODE: ${{ steps.ctx.outputs.mode }}
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            .github/state/latest_news_snapshot.txt \
-            json/dabimasFactor.json \
-            json/dabimasFactor.summary.json \
-            json/dabimasFactor-details \
-            json/pedigreeNodes.json \
-            service-worker.js
-
+          git add json/dabimasFactor.json json/dabimasFactor.summary.json \
+            json/dabimasFactor-details json/pedigreeNodes.json service-worker.js
           if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Update json/dabimasFactor.json and CACHE_NAME (${TODAY})"
-            git push
+            echo "content_changed but staged diff is empty"
+            exit 1
           fi
-
-      # 画像付きで X に投稿
-      - name: Post to X
-        if: ${{ steps.latest_news.outputs.news_changed == 'true' && success() }}
-        id: post_to_x
+          git commit -m "Update json/dabimasFactor.json and CACHE_NAME ($(TZ=Asia/Tokyo date +%Y-%m-%d), $MODE)"
+          if ! git push origin HEAD:main; then
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+      - name: X へ更新を投稿
+        id: post_update
+        if: steps.push.outcome == 'success'
         env:
-          # X API の認証情報（リポジトリ Secrets）
           X_CLIENT_ID: ${{ secrets.X_CLIENT_ID }}
           X_REFRESH_TOKEN: ${{ secrets.X_REFRESH_TOKEN }}
-          # 投稿本文
           X_TWEET_TEXT: |
             ダビふぁくのデータを更新しました。
-            追加データは添付画像をご確認ください。
+            追加・更新内容は添付画像をご確認ください。
             #ダビマス
-          # 添付画像ファイル
-          X_MEDIA_PATH: latest_stallions.png
+          X_MEDIA_PATH: update_summary.png
+        run: python scripts/post_to_x.py
+      - name: dry_run の成果物
+        if: steps.ctx.outputs.dry_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-update-dry-run
+          path: |
+            build_out/
+            update_lines.txt
+            update_summary.png
+      - name: エラー通知の要否
+        id: err_gate
+        if: failure() && steps.deps.outcome == 'success' && steps.push.outcome != 'success' && steps.ctx.outputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          python scripts/post_to_x.py
-
-      # 最新情報が前回と同じ場合はおやすみ告知だけ X に投稿
-      - name: Post no-change notice to X
-        if: ${{ steps.latest_news.outputs.news_changed == 'false' && success() }}
-        id: post_no_change_to_x
+          previous=$(gh run list --workflow x_post.yml --status completed --limit 1 --json conclusion --jq '.[0].conclusion') || previous=unknown
+          if [ "$previous" != "failure" ]; then
+            echo "notify=true" >> "$GITHUB_OUTPUT"
+            {
+              echo 'X_TWEET_TEXT<<DABIMAS_ERROR_END'
+              echo 'ダビふぁくのデータ更新処理でエラーが発生しました。'
+              echo '公開中のデータは前回成功版のままです。'
+              echo "発生日時: $(TZ=Asia/Tokyo date '+%Y-%m-%d %H:%M') JST"
+              echo '#ダビマス'
+              echo 'DABIMAS_ERROR_END'
+            } >> "$GITHUB_ENV"
+          fi
+      - name: X へエラーを投稿
+        id: post_error
+        if: failure() && steps.err_gate.outputs.notify == 'true'
         env:
           X_CLIENT_ID: ${{ secrets.X_CLIENT_ID }}
           X_REFRESH_TOKEN: ${{ secrets.X_REFRESH_TOKEN }}
-          X_TWEET_TEXT: |
-            だびふぁくの本日のデータ更新はドリコム様のご都合によりおやすみです。ご意見があればドリコム様へおねがいします。
-            #ダビマス
-        run: |
-          python scripts/post_to_x.py
-
-      # Refresh token を Secrets にローテーション保存
+        run: python scripts/post_to_x.py
       - name: Rotate X refresh token in GitHub Secrets
-        if: ${{ always() && (steps.post_to_x.outputs.new_refresh_token != '' || steps.post_no_change_to_x.outputs.new_refresh_token != '') }}
+        if: always() && (steps.post_update.outputs.new_refresh_token != '' || steps.post_error.outputs.new_refresh_token != '')
         env:
           GH_SECRETS_TOKEN: ${{ secrets.GH_SECRETS_TOKEN }}
-          NEW_X_REFRESH_TOKEN: ${{ steps.post_to_x.outputs.new_refresh_token || steps.post_no_change_to_x.outputs.new_refresh_token }}
+          NEW_X_REFRESH_TOKEN: ${{ steps.post_update.outputs.new_refresh_token || steps.post_error.outputs.new_refresh_token }}
         run: |
           python scripts/update_repo_secret.py \
             --secret-name X_REFRESH_TOKEN \
             --secret-value-env NEW_X_REFRESH_TOKEN
-
