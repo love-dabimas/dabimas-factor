@@ -104,12 +104,47 @@ class PedigreeFields:
         self.source = source
         self.names_by_node = defaultdict(Counter)
         self.names_by_pedigree = defaultdict(Counter)
+        self.game_records = {'0': defaultdict(list), '1': defaultdict(list)}
 
     def set_stallions(self, records):
         for r in records:
+            self.game_records['0'][r['node_id']].append(r)
             name = split_name(r['name'])[0]
             self.names_by_node[r['node_id']][name] += 1
             self.names_by_pedigree[r['pedigree_id']][name] += 1
+
+    def set_broodmares(self, records):
+        for record in records:
+            self.game_records['1'][record['node_id']].append(record)
+
+    def game_id(self, entry):
+        """ゲームID既知なら維持。同一nodeの別能力版は根の属性で絞る。"""
+        sex = entry['sex']
+        records = self.game_records[sex].get(entry.get('nodeId'), [])
+        key = 'game_stallion_id' if sex == '0' else 'game_broodmare_id'
+        prefix = STALLION_ID_PREFIX if sex == '0' else BROODMARE_ID_PREFIX
+        prior = entry['id'][2:] if entry['id'].startswith(prefix) else entry.get('gameId')
+        if prior is not None and any(str(r[key]) == str(prior) for r in records):
+            return str(prior)
+        if sex == '0' and len(records) > 1:
+            matching = [r for r in records if split_name(r['name']) == (entry['name'], entry['subName'])
+                        and r['rarity'] == entry['rare']]
+            if matching:
+                records = matching
+        return str(min(records, key=lambda r: int(r[key]))[key]) if records else None
+
+    def attach_game_id(self, entry):
+        game_id = self.game_id(entry)
+        # dict の順序を保ち、gameId だけを nodeId の直前に差し込む。
+        ordered = {}
+        for key, value in entry.items():
+            if key == 'gameId':
+                continue
+            if key == 'nodeId':
+                ordered['gameId'] = game_id
+            ordered[key] = value
+        entry.clear()
+        entry.update(ordered)
 
     def ancestor_name(self, node, hints):
         pid = node['pedigree_id']
@@ -143,6 +178,7 @@ class PedigreeFields:
             conversion.attach_pedigree_ids(entry, self.source)
             node = self.source.node(entry.get('nodeId'))
         if node is None:
+            self.attach_game_id(entry)
             return
         pid = node['pedigree_id']
         entry['nodeId'], entry['pedigreeId'] = node['node_id'], pid
@@ -155,6 +191,7 @@ class PedigreeFields:
             apid = ancestor['pedigree_id']
             old.update(name=self.ancestor_name(ancestor, hints), **self.line(apid, entry['id']),
                        factors=self.factors(ancestor), nodeId=nid, pedigreeId=apid)
+        self.attach_game_id(entry)
 
     def entry(self, record, identifier, name, subname, sex, rare, ability, nature, category, factors, hints):
         entry = dict(id=identifier, name=name, ruby=conversion.to_hiragana_ruby(name), subName=subname,
@@ -210,6 +247,7 @@ class BroodmareMasterSource:
         self.master = broodmare_master
         self.records = {str(r['game_broodmare_id']): r for r in broodmare_master['broodmares']}
         self.fields = PedigreeFields(pedigree_source)
+        self.fields.set_broodmares(broodmare_master['broodmares'])
 
     def start_dates_available(self):
         return self.master['schema_version'] >= 6 and bool(self.master.get('display_start_at_field_map'))
@@ -244,6 +282,7 @@ class GameUpdate:
         self.stallions = StallionMasterSource(bundle.stallion, bundle.ability, source)
         self.mares = BroodmareMasterSource(bundle.broodmare, source) if bundle.broodmare else None
         if self.mares:
+            self.stallions.fields.set_broodmares(bundle.broodmare['broodmares'])
             self.mares.fields = self.stallions.fields
         self.exclusions = exclusions
         self.hints = build_name_hints(previous)

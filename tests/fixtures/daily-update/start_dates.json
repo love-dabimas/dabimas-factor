@@ -1,0 +1,14 @@
+{
+  "stallions": [
+    {"game_stallion_id":"101325","name":"ダノンレジェンド-央瓏-","display_start_at_raw":1791817200},
+    {"game_stallion_id":"1063","name":"アドミラルドレイク-瞬闘-","display_start_at_raw":1791860400},
+    {"game_stallion_id":"101319","name":"シーフュリュー-央燕-","display_start_at_raw":1791298800},
+    {"game_stallion_id":"1","name":"ディープインパクト","display_start_at_raw":0}
+  ],
+  "broodmares": [
+    {"game_broodmare_id":"1","name":"ウマガアウカラ"},
+    {"game_broodmare_id":"491","name":"フレッシュメープル","display_start_at":"2026-09-18T15:00:00Z"},
+    {"game_broodmare_id":"283","name":"ワンダーメルシャン","display_start_at":"2029-12-31T15:00:00Z"},
+    {"game_broodmare_id":"999","name":"テスト牝馬","display_start_at":"2026-10-13T03:00:00Z"}
+  ]
+}

@@ -846,6 +846,8 @@ def entry_to_summary(entry: dict, detail_chunk: int) -> dict:
         "searchText": build_search_text(entry, display_name),
     }
     if "nodeId" in entry:
+        if 'gameId' in entry:
+            summary['gameId'] = entry['gameId']
         summary["nodeId"] = entry["nodeId"]
         summary["pedigreeId"] = entry["pedigreeId"]
     return summary

@@ -20,7 +20,10 @@ def write(path, data):
 
 
 def local_args(tmp_path):
-    docs = game_documents()
+    fixture = ROOT / 'tests/fixtures/daily-update'
+    docs = [json.loads((fixture / name).read_text(encoding='utf-8')) for name in
+            ['pedigree_master.json', 'pedigree_master.game.json', 'stallion_master.game.json',
+             'ability_master.game.json', 'broodmare_master.game.json']]
     args = []
     for flag, doc in zip(['pedigree-master', 'pedigree-game-nodes', 'stallion-master', 'ability-master', 'broodmare-master'], docs):
         path = tmp_path / f'{flag}.json'
@@ -114,6 +117,36 @@ def test_real_daily_boundaries(tmp_path, monkeypatch, as_of, expected, mares):
         assert any(e['game_id'] == '300011' for e in audit['excluded'])
     old = json.loads((ROOT / 'json/dabimasFactor.json').read_text(encoding='utf-8'))['horseLists']
     new = json.loads((tmp_path / 'dabimasFactor.json').read_text(encoding='utf-8'))['horseLists']
+    from verify_dabimas_outputs import load_outputs, verify
+    assert verify(load_outputs(tmp_path), load_outputs(ROOT / 'json')) == {}
+    summaries = json.loads((tmp_path / 'dabimasFactor.summary.json').read_text(encoding='utf-8'))['horseLists']
+    assert all('gameId' in e and (e['gameId'] is None or isinstance(e['gameId'], str)) for e in new)
+    assert [e['gameId'] for e in new] == [e['gameId'] for e in summaries]
+    assert all(e['gameId'] is not None for e in new if e['sex'] == '0' or mares)
     for a, b in zip(old, new):
-        assert {k:v for k,v in a.items() if k not in ('descendants', 'nodeId', 'pedigreeId')} == {
-            k:v for k,v in b.items() if k not in ('descendants', 'nodeId', 'pedigreeId')}
+        assert {k:v for k,v in a.items() if k not in ('descendants', 'gameId', 'nodeId', 'pedigreeId')} == {
+            k:v for k,v in b.items() if k not in ('descendants', 'gameId', 'nodeId', 'pedigreeId')}
+
+
+def test_weekly_cli_adopts_id_and_rejects_empty_list(tmp_path, monkeypatch):
+    from test_build_dabimas_stream import _make_row
+    args = local_args(tmp_path)
+    master = json.loads((tmp_path / 'stallion-master.json').read_text(encoding='utf-8'))
+    master['stallions'][0]['name'] = 'シンザン'
+    write(tmp_path / 'stallion-master.json', master)
+    prior = json.loads((tmp_path / 'previous/dabimasFactor.json').read_text(encoding='utf-8'))
+    prior['horseLists'][0]['name'] = 'シンザン'
+    write(tmp_path / 'previous/dabimasFactor.json', prior)
+    row = _make_row(build, sex='0', url='https://dabimas.jp/kouryaku/stallions/8661.html', name='シンザン')
+    class FakeFetcher:
+        def __init__(self, **kwargs): pass
+        def fetch_soup(self, url): return object()
+        def close(self): pass
+    monkeypatch.setattr(build, 'Fetcher', FakeFetcher)
+    monkeypatch.setattr(build, 'collect_horse_urls', lambda fetcher: [row[build.HD_HORSE_ID]])
+    monkeypatch.setattr(build, 'parse_stallion', lambda *args: row)
+    assert build.main(args + ['--mode', 'weekly', '--delay', '0']) == 0
+    new = json.loads((tmp_path / 'out/dabimasFactor.json').read_text(encoding='utf-8'))['horseLists']
+    assert len(new) == 1 and new[0]['id'] == 'sg1' and new[0]['gameId'] == '1'
+    monkeypatch.setattr(build, 'collect_horse_urls', lambda fetcher: [])
+    assert build.main(args + ['--mode', 'weekly']) == 1

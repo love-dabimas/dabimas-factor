@@ -33,10 +33,10 @@ def test_selection_order_duplicates_and_exclusions():
     stallion, _ = sources()
     template = stallion.find_record('1')
     stallion.records = {}
-    for gid, name, start in [('101325', 'ダノンレジェンド-央瓏-', 1791817200),
-                              ('1063', 'アドミラルドレイク-瞬闘-', 1791860400),
-                              ('101319', 'シーフュリュー-央燕-', 1791298800), ('1', 'ディープインパクト', 0)]:
-        stallion.records[gid] = dict(template, game_stallion_id=gid, name=name, node_id=gid, display_start_at_raw=start)
+    fixture = json.loads((ROOT / 'tests/fixtures/daily-update/start_dates.json').read_text(encoding='utf-8'))
+    for record in fixture['stallions']:
+        gid = record['game_stallion_id']
+        stallion.records[gid] = dict(template, **record, node_id=gid)
     epoch = game.parse_as_of('2026-10-13T11:30:00+09:00')
     selection = stallion.select_new(epoch, {'1'}, {'101319'})
     assert [i[0] for i in selection.selected] == ['101325']
@@ -60,7 +60,7 @@ def test_mare_fields_and_hyphen(code, icon):
     assert entry['factors'] == ['', '', '']
     assert list(entry) == ['id', 'name', 'ruby', 'subName', 'nature', 'sex', 'rare', 'abilityType',
                            'categoryIcon', 'parentLine', 'parentLineId', 'son', 'sonId', 'factors',
-                           'descendants', 'nodeId', 'pedigreeId', 'mares']
+                           'descendants', 'gameId', 'nodeId', 'pedigreeId', 'mares']
     assert len(entry['descendants']) == len(entry['mares']) == 15
 
 
@@ -102,6 +102,7 @@ def real_sources():
     source = PedigreeMasterSource(read('pedigree_master.json'), read('pedigree_master.game.json'))
     stallion = game.StallionMasterSource(read('stallion_master.game.json'), read('ability_master.game.json'), source)
     mare = game.BroodmareMasterSource(read('broodmare_master.v6-20261006.game.json'), source)
+    stallion.fields.set_broodmares(mare.records.values())
     mare.fields = stallion.fields
     entries = json.loads((ROOT / 'json/dabimasFactor.json').read_text(encoding='utf-8'))['horseLists']
     return stallion, mare, entries
@@ -137,4 +138,38 @@ def test_real_root_fields_and_ancestors(tmp_path):
             assert {k:v for k,v in current.items() if k != 'name'} == {k:v for k,v in prior.items() if k != 'name'}
     assert checked == {'0': 2377, '1': 500}
     report = {'checked': dict(checked), 'names': names, 'nulls': nulls, 'mare_exceptions': exceptions}
-    (ROOT / 'tmp/root-field-comparison.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+    (ROOT / 'tmp/root-field-comparison.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8', newline='\n')
+
+
+def test_mare_fixture_noon_boundary():
+    _, mare = sources()
+    template = mare.find_record('1')
+    records = json.loads((ROOT / 'tests/fixtures/daily-update/start_dates.json').read_text(encoding='utf-8'))['broodmares']
+    mare.records = {r['game_broodmare_id']: dict(template, **r, node_id=r['game_broodmare_id']) for r in records}
+    before = game.parse_as_of('2026-10-13T11:59:59+09:00')
+    assert [r[0] for r in mare.select_new(before, set(), set()).selected] == ['1', '491']
+    assert [r[0] for r in mare.select_new(before + 1, {'1'}, set()).selected] == ['491', '999']
+
+
+def test_ancestor_name_priority_and_year_factor_fallback():
+    stallion, _ = sources()
+    source = stallion.fields.source
+    node = source.node('0000333190-00')
+    pid = node['pedigree_id']
+    assert stallion.fields.ancestor_name(node, {pid: '前回表示名'}) == '前回表示名'
+    assert stallion.fields.ancestor_name(node, {}) == source.pedigree(pid)['canonical_name']
+    stallion.fields.set_stallions([dict(stallion.find_record('1'), node_id=node['node_id'], pedigree_id=pid, name='ゲーム名')])
+    assert stallion.fields.ancestor_name(node, {pid: '前回表示名'}) == 'ゲーム名'
+    year = dict(node, variant_type='year', node_id=pid + '-01', pedigree_effect_ids=[])
+    assert stallion.fields.factors(year) == ['', '', '長']
+
+
+def test_rebuild_keeps_unknown_slots_and_root_fields():
+    stallion, _ = sources()
+    entry = stallion.build_entry(stallion.find_record('1'), {})
+    entry['descendants'][-1]['name'] = '全書にしかない祖先'
+    root = {k:v for k,v in entry.items() if k not in ('descendants', 'gameId', 'nodeId', 'pedigreeId', 'mares')}
+    stallion.rebuild_pedigree_fields(entry, {})
+    assert entry['descendants'][-1]['name'] == '全書にしかない祖先'
+    assert entry['descendants'][-1]['nodeId'] is None
+    assert root == {k:v for k,v in entry.items() if k in root}
