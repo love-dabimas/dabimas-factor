@@ -97,7 +97,9 @@ def test_ability_factor_rules(group, expected):
 
 def real_sources():
     path = ROOT / 'tmp/masters-20261007'
-    if not (path / 'stallion_master.game.json').exists(): pytest.skip('local masters absent')
+    required = ['pedigree_master.json', 'pedigree_master.game.json', 'stallion_master.game.json',
+                'ability_master.game.json', 'broodmare_master.v6-20261006.game.json']
+    if not all((path / name).is_file() for name in required): pytest.skip('local masters absent')
     def read(name): return json.loads((path / name).read_text(encoding='utf-8'))
     source = PedigreeMasterSource(read('pedigree_master.json'), read('pedigree_master.game.json'))
     stallion = game.StallionMasterSource(read('stallion_master.game.json'), read('ability_master.game.json'), source)

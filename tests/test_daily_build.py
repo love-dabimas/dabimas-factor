@@ -94,7 +94,10 @@ def test_weekly_drops_ineligible_carry(reason):
     ('2029-12-31T23:59:59+09:00', 0, True), ('2030-01-01T00:00:00+09:00', 7, True)])
 def test_real_daily_boundaries(tmp_path, monkeypatch, as_of, expected, mares):
     masters = ROOT / 'tmp/masters-20261007'
-    if not masters.exists(): pytest.skip('local masters absent')
+    required = ['pedigree_master.json', 'pedigree_master.game.json', 'stallion_master.game.json', 'ability_master.game.json']
+    if mares:
+        required.append('broodmare_master.v6-20261006.game.json')
+    if not all((masters / name).is_file() for name in required): pytest.skip('local masters absent')
     def forbidden(*a, **kw): pytest.fail('daily touched Fetcher')
     monkeypatch.setattr(build, 'Fetcher', forbidden)
     args = ['--mode', 'daily', '--as-of', as_of, '--previous-json-dir', str(ROOT / 'json'), '--fail-on-error']
@@ -122,7 +125,9 @@ def test_real_daily_boundaries(tmp_path, monkeypatch, as_of, expected, mares):
     summaries = json.loads((tmp_path / 'dabimasFactor.summary.json').read_text(encoding='utf-8'))['horseLists']
     assert all('gameId' in e and (e['gameId'] is None or isinstance(e['gameId'], str)) for e in new)
     assert [e['gameId'] for e in new] == [e['gameId'] for e in summaries]
-    assert all(e['gameId'] is not None for e in new if e['sex'] == '0' or mares)
+    assert all(e['gameId'] is not None for e in new[len(old):])
+    if mares:
+        assert all(e['gameId'] is not None for e in new if e['sex'] == '1')
     for a, b in zip(old, new):
         assert {k:v for k,v in a.items() if k not in ('descendants', 'gameId', 'nodeId', 'pedigreeId')} == {
             k:v for k,v in b.items() if k not in ('descendants', 'gameId', 'nodeId', 'pedigreeId')}

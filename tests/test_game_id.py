@@ -60,3 +60,62 @@ def test_duplicate_node_preserves_explicit_game_id():
     entry.pop('gameId')
     stallion.rebuild_pedigree_fields(entry, {})
     assert entry['gameId'] == '1'
+
+
+def test_duplicate_node_uses_ability_and_nature_and_rejects_ambiguity():
+    stallion, _ = sources()
+    stallion.abilities.update({'8': {'name': '非凡A', 'effect_group_id_raw': 99},
+                               '9': {'name': '非凡B', 'effect_group_id_raw': 99},
+                               '10': {'name': '天性', 'effect_group_id_raw': 0}})
+    record = dict(stallion.find_record('1'), game_stallion_id='2', nonordinary_ability_id='8', sub_ability_id='10')
+    stallion.fields.set_stallions([record])
+    entry = stallion.build_entry(record, {})
+    entry['id'] = 's123'
+    entry.pop('gameId')
+    stallion.rebuild_pedigree_fields(entry, {})
+    assert entry['gameId'] == '2'
+    # 公開属性が同じ非凡A/Bを、番号の大小だけで断定しない。
+    stallion.fields.set_stallions([dict(record, game_stallion_id='3', nonordinary_ability_id='9')])
+    entry.pop('gameId')
+    stallion.rebuild_pedigree_fields(entry, {})
+    assert entry['gameId'] is None
+
+
+def test_real_ability_versions_get_correct_game_ids():
+    from test_game_master_source import real_sources
+    stallion, _, entries = real_sources()
+    expected = {'エルコンドルパサー': '100082', 'キタサンブラック': '100061',
+                'ナリタブライアン': '100172', 'ハイセイコー': '100179'}
+    seen = set()
+    for entry in entries:
+        if not entry['subName'] and entry['abilityType'] == 'normal' and entry['name'] in expected:
+            stallion.rebuild_pedigree_fields(entry, {})
+            assert entry['gameId'] == expected[entry['name']]
+            seen.add(entry['name'])
+        if entry['id'] in ('s0234185338', 's8810303245'):
+            stallion.rebuild_pedigree_fields(entry, {})
+            assert entry['gameId'] is None
+        if entry['id'] == 's8465243129':
+            stallion.rebuild_pedigree_fields(entry, {})
+            assert entry['gameId'] == '361'
+    assert seen == set(expected)
+
+
+def test_weekly_adoption_retains_known_game_id_for_ambiguous_abilities():
+    from game_master_source import StallionMasterSource
+    docs = game_documents()
+    template = docs[2]['stallions'][0]
+    docs[2]['stallions'] = [dict(template, game_stallion_id='2', nonordinary_ability_id='8'),
+                            dict(template, game_stallion_id='3', nonordinary_ability_id='9')]
+    docs[2]['stallion_count'] = 2
+    docs[3]['abilities'] = [{'game_ability_id': '8', 'name': '能力A', 'effect_group_id_raw': 99},
+                            {'game_ability_id': '9', 'name': '能力B', 'effect_group_id_raw': 99}]
+    docs[3]['ability_count'] = 2
+    source = PedigreeMasterSource(docs[0], docs[1])
+    stallion = StallionMasterSource(docs[2], docs[3], source)
+    old = stallion.build_entry(stallion.find_record('2'), {})
+    update = GameUpdate(validate_game_masters(*docs), source, [old], 'weekly', 0, (set(), set()))
+    current = dict(old, id='s123')
+    current.pop('gameId')
+    update.weekly_entry(current)
+    assert current['id'] == 'sg2' and current['gameId'] == '2'

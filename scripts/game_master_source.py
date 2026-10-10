@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sys
+import unicodedata
 
 # CLI と importlib で同じ変換規則・警告カウンタを共有する。
 try:
@@ -49,6 +50,21 @@ def split_name(name):
     match = conversion.SUB_NAME_RE.search(name)
     subname = match.group(0) if match else ''
     return (name.replace(subname, '').replace('-', '') if match else name), subname
+
+
+def ability_type(record, abilities):
+    ability_id = str(record['nonordinary_ability_id'])
+    if ability_id == '0':
+        return 'none'
+    group = abilities[ability_id]['effect_group_id_raw']
+    if group not in (99, 98, 97):
+        raise ValueError(f'unknown effect_group_id_raw: {group}')
+    return {99: 'normal', 98: 'focused', 97: 'double'}[group]
+
+
+def nature_name(record, abilities):
+    nature_id = str(record['sub_ability_id'])
+    return '' if nature_id == '0' else abilities[nature_id]['name']
 
 
 def build_name_hints(entries) -> dict[str, str]:
@@ -100,8 +116,9 @@ def empty_ancestor():
 
 class PedigreeFields:
     """両性で共通の血統展開。表示名索引は種牡馬から一度だけ設定する。"""
-    def __init__(self, source):
+    def __init__(self, source, abilities=None):
         self.source = source
+        self.abilities = abilities if abilities is not None else {}
         self.names_by_node = defaultdict(Counter)
         self.names_by_pedigree = defaultdict(Counter)
         self.game_records = {'0': defaultdict(list), '1': defaultdict(list)}
@@ -127,10 +144,15 @@ class PedigreeFields:
         if prior is not None and any(str(r[key]) == str(prior) for r in records):
             return str(prior)
         if sex == '0' and len(records) > 1:
-            matching = [r for r in records if split_name(r['name']) == (entry['name'], entry['subName'])
-                        and r['rarity'] == entry['rare']]
-            if matching:
-                records = matching
+            target_name = tuple(unicodedata.normalize('NFKC', s) for s in (entry['name'], entry['subName']))
+            records = [r for r in records if tuple(unicodedata.normalize('NFKC', s) for s in split_name(r['name'])) == target_name
+                       and r['rarity'] == entry['rare']
+                       and ability_type(r, self.abilities) == entry['abilityType']
+                       and nature_name(r, self.abilities) == entry['nature']]
+            # 公開項目では非凡名までは分からない。別能力の候補を推測しない。
+            signatures = {(r['rarity'], str(r['nonordinary_ability_id']), str(r['sub_ability_id'])) for r in records}
+            if len(signatures) > 1:
+                return None
         return str(min(records, key=lambda r: int(r[key]))[key]) if records else None
 
     def attach_game_id(self, entry):
@@ -193,7 +215,7 @@ class PedigreeFields:
                        factors=self.factors(ancestor), nodeId=nid, pedigreeId=apid)
         self.attach_game_id(entry)
 
-    def entry(self, record, identifier, name, subname, sex, rare, ability, nature, category, factors, hints):
+    def entry(self, record, *, identifier, name, subname, sex, rare, ability, nature, category, factors, hints):
         entry = dict(id=identifier, name=name, ruby=conversion.to_hiragana_ruby(name), subName=subname,
                      nature=nature, sex=sex, rare=rare, abilityType=ability, categoryIcon=category,
                      **self.line(record['pedigree_id'], identifier), factors=factors,
@@ -207,7 +229,7 @@ class StallionMasterSource:
     def __init__(self, stallion_master, ability_master, pedigree_source):
         self.records = {str(r['game_stallion_id']): r for r in stallion_master['stallions']}
         self.abilities = {str(r['game_ability_id']): r for r in ability_master['abilities']}
-        self.fields = PedigreeFields(pedigree_source)
+        self.fields = PedigreeFields(pedigree_source, self.abilities)
         self.fields.set_stallions(stallion_master['stallions'])
 
     def find_record(self, game_stallion_id):
@@ -226,20 +248,16 @@ class StallionMasterSource:
 
     def build_entry(self, record, name_hints):
         name, subname = split_name(record['name'])
-        nature_id, ability_id = str(record['sub_ability_id']), str(record['nonordinary_ability_id'])
-        nature = '' if nature_id == '0' else self.abilities[nature_id]['name']
-        ability = 'none'
-        if ability_id != '0':
-            group = self.abilities[ability_id]['effect_group_id_raw']
-            if group not in (99, 98, 97):
-                raise ValueError(f'unknown effect_group_id_raw: {group}')
-            ability = {99: 'normal', 98: 'focused', 97: 'double'}[group]
+        nature = nature_name(record, self.abilities)
+        ability = ability_type(record, self.abilities)
         asset = (record.get('header_badge') or {}).get('asset_key')
         if not asset:
             print(f'[warn] categoryIcon missing: sg{record["game_stallion_id"]}', file=sys.stderr)
-        return self.fields.entry(record, 'sg' + str(record['game_stallion_id']), name, subname, '0',
-                                 record['rarity'], ability, nature, conversion.parse_category_icon(asset or ''),
-                                 self.fields.factors(self.fields.source.node(record['node_id'])), name_hints)
+        return self.fields.entry(
+            record, identifier=STALLION_ID_PREFIX + str(record['game_stallion_id']),
+            name=name, subname=subname, sex='0', rare=record['rarity'], ability=ability,
+            nature=nature, category=conversion.parse_category_icon(asset or ''),
+            factors=self.fields.factors(self.fields.source.node(record['node_id'])), hints=name_hints)
 
 
 class BroodmareMasterSource:
@@ -271,8 +289,10 @@ class BroodmareMasterSource:
         grade = record['broodmare_grade']
         if grade.get('mapping_status') != 'verified' or grade.get('code') not in GRADE_CATEGORY_ICON:
             raise ValueError(f'broodmare_grade unverified or unknown: {grade}')
-        return self.fields.entry(record, 'bg' + str(record['game_broodmare_id']), record['name'], '', '1',
-                                 None, None, '', GRADE_CATEGORY_ICON[grade['code']], ['', '', ''], name_hints)
+        return self.fields.entry(
+            record, identifier=BROODMARE_ID_PREFIX + str(record['game_broodmare_id']),
+            name=record['name'], subname='', sex='1', rare=None, ability=None, nature='',
+            category=GRADE_CATEGORY_ICON[grade['code']], factors=['', '', ''], hints=name_hints)
 
 
 class GameUpdate:
@@ -348,6 +368,7 @@ class GameUpdate:
         if identifier and identifier not in self.adopted:
             self.audit['adopted_ids'].append(dict(old=entry['id'], new=identifier))
             entry['id'] = identifier
+            self.stallions.fields.attach_game_id(entry)
             self.adopted.add(identifier)
 
     def carried_entries(self):

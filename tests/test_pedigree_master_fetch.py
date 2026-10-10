@@ -376,3 +376,26 @@ def test_game_fetch_does_not_retry_other_errors(tmp_path, failure):
         fetch.load_game_masters(client=client, cache_dir=tmp_path, mismatch_retries=2, sleep=waits.append,
                                 expected_dataset_version='wrong' if failure == 'expected' else None)
     assert not waits
+
+
+def test_game_retry_does_not_hide_network_failure_with_partial_cache(tmp_path):
+    fetch = load_module()
+    docs = game_documents()
+    keys = ['pedigree_master.json', 'pedigree_master.game.json', 'stallion_master.game.json',
+            'ability_master.game.json', 'broodmare_master.game.json']
+    class Client:
+        calls = 0
+        def get_object(self, Bucket, Key, **kwargs):
+            attempt = self.calls // 5
+            self.calls += 1
+            if attempt and Key == keys[0]:
+                raise OSError('retry network failure')
+            doc = deepcopy(docs[keys.index(Key)])
+            if not attempt and Key in keys[2:]:
+                doc['dataset_version'] = 'older'
+            return {'Body': Body(json.dumps(doc).encode())}
+    client = Client()
+    waits = []
+    with pytest.raises(OSError, match='retry network failure'):
+        fetch.load_game_masters(client=client, cache_dir=tmp_path, mismatch_retries=2, sleep=waits.append)
+    assert client.calls == 6 and waits == [60.0]

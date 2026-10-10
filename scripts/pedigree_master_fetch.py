@@ -206,6 +206,7 @@ def _fetch_object(
     bucket: str,
     key: str,
     cache_dir: Path | None,
+    fallback_on_error: bool = True,
 ) -> tuple[bytes, bool]:
     """単一オブジェクトを条件付き取得し、本文とキャッシュ由来かを返す。"""
     body_path = None
@@ -229,13 +230,13 @@ def _fetch_object(
             if cached is not None:
                 return cached, True
             raise
-        if cached is not None:
+        if cached is not None and fallback_on_error:
             _warn_cache_fallback(key, exc)
             return cached, True
         raise
     except Exception as exc:
         cached = _read_cache(body_path) if body_path is not None else None
-        if cached is not None:
+        if cached is not None and fallback_on_error:
             _warn_cache_fallback(key, exc)
             return cached, True
         raise
@@ -442,7 +443,8 @@ def load_game_masters(*, endpoint=None, bucket=None, master_key='pedigree_master
         client = _build_r2_client(endpoint or os.environ.get('R2_ENDPOINT_URL', DEFAULT_R2_ENDPOINT))
     for attempt in range(mismatch_retries + 1):
         payloads = [_fetch_object(client=client, bucket=bucket or os.environ.get('R2_BUCKET', DEFAULT_R2_BUCKET),
-                    key=key, cache_dir=Path(cache_dir) if cache_dir is not None else None)
+                    key=key, cache_dir=Path(cache_dir) if cache_dir is not None else None,
+                    fallback_on_error=False)
                     for key in (master_key, game_nodes_key, stallion_key, ability_key, broodmare_key)]
         try:
             bundle = validate_game_masters(*(json.loads(p[0]) for p in payloads),

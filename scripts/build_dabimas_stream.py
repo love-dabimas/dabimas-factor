@@ -1191,13 +1191,19 @@ def main(argv: Optional[list[str]] = None) -> int:
             out.write('{"horseLists":[')
             first = True
 
-            for entry in daily_entries:
-                if not first:
-                    out.write(',')
-                out.write(json.dumps({k: v for k, v in entry.items() if k != 'mares'}, ensure_ascii=False, separators=(',', ':')))
-                first = False
-                entries.append(entry)
-                written += 1
+            def write_additions(additions):
+                """日次の行と金曜の持ち越しを同じ形式で追記する。"""
+                nonlocal first, written
+                for entry in additions:
+                    if not first:
+                        out.write(',')
+                    full_entry = {k: v for k, v in entry.items() if k != 'mares'}
+                    out.write(json.dumps(full_entry, ensure_ascii=False, separators=(',', ':')))
+                    first = False
+                    entries.append(entry)
+                    written += 1
+
+            write_additions(daily_entries)
 
             # バッチ単位で並列フェッチし、元の URL 順で書き出す。
             batch_size = workers * 2
@@ -1273,13 +1279,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                         print(f"processed: {written} (source index {idx})")
 
             if update is not None and args.mode == 'weekly':
-                for entry in update.carried_entries():
-                    if not first:
-                        out.write(',')
-                    out.write(json.dumps({k: v for k, v in entry.items() if k != 'mares'}, ensure_ascii=False, separators=(',', ':')))
-                    first = False
-                    entries.append(entry)
-                    written += 1
+                write_additions(update.carried_entries())
             out.write("]}\n")
 
     except Exception as exc:
