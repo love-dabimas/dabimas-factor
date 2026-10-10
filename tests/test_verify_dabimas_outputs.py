@@ -67,5 +67,7 @@ def test_chunk_integrity(change):
 def test_real_published_passes():
     path = Path(__file__).resolve().parents[1] / 'json'
     data = load_outputs(path)
-    assert len(data['dabimasFactor.json']['horseLists']) == 2957
+    # 頭数は日次・週次の自動更新で増えるので固定しない。数えられることと、
+    # 現行どうしの検証が無警告で通ることを見る。
+    assert len(data['dabimasFactor.json']['horseLists']) > 2900
     assert verify(data, data) == {}

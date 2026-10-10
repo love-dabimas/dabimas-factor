@@ -88,11 +88,37 @@ def test_weekly_drops_ineligible_carry(reason):
     assert update.audit['dropped'][0]['id'] == 'sg1'
 
 
-@pytest.mark.parametrize('as_of,expected,mares', [
-    ('2026-10-07T22:00:00+09:00', 3, False), ('2026-10-13T11:30:00+09:00', 6, False),
-    ('2026-10-13T12:00:00+09:00', 9, False), ('2026-10-08T11:30:00+09:00', 0, True),
-    ('2029-12-31T23:59:59+09:00', 0, True), ('2030-01-01T00:00:00+09:00', 7, True)])
-def test_real_daily_boundaries(tmp_path, monkeypatch, as_of, expected, mares):
+# その時刻までに公開開始となる馬（ゲーム ID）。週次が先に拾うと公開済みになるので、
+# 頭数は固定せず「候補のうち、まだ公開されていないものだけが足される」ことを見る。
+CANDIDATES = {
+    '2026-10-07T22:00:00+09:00': ['101319', '101320', '101321'],
+    '2026-10-13T11:30:00+09:00': ['101319', '101320', '101321', '101324', '101325', '101326'],
+    '2026-10-13T12:00:00+09:00': ['101319', '101320', '101321', '101324', '101325', '101326',
+                                  '1062', '1063', '1064'],
+    '2026-10-08T11:30:00+09:00': [],
+    '2029-12-31T23:59:59+09:00': [],
+    '2030-01-01T00:00:00+09:00': ['283', '285', '287', '329', '343', '345', '346'],
+}
+
+
+def expected_added(as_of, mares, masters):
+    """候補のうち、公開済み（同じ node が公開データにいる）でないものを返す。"""
+    published = {e['nodeId'] for e in json.loads(
+        (ROOT / 'json/dabimasFactor.summary.json').read_text(encoding='utf-8'))['horseLists']}
+    name = 'broodmare_master.v6-20261006.game.json' if mares else 'stallion_master.game.json'
+    key = 'game_broodmare_id' if mares else 'game_stallion_id'
+    records = json.loads((masters / name).read_text(encoding='utf-8'))
+    rows = records if isinstance(records, list) else next(v for v in records.values() if isinstance(v, list))
+    node_of = {str(r[key]): str(r['node_id']) for r in rows if key in r}
+    prefix = 'bg' if mares else 'sg'
+    return {prefix + gid for gid in CANDIDATES[as_of] if node_of.get(gid) not in published}
+
+
+@pytest.mark.parametrize('as_of,mares', [
+    ('2026-10-07T22:00:00+09:00', False), ('2026-10-13T11:30:00+09:00', False),
+    ('2026-10-13T12:00:00+09:00', False), ('2026-10-08T11:30:00+09:00', True),
+    ('2029-12-31T23:59:59+09:00', True), ('2030-01-01T00:00:00+09:00', True)])
+def test_real_daily_boundaries(tmp_path, monkeypatch, as_of, mares):
     masters = ROOT / 'tmp/masters-20261007'
     required = ['pedigree_master.json', 'pedigree_master.game.json', 'stallion_master.game.json', 'ability_master.game.json']
     if mares:
@@ -113,9 +139,7 @@ def test_real_daily_boundaries(tmp_path, monkeypatch, as_of, expected, mares):
     assert build.main(args) == 0
     audit = json.loads((tmp_path / 'audit.json').read_text(encoding='utf-8'))
     added = [e for e in audit['added'] if e['kind'] == ('broodmare' if mares else 'stallion')]
-    assert len(added) == expected
-    if mares and expected:
-        assert {e['id'] for e in added} == {'bg283', 'bg285', 'bg287', 'bg329', 'bg343', 'bg345', 'bg346'}
+    assert {e['id'] for e in added} == expected_added(as_of, mares, masters)
     if not mares:
         assert any(e['game_id'] == '300011' for e in audit['excluded'])
     old = json.loads((ROOT / 'json/dabimasFactor.json').read_text(encoding='utf-8'))['horseLists']

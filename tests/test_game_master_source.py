@@ -138,7 +138,10 @@ def test_real_root_fields_and_ancestors(tmp_path):
                 if current['nodeId'] is not None: nulls.append([old['id'], prior, current])
                 continue
             assert {k:v for k,v in current.items() if k != 'name'} == {k:v for k,v in prior.items() if k != 'name'}
-    assert checked == {'0': 2377, '1': 500}
+    # 突き合わせた頭数は公開データが増えるたびに動くので固定しない。
+    # 取りこぼし（ループが空回りする等）を捕まえるための下限として見る。
+    totals = Counter(e['sex'] for e in entries)
+    assert checked['0'] >= totals['0'] * 0.95 and checked['1'] >= totals['1'] * 0.95, (dict(checked), dict(totals))
     report = {'checked': dict(checked), 'names': names, 'nulls': nulls, 'mare_exceptions': exceptions}
     (ROOT / 'tmp/root-field-comparison.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8', newline='\n')
 
