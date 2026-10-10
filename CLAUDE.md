@@ -21,9 +21,12 @@
 **枝の切り方・公開順・統合版のテスト方法は `docs/branch-strategy.md` にまとめてある。**
 ダビ娘に関わる変更をするときは先に読むこと。
 
-`json/` のデータと `service-worker.js` の `CACHE_NAME` は、毎週金曜の GitHub Actions
-（`.github/workflows/x_post.yml`）が `main` へ自動で更新する。`CACHE_NAME` は
-`dabimas-factor-vYYYYMMDD-01` の形で入るので、手で上げるときは同じ日付の `-02` 以降にする。
+`json/` のデータと `service-worker.js` の `CACHE_NAME` は、GitHub Actions
+（`.github/workflows/x_post.yml`）が `main` へ自動で更新する。**毎日 11:30 JST**（R2 の
+ゲームマスターから、公開開始時刻を過ぎた新馬だけを足す）と、**毎週金曜 18:30 JST**（全書を
+全件取得して突き合わせる）の 2 本。差分があるときだけコミットし、X へ更新内容を投稿する。
+`CACHE_NAME` は `dabimas-factor-vYYYYMMDD-NN` の形（同じ日に複数回動けば連番）で入るので、
+手で上げるときは同じ日付の次の番号にする。運用は `docs/data-update-operations.md`。
 
 ## 進め方
 
