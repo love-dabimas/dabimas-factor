@@ -165,9 +165,12 @@ assert.equal(summaryJson.version, 1);
 //             で全書更新分 +52 / -11 を取り込み、2873 -> 2914 になった。
 // 2026-09-04: 週次のデータ更新で +24 / -11。2914 -> 2927（種牡馬 2415 -> 2428）。
 // 2026-09-11: 週次のデータ更新で +11 / -6。2927 -> 2932（種牡馬 2428 -> 2433）。
-assert.equal(horses.length, 2932);
-assert.equal(stallions.length, 2433);
-assert.equal(broodmares.length, 499);
+// 日次・週次の自動更新で増えるので固定値では持てない。取りこぼし（生成が
+// 途中で止まる等）を捕まえるための下限として見る。数字は 2026-09-11 時点。
+assert.ok(horses.length >= 2932, '馬の数が減っている: ' + horses.length);
+assert.ok(stallions.length >= 2433, '種牡馬が減っている: ' + stallions.length);
+assert.ok(broodmares.length >= 499, '繁殖牝馬が減っている: ' + broodmares.length);
+assert.equal(horses.length, stallions.length + broodmares.length);
 
 const fiveStarAbilityCounts = { none: 0, normal: 0, double: 0, focused: 0 };
 stallions
@@ -177,12 +180,19 @@ stallions
     fiveStarAbilityCounts[horse.abilityType] += 1;
   });
 // 内訳も週次のデータ更新でずれる。2026-09-11 のデータでの値。
-assert.deepEqual(fiveStarAbilityCounts, {
-  none: 593,
-  normal: 1055,
-  double: 13,
-  focused: 268,
-});
+// 内訳も自動更新で動く。種別が増減していないこと（4 種類すべてに馬がいて、
+// 合計が 5 星の頭数と一致すること）と、下限だけを見る。数字は 2026-09-11 時点。
+const fiveStarTotal = stallions.filter((horse) => horse.rare === 5).length;
+assert.equal(
+  Object.values(fiveStarAbilityCounts).reduce((sum, value) => sum + value, 0),
+  fiveStarTotal
+);
+for (const [kind, floor] of Object.entries({ none: 593, normal: 1055, double: 13, focused: 268 })) {
+  assert.ok(
+    fiveStarAbilityCounts[kind] >= floor,
+    `5星の ${kind} が減っている: ${fiveStarAbilityCounts[kind]}`
+  );
+}
 assert.equal(
   horses.find((horse) => horse.id === "s3537931452").abilityType,
   "focused",
@@ -195,7 +205,8 @@ assert.equal(
 );
 
 const lowerRareStallions = stallions.filter((horse) => horse.rare <= 4);
-assert.equal(lowerRareStallions.length, 504);
+// レア 4 以下も自動更新で動く。種別の規則（全部 none）が本体なので、数は目安の下限で見る。
+assert.ok(lowerRareStallions.length >= 500, 'レア4以下が減っている: ' + lowerRareStallions.length);
 assert.equal(lowerRareStallions.every((horse) => horse.abilityType === "none"), true);
 assert.equal(
   lowerRareStallions.every(
@@ -206,7 +217,7 @@ assert.equal(
 assert.equal(broodmares.every((horse) => horse.abilityType === null), true);
 
 const inmeisai = horses.filter((horse) => horse.categoryIcon === "14");
-assert.equal(inmeisai.length, 64);
+assert.ok(inmeisai.length >= 64, '因名祭が減っている: ' + inmeisai.length);
 assert.equal(
   inmeisai.every((horse) => horse.abilityType === "none" && horse.nature === ""),
   true
