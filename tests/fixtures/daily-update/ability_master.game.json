@@ -1,0 +1,12 @@
+{
+  "dataset_version": "2026-01-01T000000Z+raw.testfixture",
+  "source": {
+    "file": "fixture.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "node_count": 7
+  },
+  "schema": "dabimas-ability-game-master",
+  "schema_version": 3,
+  "ability_count": 0,
+  "abilities": []
+}

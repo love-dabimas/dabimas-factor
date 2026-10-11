@@ -1,0 +1,25 @@
+{
+  "dataset_version": "2026-01-01T000000Z+raw.testfixture",
+  "source": {
+    "file": "fixture.json",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "node_count": 7
+  },
+  "schema": "dabimas-broodmare-game-master",
+  "schema_version": 6,
+  "broodmare_count": 1,
+  "broodmares": [
+    {
+      "game_broodmare_id": "1",
+      "name": "牝馬",
+      "active": true,
+      "node_id": "game:0000-uuid-0001-00",
+      "pedigree_id": "game:0000-uuid-0001"
+    }
+  ],
+  "display_start_at_field_map": {
+    "status": "verified",
+    "dated_count": 0,
+    "unset_count": 1
+  }
+}

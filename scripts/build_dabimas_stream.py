@@ -846,6 +846,8 @@ def entry_to_summary(entry: dict, detail_chunk: int) -> dict:
         "searchText": build_search_text(entry, display_name),
     }
     if "nodeId" in entry:
+        if 'gameId' in entry:
+            summary['gameId'] = entry['gameId']
         summary["nodeId"] = entry["nodeId"]
         summary["pedigreeId"] = entry["pedigreeId"]
     return summary
@@ -960,6 +962,53 @@ def write_pedigree_nodes(path: Path, source: Any, pedigree_ids: set[str]) -> Non
         fp.write("\n")
 
 
+def _load_game_update(args):
+    """ゲームマスターを指定した場合だけ新経路を有効にする。"""
+    from datetime import datetime, timezone
+    module = _load_sibling_module('game_master_source')
+    # importlib から呼ばれても、この実行の警告カウンタを使用する。
+    module.conversion.CONVERSION_WARNING_COUNTS = CONVERSION_WARNING_COUNTS
+    as_of = module.parse_as_of(args.as_of) if args.as_of else int(datetime.now(timezone.utc).timestamp())
+    r2 = args.r2_endpoint is not None or bool(os.environ.get('R2_ENDPOINT_URL'))
+    if args.allow_mixed_master_versions and r2:
+        raise ValueError('--allow-mixed-master-versions cannot be used with R2')
+    flags = [bool(args.stallion_master_file), bool(args.ability_master_file)]
+    if any(flags) and not (all(flags) and args.pedigree_master_file and args.pedigree_game_nodes_file):
+        raise ValueError('local game masters require all four master files')
+    if (args.broodmare_master_file or args.allow_mixed_master_versions) and not all(flags):
+        raise ValueError('local game masters required')
+    if args.mode == 'daily' and (args.urls_file is not None or args.limit != 0):
+        raise ValueError('--mode daily cannot use --urls-file or --limit')
+    if not any(flags) and not r2:
+        if args.mode == 'daily':
+            raise ValueError('--mode daily requires game masters')
+        return None, None
+    fetch = _load_sibling_module('pedigree_master_fetch')
+    if all(flags):
+        paths = [args.pedigree_master_file, args.pedigree_game_nodes_file,
+                 args.stallion_master_file, args.ability_master_file, args.broodmare_master_file]
+        docs = [json.loads(Path(p).read_text(encoding='utf-8')) if p else None for p in paths]
+        bundle = fetch.validate_game_masters(*docs, expected_dataset_version=args.pedigree_dataset_version,
+                                             allow_mixed_versions=args.allow_mixed_master_versions)
+    else:
+        bundle = fetch.load_game_masters(endpoint=args.r2_endpoint, bucket=args.r2_bucket,
+                    master_key=args.pedigree_master_key, game_nodes_key=args.pedigree_game_nodes_key,
+                    stallion_key=args.stallion_master_key, ability_key=args.ability_master_key,
+                    broodmare_key=args.broodmare_master_key, cache_dir=args.pedigree_cache_dir,
+                    expected_dataset_version=args.pedigree_dataset_version,
+                    mismatch_retries=args.pedigree_mismatch_retries, mismatch_retry_wait=args.pedigree_mismatch_wait)
+    previous = []
+    if args.previous_json_dir:
+        previous = json.loads((Path(args.previous_json_dir) / 'dabimasFactor.json').read_text(encoding='utf-8'))['horseLists']
+        if not previous:
+            raise ValueError('--previous-json-dir has no horses')
+    elif args.mode == 'daily':
+        raise ValueError('--mode daily requires --previous-json-dir')
+    source = _load_sibling_module('pedigree_master_source').PedigreeMasterSource(bundle.pedigree.master, bundle.pedigree.game)
+    return source, module.GameUpdate(bundle, source, previous, args.mode, as_of,
+                                     module.load_exclusions(Path(args.exclusions_file)))
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     """CLI エントリポイント。成功時0、`--fail-on-error` 条件で1を返す。"""
     # CLI の流れ: 引数解析 -> URL収集 -> ページ解析 -> 出力書き込み。
@@ -1018,11 +1067,24 @@ def main(argv: Optional[list[str]] = None) -> int:
             "1件でもあれば終了コード1にする。"
         ),
     )
+    parser.add_argument('--mode', choices=['weekly', 'daily'], default='weekly')
+    parser.add_argument('--as-of')
+    parser.add_argument('--previous-json-dir')
+    for kind in ('stallion', 'ability', 'broodmare'):
+        parser.add_argument(f'--{kind}-master-key', default=f'{kind}_master.game.json')
+        parser.add_argument(f'--{kind}-master-file')
+    parser.add_argument('--allow-mixed-master-versions', action='store_true')
+    parser.add_argument('--exclusions-file', default=str(Path(__file__).parent / 'data/game_exclusions.json'))
+    parser.add_argument('--pedigree-mismatch-retries', type=int, default=0)
+    parser.add_argument('--pedigree-mismatch-wait', type=float, default=60)
+    parser.add_argument('--audit-output')
     args = parser.parse_args(argv)
     reset_conversion_warning_counts()
 
     try:
-        pedigree_source = _load_pedigree_source(args)
+        pedigree_source, update = _load_game_update(args)
+        if update is None:
+            pedigree_source = _load_pedigree_source(args)
     except Exception as exc:
         print(f"[error] 血統マスターを読み込めません: {exc}")
         return 1
@@ -1059,13 +1121,27 @@ def main(argv: Optional[list[str]] = None) -> int:
     # URL 取得元の優先順位:
     # 1) --urls-file（明示指定）
     # 2) 一覧ページから自動収集
-    fetcher = Fetcher(timeout=args.timeout, retries=args.retries)
-    if urls_file is not None:
-        urls = load_horse_urls_from_file(urls_file)
-    else:
-        urls = collect_horse_urls(fetcher)
-    if args.limit > 0:
-        urls = urls[: args.limit]
+    fetcher = None
+    urls = []
+    daily_entries = []
+    try:
+        if args.mode == 'daily':
+            daily_entries = update.daily_entries()
+        else:
+            fetcher = Fetcher(timeout=args.timeout, retries=args.retries)
+            if urls_file is not None:
+                urls = load_horse_urls_from_file(urls_file)
+            else:
+                urls = collect_horse_urls(fetcher)
+            if args.limit > 0:
+                urls = urls[: args.limit]
+            if update is not None and not urls:
+                raise ValueError('weekly URL list is empty')
+    except Exception as exc:
+        if fetcher is not None:
+            fetcher.close()
+        print(f'[error] {exc}')
+        return 1
 
     workers = max(1, args.workers)
 
@@ -1090,7 +1166,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     stallion_last_ability = ""
     # summary / details を後段でまとめて書くため、書き出し順に entry を保持する。
     # （full JSON は従来どおりストリーム書き込み。entry 約 2,800 件はメモリ上問題ない）
-    need_split_output = summary_output_path is not None or details_output_dir is not None
+    need_split_output = summary_output_path is not None or details_output_dir is not None or update is not None
     entries: list[dict] = []
     touched_pedigree_ids: set[str] = set()
 
@@ -1114,6 +1190,20 @@ def main(argv: Optional[list[str]] = None) -> int:
         with output_path.open("w", encoding="utf-8", newline="\n") as out:
             out.write('{"horseLists":[')
             first = True
+
+            def write_additions(additions):
+                """日次の行と金曜の持ち越しを同じ形式で追記する。"""
+                nonlocal first, written
+                for entry in additions:
+                    if not first:
+                        out.write(',')
+                    full_entry = {k: v for k, v in entry.items() if k != 'mares'}
+                    out.write(json.dumps(full_entry, ensure_ascii=False, separators=(',', ':')))
+                    first = False
+                    entries.append(entry)
+                    written += 1
+
+            write_additions(daily_entries)
 
             # バッチ単位で並列フェッチし、元の URL 順で書き出す。
             batch_size = workers * 2
@@ -1160,6 +1250,8 @@ def main(argv: Optional[list[str]] = None) -> int:
                         touched_pedigree_ids.update(
                             attach_pedigree_ids(entry, pedigree_source)
                         )
+                    if update is not None:
+                        update.weekly_entry(entry)
                     full_entry = (
                         {key: value for key, value in entry.items() if key != "mares"}
                         if "mares" in entry
@@ -1186,12 +1278,32 @@ def main(argv: Optional[list[str]] = None) -> int:
                     if args.progress > 0 and written % args.progress == 0:
                         print(f"processed: {written} (source index {idx})")
 
+            if update is not None and args.mode == 'weekly':
+                write_additions(update.carried_entries())
             out.write("]}\n")
+
+    except Exception as exc:
+        if update is None:
+            raise
+        print(f'[error] {exc}')
+        return 1
 
     finally:
         if all_fp is not None:
             all_fp.close()
-        fetcher.close()
+        if fetcher is not None:
+            fetcher.close()
+
+    if update is not None:
+        touched_pedigree_ids = update.pedigree_ids(entries)
+        update.finish(entries, args.audit_output)
+        if args.mode == 'weekly':
+            from collections import Counter
+            old_counts = Counter(e['sex'] for e in update.previous)
+            new_counts = Counter(e['sex'] for e in entries)
+            if not entries or any(old_counts[sex] - new_counts[sex] > 10 for sex in old_counts):
+                print('[error] weekly horse count dropped too far')
+                return 1
 
     # summary / details の書き出し（指定時のみ）。
     if need_split_output:

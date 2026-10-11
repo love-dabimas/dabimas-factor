@@ -80,6 +80,18 @@ class PedigreeMasterSource:
                 if normalized:
                     self._pedigree_name_indexes["aliases"][normalized].extend(variants)
 
+    def node(self, node_id: str) -> dict | None:
+        return self._nodes.get(node_id)
+
+    def pedigree(self, pedigree_id: str) -> dict | None:
+        return self._pedigrees.get(pedigree_id)
+
+    def nodes_of(self, pedigree_id: str) -> list[dict]:
+        return list(self._nodes_by_pedigree.get(pedigree_id, []))
+
+    def base_node(self, pedigree_id: str) -> dict | None:
+        return self.node(f'{pedigree_id}-00')
+
     def resolve(
         self,
         name: str,

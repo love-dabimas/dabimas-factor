@@ -30,7 +30,8 @@ assert.deepEqual(plain(logic.musume.refineTheoryMap({...map,entries:[]},
   [{key:'supreme',board:synthetic.slice(0,16)}],synthetic.slice(16),{}).map.entries),[]);
 logic.plan.diagnoseStep = original;
 const sires = horses.filter(h => h.sex === '0');
-assert.equal(sires.length,2433);
+// 自動更新で増えるので下限で見る（2026-09-11 時点の数）。
+assert.ok(sires.length>=2433,'種牡馬が減っている: '+sires.length);
 const rows = sires.map(h => {
   const b = board(h);
   return [link.toMusumeKey(h.id),b[1].parentLine,b[3].parentLine,

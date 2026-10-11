@@ -272,3 +272,130 @@ def test_client_disables_response_checksum_validation(monkeypatch):
 
     assert client.meta.config.response_checksum_validation == "when_required"
     assert client.meta.config.signature_version == "s3v4"
+
+
+def game_documents():
+    master, game = load_fixture('pedigree_master.json'), load_fixture('pedigree_master.game.json')
+    meta = {'dataset_version': master['dataset_version'], 'source': master['source']}
+    stallion = dict(meta, schema='dabimas-stallion-game-master', schema_version=7,
+                   stallion_count=1, time_policy={'display_start_at_raw': 'Unix seconds',
+                   'eligible_when': 'display_start_at <= current time'}, stallions=[{
+                       'game_stallion_id': '1', 'name': 'テスト', 'node_id': game['nodes'][0]['node_id'],
+                       'pedigree_id': game['nodes'][0]['pedigree_id'], 'active': True, 'rarity': 5,
+                       'nonordinary_ability_id': '0', 'sub_ability_id': '0', 'display_start_at_raw': 0}])
+    ability = dict(meta, schema='dabimas-ability-game-master', schema_version=3, ability_count=0, abilities=[])
+    mare = dict(meta, schema='dabimas-broodmare-game-master', schema_version=6, broodmare_count=1,
+                broodmares=[{'game_broodmare_id': '1', 'name': '牝馬', 'active': True,
+                             'node_id': game['nodes'][-1]['node_id'], 'pedigree_id': game['nodes'][-1]['pedigree_id']}],
+                display_start_at_field_map={'status': 'verified', 'dated_count': 0, 'unset_count': 1})
+    return deepcopy([master, game, stallion, ability, mare])
+
+
+@pytest.mark.parametrize('index,field', [(i, f) for i in range(5) for f in ['dataset_version', 'sha256']])
+def test_game_versions_match(index, field):
+    fetch = load_module()
+    docs = game_documents()
+    if field == 'sha256':
+        docs[index]['source'][field] = 'other'
+    else:
+        docs[index][field] = 'other'
+    with pytest.raises(fetch.PedigreeMasterVersionMismatch):
+        fetch.validate_game_masters(*docs)
+
+
+@pytest.mark.parametrize('index', range(5))
+@pytest.mark.parametrize('source', [None, {}, 'bad'])
+def test_game_source_is_required(index, source):
+    fetch = load_module()
+    docs = game_documents()
+    docs[index]['source'] = source
+    with pytest.raises(fetch.PedigreeMasterError, match='source.sha256'):
+        fetch.validate_game_masters(*docs)
+
+
+def test_game_versions_and_mare_availability():
+    fetch = load_module()
+    docs = game_documents()
+    docs[2]['schema_version'] = 8
+    assert fetch.validate_game_masters(*docs).broodmare_start_dates_available
+    docs[4]['schema_version'] = 5
+    docs[4].pop('display_start_at_field_map')
+    assert not fetch.validate_game_masters(*docs).broodmare_start_dates_available
+    docs[4]['dataset_version'] = 'old'
+    assert fetch.validate_game_masters(*docs, allow_mixed_versions=True)
+
+
+@pytest.mark.parametrize('mutation', ['policy', 'schema', 'missing', 'node', 'duplicate', 'date', 'mapping', 'count'])
+def test_game_invalid_fields(mutation):
+    fetch = load_module()
+    docs = game_documents()
+    if mutation == 'policy': docs[2]['time_policy'] = {}
+    if mutation == 'schema': docs[2]['schema_version'] = 6
+    if mutation == 'missing': docs[2]['stallions'][0].pop('display_start_at_raw')
+    if mutation == 'node': docs[2]['stallions'][0]['node_id'] = 'absent'
+    if mutation == 'duplicate': docs[4]['broodmares'] *= 2
+    if mutation == 'date': docs[4]['broodmares'][0]['display_start_at'] = '2026-01-01'
+    if mutation == 'mapping': docs[4]['display_start_at_field_map']['status'] = 'unverified'
+    if mutation == 'count': docs[4]['display_start_at_field_map']['dated_count'] = 1
+    with pytest.raises(fetch.PedigreeMasterError): fetch.validate_game_masters(*docs)
+
+
+@pytest.mark.parametrize('recover', [True, False])
+def test_game_fetch_retries_all_five(tmp_path, recover):
+    fetch = load_module()
+    docs = game_documents()
+    keys = ['pedigree_master.json', 'pedigree_master.game.json', 'stallion_master.game.json',
+            'ability_master.game.json', 'broodmare_master.game.json']
+    class Client:
+        calls = 0
+        def get_object(self, Bucket, Key, **kwargs):
+            doc = deepcopy(docs[keys.index(Key)])
+            if Key == keys[-1] and (self.calls < 5 or not recover): doc['dataset_version'] = 'old'
+            self.calls += 1
+            return {'Body': Body(json.dumps(doc).encode())}
+    client, waits = Client(), []
+    if recover:
+        fetch.load_game_masters(client=client, cache_dir=tmp_path, mismatch_retries=1, sleep=waits.append)
+    else:
+        with pytest.raises(fetch.PedigreeMasterVersionMismatch):
+            fetch.load_game_masters(client=client, cache_dir=tmp_path, mismatch_retries=1, sleep=waits.append)
+    assert client.calls == 10
+    assert waits == [60.0]
+
+
+@pytest.mark.parametrize('failure', ['expected', 'schema', 'network'])
+def test_game_fetch_does_not_retry_other_errors(tmp_path, failure):
+    fetch = load_module()
+    docs = game_documents()
+    if failure == 'schema': docs[2]['schema_version'] = 6
+    keys = ['pedigree_master.json', 'pedigree_master.game.json', 'stallion_master.game.json',
+            'ability_master.game.json', 'broodmare_master.game.json']
+    client = FailingClient() if failure == 'network' else SuccessClient(dict(zip(keys, [json.dumps(d).encode() for d in docs])))
+    waits = []
+    with pytest.raises(RuntimeError):
+        fetch.load_game_masters(client=client, cache_dir=tmp_path, mismatch_retries=2, sleep=waits.append,
+                                expected_dataset_version='wrong' if failure == 'expected' else None)
+    assert not waits
+
+
+def test_game_retry_does_not_hide_network_failure_with_partial_cache(tmp_path):
+    fetch = load_module()
+    docs = game_documents()
+    keys = ['pedigree_master.json', 'pedigree_master.game.json', 'stallion_master.game.json',
+            'ability_master.game.json', 'broodmare_master.game.json']
+    class Client:
+        calls = 0
+        def get_object(self, Bucket, Key, **kwargs):
+            attempt = self.calls // 5
+            self.calls += 1
+            if attempt and Key == keys[0]:
+                raise OSError('retry network failure')
+            doc = deepcopy(docs[keys.index(Key)])
+            if not attempt and Key in keys[2:]:
+                doc['dataset_version'] = 'older'
+            return {'Body': Body(json.dumps(doc).encode())}
+    client = Client()
+    waits = []
+    with pytest.raises(OSError, match='retry network failure'):
+        fetch.load_game_masters(client=client, cache_dir=tmp_path, mismatch_retries=2, sleep=waits.append)
+    assert client.calls == 6 and waits == [60.0]

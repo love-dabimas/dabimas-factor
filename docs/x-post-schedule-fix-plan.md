@@ -1,5 +1,7 @@
 # x_post.yml 定時起動改善プラン
 
+現行の運用は [data-update-operations.md](data-update-operations.md) を参照（2026-10 に日次＋金曜の二本立てへ変更）。
+
 対象: [.github/workflows/x_post.yml](../.github/workflows/x_post.yml)
 作成日: 2026-07-03
 状態: **案 A を採用・実装済み**（待機ターゲット 18:30 JST、2026-07-03）
