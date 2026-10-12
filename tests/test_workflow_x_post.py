@@ -31,7 +31,8 @@ def test_schedule_permissions_and_steps():
     assert 'err_gate' in BY_ID['post_error']['if'] and 'failure()' in BY_ID['post_error']['if']
     gate = BY_ID['err_gate']['if']
     assert all(text in gate for text in ["failure()", "steps.deps.outcome == 'success'",
-                                       "steps.push.outcome != 'success'", "steps.ctx.outputs.dry_run != 'true'"])
+                                       "steps.push.outcome != 'success'", "steps.ctx.outputs.dry_run != 'true'",
+                                       "steps.ctx.outputs.mode == 'weekly'"])
 
 
 def run_context(tmp_path, monkeypatch, event='schedule', schedule='47 0 * * *', mode='daily', as_of='', dry_run='false'):

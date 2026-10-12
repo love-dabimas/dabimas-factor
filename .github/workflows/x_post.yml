@@ -190,7 +190,7 @@ jobs:
             update_summary.png
       - name: エラー通知の要否
         id: err_gate
-        if: failure() && steps.deps.outcome == 'success' && steps.push.outcome != 'success' && steps.ctx.outputs.dry_run != 'true'
+        if: failure() && steps.deps.outcome == 'success' && steps.push.outcome != 'success' && steps.ctx.outputs.dry_run != 'true' && steps.ctx.outputs.mode == 'weekly'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -206,7 +206,7 @@ jobs:
               echo 'DABIMAS_ERROR_END'
             } >> "$GITHUB_ENV"
           fi
-      - name: X へエラーを投稿
+      - name: X へエラーを投稿（週次のみ）
         id: post_error
         if: failure() && steps.err_gate.outputs.notify == 'true'
         env:
