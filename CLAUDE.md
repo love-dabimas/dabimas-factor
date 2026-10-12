@@ -24,7 +24,8 @@
 `json/` のデータと `service-worker.js` の `CACHE_NAME` は、GitHub Actions
 （`.github/workflows/x_post.yml`）が `main` へ自動で更新する。**毎日 11:30 JST**（R2 の
 ゲームマスターから、公開開始時刻を過ぎた新馬だけを足す）と、**毎週金曜 18:30 JST**（全書を
-全件取得して突き合わせる）の 2 本。差分があるときだけコミットし、X へ更新内容を投稿する。
+全件取得して突き合わせる）の 2 本。差分があるときだけコミットする。X への更新投稿は
+**週次のときだけ**で、日次は push までで終わる。
 `CACHE_NAME` は `dabimas-factor-vYYYYMMDD-NN` の形（同じ日に複数回動けば連番）で入るので、
 手で上げるときは同じ日付の次の番号にする。運用は `docs/data-update-operations.md`。
 

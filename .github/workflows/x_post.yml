@@ -167,9 +167,9 @@ jobs:
             git pull --rebase origin main
             git push origin HEAD:main
           fi
-      - name: X へ更新を投稿
+      - name: X へ更新を投稿（週次のみ）
         id: post_update
-        if: steps.push.outcome == 'success'
+        if: steps.push.outcome == 'success' && steps.ctx.outputs.mode == 'weekly'
         env:
           X_CLIENT_ID: ${{ secrets.X_CLIENT_ID }}
           X_REFRESH_TOKEN: ${{ secrets.X_REFRESH_TOKEN }}

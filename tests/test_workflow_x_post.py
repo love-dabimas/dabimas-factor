@@ -25,7 +25,9 @@ def test_schedule_permissions_and_steps():
     assert not any('latest_news' in s.get('run', '') or 'no-change' in s.get('name', '') for s in STEPS)
     assert all('${{' not in s.get('run', '') for s in STEPS)
     assert 'dry_run' in BY_ID['push']['if']
-    assert 'push.outcome' in BY_ID['post_update']['if']
+    # 更新の投稿は週次だけ。日次は push まで（X へは出さない）。
+    assert "steps.push.outcome == 'success'" in BY_ID['post_update']['if']
+    assert "steps.ctx.outputs.mode == 'weekly'" in BY_ID['post_update']['if']
     assert 'err_gate' in BY_ID['post_error']['if'] and 'failure()' in BY_ID['post_error']['if']
     gate = BY_ID['err_gate']['if']
     assert all(text in gate for text in ["failure()", "steps.deps.outcome == 'success'",
