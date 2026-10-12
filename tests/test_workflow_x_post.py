@@ -16,7 +16,7 @@ BY_ID = {s['id']: s for s in STEPS if 'id' in s}
 def test_schedule_permissions_and_steps():
     # PyYAML の YAML 1.1 loader は on を True と読む。
     trigger = WORKFLOW.get('on', WORKFLOW.get(True))
-    assert [s['cron'] for s in trigger['schedule']] == ['47 0 * * *', '7 4 * * 5']
+    assert [s['cron'] for s in trigger['schedule']] == ['53 20 * * *', '7 4 * * 5']
     assert set(trigger['workflow_dispatch']['inputs']) == {'mode', 'as_of', 'dry_run'}
     assert WORKFLOW['permissions']['actions'] == 'read'
     assert WORKFLOW['concurrency'] == {'group': 'dabimas-data-update', 'cancel-in-progress': False}
@@ -35,7 +35,7 @@ def test_schedule_permissions_and_steps():
                                        "steps.ctx.outputs.mode == 'weekly'"])
 
 
-def run_context(tmp_path, monkeypatch, event='schedule', schedule='47 0 * * *', mode='daily', as_of='', dry_run='false'):
+def run_context(tmp_path, monkeypatch, event='schedule', schedule='53 20 * * *', mode='daily', as_of='', dry_run='false'):
     values = dict(EVENT_NAME=event, SCHEDULE=schedule, INPUT_MODE=mode, INPUT_AS_OF=as_of,
                   INPUT_DRY_RUN=dry_run, GITHUB_OUTPUT=str(tmp_path / 'output'))
     for key, value in values.items(): monkeypatch.setenv(key, value)
@@ -51,7 +51,7 @@ def run_context(tmp_path, monkeypatch, event='schedule', schedule='47 0 * * *', 
     return dict(line.split('=', 1) for line in (tmp_path / 'output').read_text(encoding='utf-8').splitlines())
 
 
-@pytest.mark.parametrize('schedule,mode,time', [('47 0 * * *', 'daily', '11:30'), ('7 4 * * 5', 'weekly', '18:30')])
+@pytest.mark.parametrize('schedule,mode,time', [('53 20 * * *', 'daily', '11:30'), ('7 4 * * 5', 'weekly', '18:30')])
 def test_scheduled_as_of_is_fixed(tmp_path, monkeypatch, schedule, mode, time):
     out = run_context(tmp_path, monkeypatch, schedule=schedule)
     assert out == {'mode': mode, 'dry_run': 'false', 'as_of': f'2026-10-13T{time}:00+09:00', 'wait': time}

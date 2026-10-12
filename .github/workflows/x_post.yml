@@ -1,4 +1,6 @@
-# 日次: 00:47 UTC = 09:47 JST 起動 → 11:30 JST まで待機。
+# 日次: 20:53 UTC = 翌 05:53 JST 起動 → 11:30 JST まで待機（遅延バッファ 5 時間 37 分）。
+# 待機＋処理はジョブ上限の 360 分に収める必要がある。日次の処理は 1 分ほどなので、
+# これ以上の前倒しは上限に当たる。詳細: docs/x-post-schedule-fix-plan.md
 # 金曜: 04:07 UTC = 13:07 JST 起動 → 18:30 JST まで待機。
 # schedule 遅延対策: docs/x-post-schedule-fix-plan.md。日次は全書を見ず R2 だけを使う。
 # dry_run=true は生成・検証・画像まで。未来の as_of も指定可能。
@@ -21,7 +23,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: "47 0 * * *"
+    - cron: "53 20 * * *"
     - cron: "7 4 * * 5"
 permissions:
   contents: write
