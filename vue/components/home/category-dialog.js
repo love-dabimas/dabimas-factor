@@ -58,7 +58,7 @@
         return !!this.category;
       },
       dialogTitle() {
-        return this.isEdit ? "カテゴリを編集" : "カテゴリを追加";
+        return this.isEdit ? "配合帳を編集" : "配合帳を追加";
       },
       submitLabel() {
         return this.isEdit ? "保存" : "作成";
@@ -120,14 +120,14 @@
         <v-card>
           <v-card-title class="text-subtitle-1">{{ dialogTitle }}</v-card-title>
           <v-card-text>
-            <div class="dabimas-field-label">カテゴリ名</div>
+            <div class="dabimas-field-label">配合帳の名前</div>
             <v-text-field
               v-model="name"
               outlined
               dense
               hide-details
               maxlength="12"
-              placeholder="カテゴリ名を入力（12文字まで）"
+              placeholder="例：ディープ産駒用、凱旋門賞狙い"
               class="dabimas-category-name-input"
             ></v-text-field>
 

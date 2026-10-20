@@ -67,7 +67,7 @@
         }
         workspaceSync.switchToCategory(category.id).catch((error) => {
           console.error(error);
-          this.showError("カテゴリを開けませんでした。");
+          this.showError("配合帳を開けませんでした。");
         });
       },
       confirmDelete(category) {
@@ -123,7 +123,7 @@
         <v-app-bar dense flat color="white" class="dabimas-appbar dabimas-home-appbar">
           <v-toolbar-title class="dabimas-appbar-title dabimas-home-title">ダビふぁく</v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-btn icon large class="dabimas-home-action" @click="openAddDialog" aria-label="カテゴリを追加">
+          <v-btn icon large class="dabimas-home-action" @click="openAddDialog" aria-label="配合帳を追加">
             <v-icon size="28">mdi-plus</v-icon>
           </v-btn>
           <v-btn text class="dabimas-home-action dabimas-home-edit" :color="editMode ? 'primary' : undefined" @click="editMode = !editMode">
@@ -153,12 +153,12 @@
             <v-icon color="grey">mdi-chevron-right</v-icon>
           </v-card>
         </div>
-        <div class="dabimas-home-section-title">カテゴリ</div>
+        <div class="dabimas-home-section-title">配合帳</div>
 
         <div v-if="categories.length === 0" class="dabimas-home-empty">
           <v-icon size="48" color="grey">mdi-folder-open-outline</v-icon>
-          <p>まだカテゴリがありません</p>
-          <v-btn color="primary" rounded @click="openAddDialog">＋ カテゴリを追加</v-btn>
+          <p>まだ配合帳がありません</p>
+          <v-btn color="primary" rounded @click="openAddDialog">＋ 配合帳を追加</v-btn>
         </div>
 
         <v-container v-else fluid class="dabimas-category-grid">
@@ -180,7 +180,7 @@
                   <v-icon size="32" color="primary">{{ category.iconKey }}</v-icon>
                   <div class="dabimas-category-name">{{ category.name }}</div>
                   <div class="dabimas-category-count caption">
-                    作業枠 {{ workspaceCount(category.id) }}
+                    配合 {{ workspaceCount(category.id) }}
                   </div>
                 </div>
                 <div v-if="editMode" class="dabimas-category-reorder">
@@ -206,11 +206,11 @@
         <v-dialog v-model="deleteDialogVisible" max-width="320">
           <v-card v-if="deleteTarget">
             <v-card-title class="text-subtitle-1">
-              カテゴリ「{{ deleteTarget.name }}」を削除しますか？
+              配合帳「{{ deleteTarget.name }}」を削除しますか？
             </v-card-title>
             <v-card-text>
-              このカテゴリの作業枠 {{ workspaceCount(deleteTarget.id) }} 件と、
-              保存されている配合の状態もすべて削除されます。
+              この配合帳に入っている配合 {{ workspaceCount(deleteTarget.id) }} 件
+              （血統表・メモ・クロス指定）もすべて削除されます。
               この操作は取り消せません。
             </v-card-text>
             <v-card-actions>

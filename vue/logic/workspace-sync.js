@@ -458,7 +458,7 @@
 
   function removeWorkspace(workspaceId) {
     if (state.workspaces.length <= 1) {
-      return Promise.reject(new Error("最後の作業枠は削除できません"));
+      return Promise.reject(new Error("最後の配合は削除できません"));
     }
     var deletedIndex = state.workspaces.findIndex(function (w) {
       return w.id === workspaceId;

@@ -45,7 +45,7 @@
           return "";
         }
         var index = this.workspaces.findIndex((w) => w.id === this.deleteTarget.id);
-        return "作業枠" + (index + 1);
+        return "配合" + (index + 1);
       },
     },
     methods: {
@@ -91,7 +91,7 @@
           .addWorkspace()
           .catch((error) => {
             console.error(error);
-            this.showError("作業枠を追加できませんでした。");
+            this.showError("配合を追加できませんでした。");
           })
           .finally(() => {
             this.switching = false;
@@ -116,7 +116,7 @@
           .catch((error) => {
             console.error(error);
             this.deleting = false;
-            this.showError("作業枠を削除できませんでした。");
+            this.showError("配合を削除できませんでした。");
           });
       },
     },
@@ -154,7 +154,7 @@
             </div>
           </v-slide-item>
           <v-slide-item v-if="!editMode">
-            <v-btn icon small class="dabimas-tab-btn" :disabled="switching" @click="onAddWorkspace" aria-label="作業枠を追加">
+            <v-btn icon small class="dabimas-tab-btn" :disabled="switching" @click="onAddWorkspace" aria-label="配合を追加">
               <v-icon>mdi-plus</v-icon>
             </v-btn>
           </v-slide-item>
@@ -168,8 +168,7 @@
           <v-card v-if="deleteTarget">
             <v-card-title class="text-subtitle-1">{{ deleteTargetLabel }}を削除しますか？</v-card-title>
             <v-card-text>
-              保存されている配合の状態
-              （血統表・メモ・クロス指定）も削除されます。
+              この配合の血統表・メモ・クロス指定も削除されます。
             </v-card-text>
             <v-card-actions>
               <v-spacer></v-spacer>

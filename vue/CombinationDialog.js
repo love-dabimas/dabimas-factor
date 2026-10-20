@@ -436,7 +436,7 @@ Vue.component('combination-dialog', {
       if (config && config.kind) {
         const kindLabel = this.configKindLabel(config.kind);
         const confirmed = window.confirm(
-          `「${config.title}」を削除しますか？ ${kindLabel}の選択肢からも外れます。血統表で使用中の作業枠では、次回選択し直すことができなくなります。`
+          `「${config.title}」を削除しますか？ ${kindLabel}の選択肢からも外れます。血統表で使用中の配合では、次回選択し直すことができなくなります。`
         );
         if (!confirmed) return;
       }
