@@ -10,7 +10,7 @@
       var link = window.Dabimas.logic.musumeLink;
       return {
         activeMenu: null,
-        themeMode: theme ? theme.get() : "dark",
+        themeMode: theme ? theme.get() : "light",
         pedigreeOpen: !!(link && link.pedigreeOpen()),
       };
     },

@@ -15,8 +15,8 @@
   var STORAGE_KEY = "dabimasTheme";
   var DARK_CLASS = "dabimas-dark";
   var MODES = ["dark", "light", "auto"];
-  // これまで黒ベースで作ってきたので、決めていない人には暗い側を出す。
-  var DEFAULT_MODE = "dark";
+  // 決めていない人には明るい側を出す。設定画面で選んだ人はその値のまま。
+  var DEFAULT_MODE = "light";
 
   function readStored() {
     try {
