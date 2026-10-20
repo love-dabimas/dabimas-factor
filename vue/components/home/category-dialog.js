@@ -1,6 +1,7 @@
 /**
  * このコンポーネントの役割:
- * - カテゴリの追加・編集ダイアログ（docs/dabifaku_unified_spec_draft.md §9.3）。
+ * - ホームの配合の追加・編集ダイアログ（docs/dabifaku_unified_spec_draft.md §9.3）。
+ *   データ上はカテゴリ（作業枠 1 件つき）として作る。
  * - name/iconKey の入力を受け取り、保存処理（追加時は作成して開く、編集時は
  *   更新のみ）まで自己完結で行う。呼び出し側（home-page）はダイアログの
  *   開閉と対象カテゴリ（null なら新規作成）を渡すだけでよい。
@@ -58,7 +59,7 @@
         return !!this.category;
       },
       dialogTitle() {
-        return this.isEdit ? "配合帳を編集" : "配合帳を追加";
+        return this.isEdit ? "配合を編集" : "配合を追加";
       },
       submitLabel() {
         return this.isEdit ? "保存" : "作成";
@@ -120,7 +121,7 @@
         <v-card>
           <v-card-title class="text-subtitle-1">{{ dialogTitle }}</v-card-title>
           <v-card-text>
-            <div class="dabimas-field-label">配合帳の名前</div>
+            <div class="dabimas-field-label">配合の名前</div>
             <v-text-field
               v-model="name"
               outlined

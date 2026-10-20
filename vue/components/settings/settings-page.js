@@ -8,10 +8,12 @@
     data: function () {
       var theme = window.Dabimas.logic.theme;
       var link = window.Dabimas.logic.musumeLink;
+      var planAuto = window.Dabimas.logic.plan.autoSetting;
       return {
         activeMenu: null,
         themeMode: theme ? theme.get() : "dark",
         pedigreeOpen: !!(link && link.pedigreeOpen()),
+        planAutoDiagnosis: planAuto.get(),
       };
     },
     watch: {
@@ -25,6 +27,9 @@
         var link = window.Dabimas.logic.musumeLink;
         if (link) link.setPedigreeOpen(value);
         this.$root.musumePedigreeOpen = !!value;
+      },
+      planAutoDiagnosis: function (value) {
+        this.$root.planAutoDiagnosis = window.Dabimas.logic.plan.autoSetting.set(value);
       },
     },
     methods: {
@@ -67,6 +72,16 @@
               </v-list-item-content>
               <v-list-item-action>
                 <v-switch v-model="pedigreeOpen" dense hide-details inset aria-label="血統表を最初から開く"></v-switch>
+              </v-list-item-action>
+            </v-list-item>
+            <v-list-item class="dabimas-theme-item">
+              <v-list-item-icon><v-icon>mdi-magnify-scan</v-icon></v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>工程診断を自動で行う</v-list-item-title>
+                <v-list-item-subtitle>血統表が埋まると危険な工程を赤枠で示す</v-list-item-subtitle>
+              </v-list-item-content>
+              <v-list-item-action>
+                <v-switch v-model="planAutoDiagnosis" dense hide-details inset aria-label="工程診断を自動で行う"></v-switch>
               </v-list-item-action>
             </v-list-item>
             <v-list-item class="dabimas-theme-item">

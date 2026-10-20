@@ -29,6 +29,31 @@
     return names[displayedTheory] || "";
   }
 
+  function isUnknownStep(step) {
+    return step.status !== "danger" && step.status !== "safe";
+  }
+
+  // 判定できなかった工程も数えて出す。危険が 0 でも判定不能があれば
+  // 「危険なし」とは書かない（自動診断でまとめだけ見て安心しないように）。
+  function intermediateText(steps) {
+    // 最後の工程が最終工程（plan-diagnosis.js の buildDiagnosisSummary と同じ数え方）。
+    var intermediate = steps.slice(0, -1);
+    var dangerCount = intermediate.filter(function (step) {
+      return step.status === "danger";
+    }).length;
+    var unknownCount = intermediate.filter(isUnknownStep).length;
+    var parts = [];
+    if (dangerCount > 0) parts.push("危険 " + dangerCount + "件");
+    if (unknownCount > 0) parts.push("判定不能 " + unknownCount + "件");
+    return parts.length > 0 ? parts.join("・") : "危険なし";
+  }
+
+  function finalStepText(steps) {
+    var finalStep = steps.length > 0 ? steps[steps.length - 1] : null;
+    if (!finalStep || isUnknownStep(finalStep)) return "判定不能";
+    return finalStep.status === "danger" ? "危険な配合" : "危険なし";
+  }
+
   var PlanDiagnosisPanel = {
     name: "plan-diagnosis-panel",
     props: {
@@ -54,11 +79,8 @@
             (this.result.baseMareName || "指定なし") +
             "）",
           "最終理論：" + (finalTheory || "理論なし"),
-          "途中工程：" +
-            (summary.intermediateDangerCount > 0
-              ? "危険 " + summary.intermediateDangerCount + "件"
-              : "危険なし"),
-          "最終工程：" + (summary.finalStepDanger ? "危険な配合" : "危険なし"),
+          "途中工程：" + intermediateText(this.result.steps),
+          "最終工程：" + finalStepText(this.result.steps),
         ];
         if (this.selfAncestorWarningCount > 0) {
           lines.push(

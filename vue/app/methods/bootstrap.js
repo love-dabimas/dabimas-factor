@@ -2,7 +2,8 @@
  * このファイルの役割:
  * - 起動シーケンス（c1〜c4、mounted から順に呼ばれる初期化ステップ）と、
  *   localStorage からの復元（restoreInputData）、全リセット（initializer）、
- *   子系統トグル（handleClick）、インブリード例外ルールの読み込みラッパ
+ *   子系統トグル（handleClick）、血統表からホームへ戻る（goHomeFromCategory）、
+ *   インブリード例外ルールの読み込みラッパ
  *   （loadInbreedExceptions、fetch本体は
  *   vue/logic/inbreed/inbreed-exceptions.js）をまとめる。
  *
@@ -266,6 +267,23 @@
         },
         handleClick() {
           this.dispCategory++;
+        },
+        // 集計表の左上の戻るボタン。血統表を保存してからホームへ戻る。
+        goHomeFromCategory() {
+          if (this.goingHome) {
+            return;
+          }
+          this.goingHome = true;
+          this.planDiagnosisPanelVisible = false;
+          window.Dabimas.workspaceSync
+            .goHome()
+            .catch((error) => {
+              console.error(error);
+              this.horseDetailError = { show: true, message: "ホームへ戻れませんでした。" };
+            })
+            .finally(() => {
+              this.goingHome = false;
+            });
         },
   });
 })(window, window.Vue);

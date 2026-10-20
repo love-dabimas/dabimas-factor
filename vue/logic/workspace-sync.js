@@ -4,7 +4,7 @@
  *   バッファ）と IndexedDB "dabifaku_unified"（workspaces.snapshot）の
  *   相互同期、起動時の移行チェック・画面決定、画面切替シーケンスをまとめる
  *   （docs/dabifaku_unified_spec_draft.md §5, §9.1, §15）。
- * - home-page / category-dialog / workspace-tab-bar が参照する軽量な
+ * - home-page / category-dialog が参照する軽量な
  *   リアクティブ状態（window.Dabimas.workspaceSync.state）を提供する
  *   （Vuex は使わず Vue.observable で代替）。
  *
@@ -50,6 +50,9 @@
     workspaces: [],
     activeWorkspaceId: null,
   });
+
+  // 配合の名前の上限（vue/components/home/category-dialog.js の maxlength と同じ）。
+  var CATEGORY_NAME_MAX_LENGTH = 12;
 
   var flushDebounceTimer = null;
   var lastFlushedSnapshotString = null;
@@ -172,25 +175,6 @@
       });
     }
   });
-
-  // ===== 画面遷移の中核: 指定した作業枠を localStorage へ注入し本体を再構築する =====
-  // (flush は呼び出し側の責務。ここでは「切替先へ適用する」ことだけを行う。)
-  function applyWorkspace(workspaceId) {
-    var workspace = state.workspaces.find(function (w) {
-      return w.id === workspaceId;
-    });
-    if (!workspace) {
-      return Promise.reject(new Error("workspace not found: " + workspaceId));
-    }
-    injectSnapshot(workspace.snapshot);
-    lastFlushedSnapshotString = JSON.stringify(readSnapshotFromLocalStorage());
-    state.activeWorkspaceId = workspaceId;
-    return refreshRootApp(workspace.snapshot).then(function () {
-      return categoryRepo.update(state.activeCategoryId, {
-        lastActiveWorkspaceId: workspaceId,
-      });
-    });
-  }
 
   function loadCategoryIntoState(category) {
     return workspaceRepo.getByCategory(category.id).then(function (workspaces) {
@@ -348,15 +332,6 @@
 
   // ===== 画面切替（統合版仕様 §5.3, §9.4, §10.1）=====
 
-  function switchToWorkspace(workspaceId) {
-    if (workspaceId === state.activeWorkspaceId) {
-      return Promise.resolve();
-    }
-    return flushNow().then(function () {
-      return applyWorkspace(workspaceId);
-    });
-  }
-
   function switchToCategory(categoryId) {
     var resolvedWorkspace = null;
     return flushNow().then(function () {
@@ -443,41 +418,56 @@
     });
   }
 
-  // ===== 作業枠 CRUD（統合版仕様 §11）=====
-
-  function addWorkspace() {
+  // ホームの配合を複製する。血統表・メモ・クロス指定を写して、元のすぐ後ろに並べる。
+  // 開いている配合なら、画面の最新の内容を先に書き戻してから写す。
+  function duplicateCategory(categoryId) {
+    var source = state.categories.find(function (c) {
+      return c.id === categoryId;
+    });
+    if (!source) {
+      return Promise.reject(new Error("category not found: " + categoryId));
+    }
+    var created = null;
     return flushNow()
       .then(function () {
-        return workspaceRepo.create(state.activeCategoryId);
+        return workspaceRepo.getByCategory(categoryId);
       })
-      .then(function (workspace) {
-        state.workspaces.push(workspace);
-        return applyWorkspace(workspace.id);
+      .then(function (workspaces) {
+        var sourceWorkspace =
+          workspaces.find(function (w) {
+            return w.id === source.lastActiveWorkspaceId;
+          }) || workspaces[0];
+        var snapshot = sourceWorkspace && sourceWorkspace.snapshot
+          ? JSON.parse(JSON.stringify(sourceWorkspace.snapshot))
+          : null;
+        return categoryRepo.create({
+          name: copyName(source.name),
+          iconKey: source.iconKey,
+          initialSnapshot: snapshot,
+        });
+      })
+      .then(function (result) {
+        created = result;
+        var ids = state.categories.map(function (c) {
+          return c.id;
+        });
+        ids.splice(ids.indexOf(categoryId) + 1, 0, result.category.id);
+        return categoryRepo.reorder(ids);
+      })
+      .then(function () {
+        return loadHomeState();
+      })
+      .then(function () {
+        return created;
       });
   }
 
-  function removeWorkspace(workspaceId) {
-    if (state.workspaces.length <= 1) {
-      return Promise.reject(new Error("最後の配合は削除できません"));
-    }
-    var deletedIndex = state.workspaces.findIndex(function (w) {
-      return w.id === workspaceId;
-    });
-    var wasActive = state.activeWorkspaceId === workspaceId;
-    return workspaceRepo.remove(workspaceId).then(function (remaining) {
-      state.workspaces = remaining;
-      if (!wasActive) {
-        return;
-      }
-      // 削除位置に繰り上がった枠（末尾削除時は新しい末尾）へ切替。
-      // ※ flush は行わない（削除された枠の内容を書き戻さない。統合版仕様 §11.2）。
-      var nextIndex = Math.min(deletedIndex, remaining.length - 1);
-      var next = remaining[nextIndex];
-      if (!next) {
-        return;
-      }
-      return applyWorkspace(next.id);
-    });
+  // 「元の名前＋のコピー」。名前は 12 文字までなので、超えるときは元の名前の
+  // 後ろを縮める（「のコピー」まで切ると元と同じ名前になって見分けられない）。
+  function copyName(name) {
+    var suffix = "のコピー";
+    var base = (name || "").slice(0, CATEGORY_NAME_MAX_LENGTH - suffix.length);
+    return base + suffix;
   }
 
   window.Dabimas.workspaceSync = {
@@ -486,7 +476,6 @@
     boot: boot,
     notifyLocalChange: notifyLocalChange,
     flushNow: flushNow,
-    switchToWorkspace: switchToWorkspace,
     switchToCategory: switchToCategory,
     goHome: goHome,
     rememberScreen: rememberScreen,
@@ -494,7 +483,6 @@
     updateCategory: updateCategory,
     reorderCategories: reorderCategories,
     removeCategory: removeCategory,
-    addWorkspace: addWorkspace,
-    removeWorkspace: removeWorkspace,
+    duplicateCategory: duplicateCategory,
   };
 })(window, window.Vue);

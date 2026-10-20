@@ -27,20 +27,23 @@ html.dabimas-dark .v-application.theme--light {
   background-color: var(--dk-bg) !important;
 }
 
-/* ===== 作業枠のヘッダーとタブバー ===== */
-html.dabimas-dark .v-application header,
-html.dabimas-dark .v-application .dabimas-tab-bar {
+/* ===== 血統表のヘッダー ===== */
+html.dabimas-dark .v-application header {
   background-color: var(--dk-raised) !important;
   color: var(--dk-text);
   border-color: var(--dk-line) !important;
 }
 
-/* 背景色を持つボタン（作業枠の番号など）は Vuetify が白文字を前提に塗っているので触らない。
+/* 背景色を持つボタンは Vuetify が白文字を前提に塗っているので触らない。
    v-btn--has-bg が付いているものがそれ。 */
 html.dabimas-dark .v-application header .v-btn:not(.v-btn--has-bg),
-html.dabimas-dark .v-application header .v-icon,
-html.dabimas-dark .v-application .dabimas-tab-bar .v-btn:not(.v-btn--has-bg),
-html.dabimas-dark .v-application .dabimas-tab-bar .v-icon {
+html.dabimas-dark .v-application header .v-icon {
+  color: var(--dk-text);
+}
+
+/* 理論の代わりに出す「残り○枠」。明るい側の薄い灰色を、明度だけ落とす。 */
+html.dabimas-dark .v-application header .theory-remaining {
+  background-color: var(--dk-surface) !important;
   color: var(--dk-text);
 }
 
@@ -315,7 +318,6 @@ html.dabimas-dark .dabimas-home-section-title {
 }
 
 html.dabimas-dark .dabimas-home-empty,
-html.dabimas-dark .dabimas-category-count,
 html.dabimas-dark .dabimas-musume-tile__sub {
   color: var(--dk-muted);
 }

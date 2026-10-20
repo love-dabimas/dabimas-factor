@@ -73,7 +73,7 @@
       await D.workspaceSync.goHome(); await app.$nextTick();
       check(D.workspaceSync.state.categories.length === 0, 'fresh categories');
       const doc = frame.contentDocument;
-      check([...doc.querySelectorAll('.dabimas-home-section-title')].map(el=>el.textContent).join(',') === '馬を探す,配合帳', 'headings');
+      check([...doc.querySelectorAll('.dabimas-home-section-title')].map(el=>el.textContent).join(',') === '馬を探す,配合', 'headings');
       check(doc.querySelector('.dabimas-musume-tile'), 'empty home tile');
       const created = await D.workspaceSync.addCategory({name:'検証カテゴリ',iconKey:'mdi-folder'}); categoryId = created.category.id;
       await D.workspaceSync.goHome(); await app.$nextTick();

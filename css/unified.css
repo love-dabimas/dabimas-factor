@@ -120,8 +120,17 @@
   text-overflow: ellipsis;
 }
 
-.dabimas-category-count {
-  color: #757575;
+/* 編集モードの「複製」。右上の削除・右下の並び替えと重ならないよう左上に置く。 */
+.dabimas-category-duplicate {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 1;
+}
+
+.dabimas-category-duplicate .v-btn {
+  font-size: 12px;
+  letter-spacing: normal;
 }
 
 .dabimas-category-delete {
@@ -172,58 +181,6 @@
 
 .dabimas-category-dialog .dabimas-category-name-input input::placeholder {
   font-size: 16px;
-}
-
-/* ===== 作業枠タブバー（統合版仕様 §9.4） ===== */
-
-.dabimas-tab-bar {
-  display: flex;
-  align-items: center;
-  height: 40px;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #ffffff;
-}
-
-.dabimas-tab-bar-name {
-  font-size: 13px;
-  font-weight: 600;
-  max-width: 30vw;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin: 0 4px;
-}
-
-.dabimas-tab-bar-tabs {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-/* 「編集／完了」ボタン。コンパクト版 Vuetify では文字が極小になるため
-   読みやすいサイズに引き上げる */
-.dabimas-tab-bar-edit.v-btn {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: normal;
-  min-width: 48px;
-  padding: 0 10px;
-}
-
-.dabimas-tab-wrapper {
-  position: relative;
-  display: inline-block;
-  margin: 0 6px;
-}
-
-.dabimas-tab-btn {
-  min-width: 40px !important;
-  height: 32px !important;
-}
-
-.dabimas-tab-btn-close {
-  position: absolute;
-  top: -6px;
-  right: -6px;
 }
 
 /* ===== 設定・エディット種牡馬 ===== */
@@ -769,49 +726,38 @@
   text-shadow: 0 0 2px #fff, 0 0 2px #fff;
 }
 
-/* ヘッダの工程診断ボタン。色が判別できなくても文字で状態が分かるようにする。 */
-.plan-diagnosis-cell {
+/* 集計表の左上の戻るボタン（スマホ・パソコン共通）。 */
+.summary-back-cell {
   background-color: #37474f;
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
 }
 
-.plan-diagnosis-cell--incomplete,
-.plan-diagnosis-cell--running {
-  background-color: #90a4ae;
-  cursor: default;
+/* 「理論」「相性」のマス。押すと工程診断の結果、長押しで血統表の画像保存。
+   iPhone の長押しで文字選択やメニューが出ないようにする。 */
+.theory-press-cell {
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
-.plan-diagnosis-cell--danger {
-  background-color: #c62828;
+/* 長押しの時間に達した印。指を離すと血統表の画像を保存する。 */
+.theory-press-cell.theory-press-cell--armed {
+  box-shadow: inset 0 0 0 3px #ffb300;
+  filter: brightness(1.15);
 }
 
-.plan-diagnosis-cell--unknown {
-  background-color: #ef6c00;
-}
-
-.plan-diagnosis-cell--safe {
-  background-color: #2e7d32;
-}
-
-.plan-diagnosis-badge {
-  display: block;
-  color: #fff;
-  font-size: 11px;
-  line-height: 1.2;
-}
-
-.exp-mobile-plan-diagnosis-button {
-  background: transparent;
-  border: 0;
-  color: #fff;
-  line-height: 1;
-  padding: 0;
-}
-
-.exp-mobile-plan-diagnosis-button .plan-diagnosis-badge {
-  font-size: 9px;
+/* 血統表が埋まりきるまで、理論の代わりに出す「残り○枠」。 */
+.theory-remaining {
+  background-color: #eceff1;
+  color: #37474f;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
 }
 
 /* 診断結果パネル（下部シート） */

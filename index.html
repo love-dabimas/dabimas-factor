@@ -64,7 +64,6 @@
       <musume-host></musume-host>
 
       <header ref="appHeader" v-show="currentScreen === 'category'">
-        <workspace-tab-bar></workspace-tab-bar>
         <factor-summary-header
           :factor-nums="factorNumtoString"
           :inbreed-factor-nums="inbreedFactorNumtoString"
@@ -75,14 +74,14 @@
           :sire-line-counts="dispCategory % 2 === 1 ? buildSireLineColorCounts() : null"
           :combination-cell-style="combinationCellStyle"
           :is-capturing-screenshot="isCapturingScreenshot"
-          :plan-diagnosis-state="planDiagnosisState"
-          :plan-diagnosis-badge-text="planDiagnosisBadgeText"
-          :plan-diagnosis-disabled="planDiagnosisDisabled"
+          :remaining-cell-count="planEmptyCellCount"
+          :going-home="goingHome"
           @toggle-category="handleClick"
           @combination-open="handleCombinationCellClick"
           @reset="initializer"
           @capture-screenshot="captureMobileScreenshot"
-          @plan-diagnose="runPlanDiagnosis"
+          @go-home="goHomeFromCategory"
+          @plan-open="openPlanDiagnosisPanel"
         ></factor-summary-header>
       </header>
 
@@ -185,6 +184,7 @@
   <script src="./vue/logic/inbreed/inbreed-detector.js"></script>
   <script src="./vue/logic/inbreed/inbreed-counts.js"></script>
   <script src="./vue/logic/plan/plan-diagnosis.js"></script>
+  <script src="./vue/logic/plan/plan-auto-setting.js"></script>
   <script src="./vue/logic/plan/assist-diagnosis.js"></script>
   <script src="./vue/logic/musume/theory-map-heavy.js"></script>
   <script src="./vue/logic/plan/assist-plan.js"></script>
@@ -198,7 +198,7 @@
   <script src="./vue/components/header/factor-summary-header.js"></script>
   <script src="./vue/components/plan/plan-diagnosis-panel.js"></script>
 
-  <!-- 統合版（カテゴリ・作業枠）: dabifaku_unified への接続はこの層のみが持つ -->
+  <!-- 統合版（ホームの配合一覧）: dabifaku_unified への接続はこの層のみが持つ -->
   <script src="./vue/logic/storage/unified-db.js"></script>
   <script src="./vue/logic/storage/category-repository.js"></script>
   <script src="./vue/logic/storage/workspace-repository.js"></script>
@@ -214,7 +214,6 @@
   <script src="./vue/components/assist/assist-factor-table.js"></script>
   <script src="./vue/components/assist/assist-pedigree-dialog.js"></script>
   <script src="./vue/components/assist/assist-screen.js"></script>
-  <script src="./vue/components/workspace/workspace-tab-bar.js"></script>
   <!-- ダビ娘の組み込み（お気に入り・検索） -->
   <script src="./vue/logic/musume-link.js"></script>
   <script src="./vue/logic/musume/custom-horse-payload.js"></script>
