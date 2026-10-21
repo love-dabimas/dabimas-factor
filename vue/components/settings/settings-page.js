@@ -15,7 +15,7 @@
         themeMode: theme ? theme.get() : "dark",
         pedigreeOpen: !!(link && link.pedigreeOpen()),
         planAutoDiagnosis: planAuto.get(),
-        nameSize: nameSize ? nameSize.get() : "large",
+        nameSize: nameSize ? nameSize.get() : "small",
       };
     },
     watch: {

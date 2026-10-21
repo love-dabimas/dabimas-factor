@@ -458,8 +458,8 @@
   /* 行高が文字の大きさちょうど（1）だと、g・y・p など下に伸びる部分が箱の外に出て
      overflow: hidden で切られる。1.3 倍でも行（文字の約 1.43 倍）には収まる。 */
   line-height: 1.3;
-  /* 馬名は行の高さから決める。設定の「馬名の文字の大きさ」で大（× 0.70、既定）と
-     小（× 0.64）を選べる。小は html.dabimas-name-small（vue/logic/name-size.js）。 */
+  /* 馬名は行の高さから決める。設定の「馬名の文字の大きさ」で大（× 0.70）と
+     小（× 0.64、既定）を選べる。小は html.dabimas-name-small（vue/logic/name-size.js）。 */
   font-size: clamp(9px, calc(var(--exp-mobile-row-height) * 0.7), 17px);
 }
 

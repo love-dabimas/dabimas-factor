@@ -15,8 +15,8 @@
   var STORAGE_KEY = "dabimasNameSize";
   var SMALL_CLASS = "dabimas-name-small";
   var SIZES = ["large", "small"];
-  // 上の帯を無くして行が高くなったので、決めていない人には大きい方を出す。
-  var DEFAULT_SIZE = "large";
+  // 大は長い名前（★１薄め…）の後ろが切れやすいので、決めていない人には小を出す。
+  var DEFAULT_SIZE = "small";
 
   function readStored() {
     try {
