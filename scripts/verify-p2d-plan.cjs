@@ -45,6 +45,8 @@ assert.deepEqual(plain(second.steps),plain(first.steps));
 assert.deepEqual(plain(A),initial); assert.equal(resolver.parentsOf(virtual.cells[16].identityRef),null);
 // A single real-mare step retains all existing status/reason/label output.
 const single={...options,selected:board(teio,luna)};
-assert.deepEqual(plain(currentDiagnosis(single).steps),plain(oldDiagnosis(single).steps));
+// sireSubName は工程の見出しで同じ馬の別の版を見分けるために後から足した項目。判定結果ではないので比べない。
+const withoutSubName=steps=>plain(steps).map(({sireSubName,...rest})=>rest);
+assert.deepEqual(withoutSubName(currentDiagnosis(single).steps),plain(oldDiagnosis(single).steps));
 window.Dabimas.logic.inbreed.judgeInbreed=judge;
 console.log('OK: plan B01 parity (75000/danger), deterministic refs/results, no persistent mutations, single-step output unchanged');

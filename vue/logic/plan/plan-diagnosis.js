@@ -314,6 +314,7 @@
         sireIndex: base.sireIndex,
         sireNodeId: base.sireNodeId,
         sireName: base.sireName,
+        sireSubName: base.sireSubName || "",
         matchedTheories: [],
         displayedTheory: null,
         isDangerous: false,
@@ -365,6 +366,15 @@
       .join(",");
   }
 
+  // 工程の種牡馬のサブ名（瑚闘・1973 など）。同じ馬の別の版を見分けるのに要る。
+  // 牝馬を選んだセルの "(牝馬名)" は種牡馬の名前ではないので出さない。
+  function sireSubNameOf(entry) {
+    if (!entry || typeof entry.subName !== "string" || readMareNameFromCell(entry)) {
+      return "";
+    }
+    return entry.subName;
+  }
+
   // 前工程が組めなかった場合、それ以降は判定できないので blocked にする。
   function appendBlockedLaterSteps(steps, plan, selected, fromIndex) {
     for (var i = fromIndex; i < plan.steps.length; i += 1) {
@@ -378,6 +388,7 @@
             sireIndex: step.sireIndex,
             sireNodeId: sireEntry ? sireEntry.nodeId || null : null,
             sireName: sireEntry ? sireEntry.name : "",
+            sireSubName: sireSubNameOf(sireEntry),
           },
           { status: "blocked", reasonCode: "PREVIOUS_STEP_BLOCKED" }
         )
@@ -505,6 +516,7 @@
         sireIndex: step.sireIndex,
         sireNodeId: sireEntry ? sireEntry.nodeId || null : null,
         sireName: sireEntry ? sireEntry.name : "",
+        sireSubName: sireSubNameOf(sireEntry),
       };
 
       var sireRecord = input.resolveHorse ? input.resolveHorse(sireEntry) : null;

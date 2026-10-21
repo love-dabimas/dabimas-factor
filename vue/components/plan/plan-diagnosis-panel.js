@@ -109,7 +109,7 @@
     },
     methods: {
       stepHeading: function (step) {
-        return "工程" + step.stepNo + "　" + step.mareLabel + " × " + step.sireName;
+        return "工程" + step.stepNo + "　" + step.mareLabel + " × " + step.sireName + (step.sireSubName || "");
       },
       stepResultText: function (step) {
         if (step.status === "danger") {
