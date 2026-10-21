@@ -218,6 +218,16 @@
                 </div>
               </v-card>
             </v-col>
+            <!-- 並びの最後に追加のカードを置く。右上の＋だけだと見つけにくいため。
+                 編集モードの間は並び替えの邪魔になるので出さない。 -->
+            <v-col v-if="!editMode" cols="6" sm="4" md="3">
+              <v-card outlined ripple class="dabimas-category-card dabimas-category-add" @click="openAddDialog">
+                <div class="dabimas-category-card-body">
+                  <v-icon size="32" color="primary">mdi-plus</v-icon>
+                  <div class="dabimas-category-name">配合を追加</div>
+                </div>
+              </v-card>
+            </v-col>
           </v-row>
         </v-container>
 

@@ -335,6 +335,14 @@ html.dabimas-dark .dabimas-home .dabimas-category-card.v-sheet .v-icon {
   color: var(--dk-accent);
 }
 
+html.dabimas-dark .dabimas-home .dabimas-category-add.v-sheet {
+  border: 2px dashed var(--dk-line) !important;
+}
+
+html.dabimas-dark .dabimas-home .dabimas-category-add .dabimas-category-name {
+  color: var(--dk-accent);
+}
+
 /* ===== 設定画面 ===== */
 html.dabimas-dark .dabimas-settings {
   background-color: var(--dk-bg);

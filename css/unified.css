@@ -125,6 +125,16 @@
   text-overflow: ellipsis;
 }
 
+/* 並びの最後の「配合を追加」。中身のある配合と見分けられるよう、点線の枠にする。 */
+.v-card.dabimas-category-add {
+  border-style: dashed !important;
+  border-width: 2px !important;
+}
+
+.dabimas-category-add .dabimas-category-name {
+  color: #1976d2;
+}
+
 /* 編集モードの「複製」。右上の削除・右下の並び替えと重ならないよう左上に置く。 */
 .dabimas-category-duplicate {
   position: absolute;
