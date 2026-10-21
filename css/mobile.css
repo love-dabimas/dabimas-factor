@@ -222,16 +222,23 @@
   vertical-align: middle;
 }
 
+/* 1 段目（戻る・因子名）は、血統表へ回す高さを稼ぐため、下のニトロ・クロスの段と
+   同じ 16px まで詰める。マスに文字用の行の高さが残っていると、それだけで 20px に
+   なるので消しておく。 */
+.exp-mobile-layout header .exp-mobile-back-cell {
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
 /* 左上の戻るボタン。マス全体を押せるようにする。 */
 .exp-mobile-layout .exp-mobile-back-button {
   width: 100%;
-  height: 100%;
-  min-height: 18px;
+  height: 16px;
   border: 0;
   padding: 0;
   background: transparent;
   color: #fff;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
@@ -243,7 +250,9 @@
 }
 
 .exp-mobile-layout header .exp-mobile-back-button .v-icon {
-  font-size: 22px !important;
+  font-size: 16px !important;
+  height: 16px;
+  line-height: 16px;
 }
 
 /* 血統表が埋まりきるまで、理論の代わりに出す「残り○枠」。
