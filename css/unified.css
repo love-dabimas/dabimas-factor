@@ -93,8 +93,13 @@
   text-align: center;
 }
 
-.dabimas-category-card {
+.v-card.dabimas-category-card {
   position: relative;
+  /* 高さは編集モードのボタン（左上の複製・右上の削除・右下の並び替え）の置き場。
+     中身（アイコンと名前）は上下中央に置いて、下だけが空いて見えないようにする。 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 96px;
   border-radius: 12px !important;
   cursor: pointer;
@@ -106,7 +111,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  width: 100%;
   gap: 4px;
   text-align: center;
 }
