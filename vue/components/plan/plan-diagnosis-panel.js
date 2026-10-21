@@ -3,6 +3,8 @@
  * - 工程診断の結果（vue/logic/plan/plan-diagnosis.js の戻り値）を、血統表と
  *   同じ画面の下部シートに表示する。別画面は作らない（仕様 §6.3）。
  * - 最終工程の理論と、途中工程の危険件数を別項目として並べる（仕様 §9.3）。
+ * - 左上の種牡馬を自分で組んだときは、「繁殖牝馬側の工程」と「種牡馬側の工程」を
+ *   分けて並べる。
  *
  * このコンポーネントに置かない処理:
  * - 判定そのもの。ここは受け取った結果を文字にするだけで、危険判定を
@@ -48,6 +50,10 @@
     return parts.length > 0 ? parts.join("・") : "危険なし";
   }
 
+  function planHeading(planDepth, baseMareName) {
+    return planDepth + "工程の計画（基礎繁殖牝馬: " + (baseMareName || "指定なし") + "）";
+  }
+
   function finalStepText(steps) {
     var finalStep = steps.length > 0 ? steps[steps.length - 1] : null;
     if (!finalStep || isUnknownStep(finalStep)) return "判定不能";
@@ -67,6 +73,20 @@
       steps: function () {
         return this.result ? this.result.steps : [];
       },
+      sireSide: function () {
+        return this.result ? this.result.sireSide || null : null;
+      },
+      sireSideSummaryLines: function () {
+        var side = this.sireSide;
+        if (!side) {
+          return [];
+        }
+        return [
+          planHeading(side.planDepth, side.baseMareName),
+          "途中工程：" + intermediateText(side.steps),
+          "種牡馬が生まれる工程：" + finalStepText(side.steps),
+        ];
+      },
       summaryLines: function () {
         if (!this.result) {
           return [];
@@ -74,10 +94,7 @@
         var summary = this.result.summary;
         var finalTheory = theoryName(summary.finalDisplayedTheory);
         var lines = [
-          this.result.planDepth +
-            "工程の計画（基礎繁殖牝馬: " +
-            (this.result.baseMareName || "指定なし") +
-            "）",
+          planHeading(this.result.planDepth, this.result.baseMareName),
           "最終理論：" + (finalTheory || "理論なし"),
           "途中工程：" + intermediateText(this.result.steps),
           "最終工程：" + finalStepText(this.result.steps),
@@ -114,6 +131,7 @@
     template: `
       <v-bottom-sheet :value="value" @input="$emit('input', $event)">
         <v-sheet class="plan-diagnosis-panel">
+          <div v-if="sireSide" class="plan-diagnosis-section-title">繁殖牝馬側の工程</div>
           <div
             v-for="line in summaryLines"
             :key="line"
@@ -128,6 +146,23 @@
             <div class="plan-diagnosis-step-heading">{{ stepHeading(step) }}</div>
             <div class="plan-diagnosis-step-result">{{ stepResultText(step) }}</div>
           </div>
+
+          <template v-if="sireSide">
+            <div class="plan-diagnosis-section-title">種牡馬側の工程</div>
+            <div
+              v-for="line in sireSideSummaryLines"
+              :key="'sire-' + line"
+              class="plan-diagnosis-panel-summary"
+            >{{ line }}</div>
+            <div
+              v-for="step in sireSide.steps"
+              :key="'sire-step-' + step.stepNo"
+              :class="stepClass(step)"
+            >
+              <div class="plan-diagnosis-step-heading">{{ stepHeading(step) }}</div>
+              <div class="plan-diagnosis-step-result">{{ stepResultText(step) }}</div>
+            </div>
+          </template>
 
           <v-btn text block class="mt-2" @click="$emit('input', false)">閉じる</v-btn>
         </v-sheet>
