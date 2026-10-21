@@ -152,6 +152,29 @@ const savedHorse = methods.createSavedHorseSummary({
 assert.equal("rare" in savedHorse, false);
 assert.equal(horseSearch.getHorseBadges(savedHorse).some((badge) => badge.key === "ability"), false);
 
+// 性別のバッジ: 牝馬（セール牝馬・自家製の繁殖牝馬・深いマスで選んだ牝馬）には「牝」、
+// 自家製の種牡馬には「牡」。公式の種牡馬には付けない。「自」の後ろに並べる。
+const sexBadges = (horse) => horseSearch.getHorseBadges(horse).map((badge) => badge.text).filter((text) => "自牡牝".includes(text));
+assert.deepEqual(sexBadges({ name: "セール牝馬", sex: "1" }), ["牝"], "セール牝馬は牝");
+assert.deepEqual(sexBadges({ name: "☆自家製牝馬", sex: "1", source: "custom" }), ["自", "牝"], "自家製の繁殖牝馬は 自・牝");
+assert.deepEqual(sexBadges({ name: "☆自家製牡馬", sex: "0", source: "custom" }), ["自", "牡"], "自家製の種牡馬は 自・牡");
+assert.deepEqual(sexBadges({ name: "公式の種牡馬", sex: "0" }), [], "公式の種牡馬には付けない");
+assert.deepEqual(
+  sexBadges({ name: "ストームキャット", subName: "(メゾンフォルティー)", sex: "0", placeholderMareRef: { kind: "master", nodeId: "x" } }),
+  ["牝"],
+  "深いマスでセール牝馬を選んだマスは牝"
+);
+assert.deepEqual(
+  sexBadges({ name: "ドリームジャーニー", subName: "(☆ドリメゾ牝馬)", sex: "0", placeholderMareRef: { kind: "custom", id: "c" } }),
+  ["自", "牝"],
+  "深いマスで自家製の繁殖牝馬を選んだマスは 自・牝"
+);
+assert.equal(
+  horseSearch.getHorseBaseText({ name: "セール牝馬", sex: "1" }),
+  "セール牝馬",
+  "性別のバッジは文字列（displayName と揃える側）には入れない"
+);
+
 const summaryPath = path.join(__dirname, "..", "json", "dabimasFactor.summary.json");
 const summaryJson = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
 const horses = summaryJson.horseLists;

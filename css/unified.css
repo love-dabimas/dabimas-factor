@@ -324,6 +324,10 @@
 .exp-horse-badge--noability { background: #8d9aa5; }
 .exp-horse-badge--inmeisai { background: #ad1457; }
 .exp-horse-badge--saved { background: #2e7d32; }
+/* 性別。自家製登録の「種牡馬」「繁殖牝馬」（css/combinationDialog.css）と同じ色。
+   血統表の父＝紺・母＝臙脂とも同じ色相にしてある。 */
+.exp-horse-badge--male { background: #3e499c; }
+.exp-horse-badge--female { background: #b34e5f; }
 
 .table_main .exp-horse-cell--select {
   display: flex;
