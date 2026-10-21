@@ -169,6 +169,19 @@ assert.deepEqual(
   ["自", "牝"],
   "深いマスで自家製の繁殖牝馬を選んだマスは 自・牝"
 );
+assert.deepEqual(
+  horseSearch.getHorseBadges({
+    name: "ドリームジャーニー",
+    subName: "(☆ドリメゾ牝馬)",
+    sex: "0",
+    nature: "情熱",
+    rare: 5,
+    abilityType: "focused",
+    placeholderMareRef: { kind: "custom", id: "c" },
+  }).map((badge) => badge.text),
+  ["自", "牝"],
+  "牝馬を選んだマスでは、父の天性・非凡は出さない"
+);
 assert.equal(
   horseSearch.getHorseBaseText({ name: "セール牝馬", sex: "1" }),
   "セール牝馬",

@@ -163,6 +163,12 @@
         title: "種牡馬",
       });
     }
+    // 牝馬を選んだマスに入っているのは、その牝馬の父。ここで付く天性・非凡などは
+    // 父のものなので、選んだ牝馬のマスとして「自」「牝」だけを出す
+    // （右端の因子は父のものだがニトロに数えるので、そちらはそのまま残る）。
+    if (mareRef) {
+      return badges;
+    }
     if (horse.source === "edit" && !hideEditBadge) {
       badges.push({
         key: "edit",
