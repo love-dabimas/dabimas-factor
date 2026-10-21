@@ -9,11 +9,13 @@
       var theme = window.Dabimas.logic.theme;
       var link = window.Dabimas.logic.musumeLink;
       var planAuto = window.Dabimas.logic.plan.autoSetting;
+      var nameSize = window.Dabimas.logic.nameSize;
       return {
         activeMenu: null,
         themeMode: theme ? theme.get() : "dark",
         pedigreeOpen: !!(link && link.pedigreeOpen()),
         planAutoDiagnosis: planAuto.get(),
+        nameSize: nameSize ? nameSize.get() : "large",
       };
     },
     watch: {
@@ -27,6 +29,10 @@
         var link = window.Dabimas.logic.musumeLink;
         if (link) link.setPedigreeOpen(value);
         this.$root.musumePedigreeOpen = !!value;
+      },
+      nameSize: function (size) {
+        var nameSize = window.Dabimas.logic.nameSize;
+        if (nameSize) nameSize.set(size);
       },
       planAutoDiagnosis: function (value) {
         this.$root.planAutoDiagnosis = window.Dabimas.logic.plan.autoSetting.set(value);
@@ -93,6 +99,17 @@
                   <v-btn value="dark" small>ダーク</v-btn>
                   <v-btn value="light" small>ライト</v-btn>
                   <v-btn value="auto" small>端末に合わせる</v-btn>
+                </v-btn-toggle>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item class="dabimas-theme-item">
+              <v-list-item-icon><v-icon>mdi-format-size</v-icon></v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>馬名の文字の大きさ</v-list-item-title>
+                <v-list-item-subtitle>スマホの血統表。大は長い名前の後ろが切れやすい</v-list-item-subtitle>
+                <v-btn-toggle v-model="nameSize" mandatory dense class="dabimas-theme-toggle">
+                  <v-btn value="large" small>大</v-btn>
+                  <v-btn value="small" small>小</v-btn>
                 </v-btn-toggle>
               </v-list-item-content>
             </v-list-item>

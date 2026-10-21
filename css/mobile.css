@@ -446,7 +446,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* 上の帯を無くして行が高くなったぶん、馬名も大きくする（上限 15px）。 */
+  /* 馬名は行の高さから決める。設定の「馬名の文字の大きさ」で大（× 0.70、既定）と
+     小（× 0.64）を選べる。小は html.dabimas-name-small（vue/logic/name-size.js）。 */
+  font-size: clamp(9px, calc(var(--exp-mobile-row-height) * 0.7), 17px);
+}
+
+html.dabimas-name-small .exp-mobile-layout .exp-mobile-horse-text {
   font-size: clamp(9px, calc(var(--exp-mobile-row-height) * 0.64), 15px);
 }
 
