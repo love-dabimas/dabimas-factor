@@ -236,6 +236,16 @@
   margin: 0 auto;
 }
 
+/* 説明文は Vuetify の既定だと 1 行で「…」に切られる。スマホ幅では大事な部分が
+   見えなくなるので、折り返して全部出す。 */
+.dabimas-settings-menu .v-list-item__subtitle {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  -webkit-line-clamp: unset;
+  line-height: 1.4;
+}
+
 .dabimas-settings-empty {
   display: flex;
   min-height: 60vh;
