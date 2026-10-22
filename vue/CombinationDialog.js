@@ -715,8 +715,23 @@ Vue.component('combination-dialog', {
                           :class="badge.className"
                         >{{ badge.text }}</v-chip>
                       </div>
-                      <div class="combination-list-item-date">
-                        {{ formatDate(config.savedAt) }}
+                      <!-- 日付の行の右端に「メモ」ボタン。名前の行に置くと名前と因子が折り返すため。 -->
+                      <div class="combination-list-item-meta">
+                        <div class="combination-list-item-date">
+                          {{ formatDate(config.savedAt) }}
+                        </div>
+                        <!-- css/vuetify_compact.min.css は小さいアイコンボタンの大きさを持たず
+                             14px まで縮むので、Vuetify のボタンを使わず大きさを自分で決める。 -->
+                        <button
+                          type="button"
+                          class="combination-memo-btn"
+                          :class="{ 'combination-memo-btn--filled': !!config.memo }"
+                          aria-label="メモ"
+                          @click.stop="openMemoDialog(config)"
+                        >
+                          <v-icon small class="combination-memo-btn-icon">{{ config.memo ? 'mdi-note-text' : 'mdi-note-edit-outline' }}</v-icon>
+                          <span>メモ</span>
+                        </button>
                       </div>
                       <div v-if="config.memo" class="combination-list-item-memo">{{ config.memo }}</div>
                     </div>
@@ -727,18 +742,7 @@ Vue.component('combination-dialog', {
                     >
                       mdi-check-circle
                     </v-icon>
-                    <!-- css/vuetify_compact.min.css は小さいアイコンボタンの大きさを持たず
-                         14px まで縮むので、Vuetify のボタンを使わず大きさを自分で決める。 -->
-                    <button
-                      type="button"
-                      class="combination-memo-btn"
-                      :class="{ 'combination-memo-btn--filled': !!config.memo }"
-                      aria-label="メモ"
-                      @click.stop="openMemoDialog(config)"
-                    >
-                      <v-icon small>{{ config.memo ? 'mdi-note-text' : 'mdi-note-edit-outline' }}</v-icon>
-                      <span>メモ</span>
-                    </button>
+
                   </div>
                 </div>
               </v-col>

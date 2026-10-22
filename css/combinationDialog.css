@@ -349,15 +349,23 @@
   overflow: hidden;
 }
 
-/* カードの右端の「メモ」ボタン。押しやすいよう高さ 32px の丸いボタンにする。
+/* 日付の行。左に日付、右端に「メモ」ボタン。 */
+.combination-list-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+/* 日付の行の右端の「メモ」ボタン。押しやすいよう高さ 30px の丸いボタンにする。
    メモが入っている配合は塗りにして、開かなくても有無が分かるようにする。 */
 .combination-list-item .combination-memo-btn {
   flex: none;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  height: 32px;
-  margin-left: 8px;
+  height: 30px;
   padding: 0 12px;
   border: 1.5px solid #667eea;
   border-radius: 16px;
@@ -368,9 +376,16 @@
   cursor: pointer;
 }
 
-.combination-list-item .combination-memo-btn .v-icon {
+/* 軽量版の Vuetify の CSS では v-icon の幅・高さが 0 になるので、大きさも持たせる。 */
+.combination-list-item .combination-memo-btn .combination-memo-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
   color: inherit !important;
   font-size: 16px !important;
+  line-height: 1;
 }
 
 .combination-list-item .combination-memo-btn--filled {
