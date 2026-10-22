@@ -519,15 +519,24 @@
 }
 
 /* 保存済み配合リストの因子バッジ（因子付与ダイアログのチップと同じ配色を流用） */
+/* 1 文字なので 20px の正方形にする（左右の余白込みで 40px あり、名前の行を狭くしていた）。 */
 .combination-list-factor.manual-factor-chip.v-chip {
   height: 20px !important;
+  width: 20px;
   min-width: 20px;
-  margin: 0 0 0 4px;
-  padding: 0 6px;
+  margin: 0 0 0 3px;
+  padding: 0 !important;
+  justify-content: center;
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0;
   border-radius: 3px !important;
   vertical-align: middle;
+}
+
+.combination-list-factor.manual-factor-chip.v-chip .v-chip__content {
+  padding: 0;
+  justify-content: center;
 }
 
 .combination-list-item-date {
