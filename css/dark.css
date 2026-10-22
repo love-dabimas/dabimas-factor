@@ -44,6 +44,16 @@ html.dabimas-dark .v-application .dabimas-tab-bar .v-icon {
   color: var(--dk-text);
 }
 
+/* ===== 性別バッジ（白抜きの丸） =====
+   紺・臙脂のままだと暗い地に沈むので、色相はそのままで明るさだけ上げる。 */
+html.dabimas-dark .exp-horse-badges .exp-horse-badge.exp-horse-badge--male {
+  color: #9fa8da;
+}
+
+html.dabimas-dark .exp-horse-badges .exp-horse-badge.exp-horse-badge--female {
+  color: #e8a0ac;
+}
+
 /* ===== 血統表の土台 ===== */
 html.dabimas-dark .pedigree-card-shell.v-card {
   background-color: var(--dk-surface) !important;
