@@ -80,7 +80,7 @@
           :going-home="goingHome"
           @toggle-category="handleClick"
           @combination-open="handleCombinationCellClick"
-          @reset="initializer"
+          @reset="resetConfirmVisible = true"
           @capture-screenshot="captureMobileScreenshot"
           @go-home="goHomeFromCategory"
           @plan-open="openPlanDiagnosisPanel"
@@ -103,6 +103,21 @@
         :result="planDiagnosisResult"
         :self-ancestor-warning-count="visibleSelfAncestorWarningIndexes.length"
       ></plan-diagnosis-panel>
+
+      <!-- リセット（血統表を空にする）の確認。保存ボタンの隣にあるので押し間違えに備える -->
+      <v-dialog v-model="resetConfirmVisible" max-width="320">
+        <v-card>
+          <v-card-title class="text-subtitle-1">血統表を空にしますか？</v-card-title>
+          <v-card-text>
+            選んだ馬・メモ・クロス指定がすべて消えます。保存した配合と自家製馬は消えません。
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn text @click="resetConfirmVisible = false">キャンセル</v-btn>
+            <v-btn color="error" @click="resetConfirmVisible = false; initializer()">空にする</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
       <!-- detail（血統）取得失敗時の再試行メッセージ -->
       <v-snackbar

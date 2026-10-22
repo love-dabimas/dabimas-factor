@@ -191,6 +191,29 @@
   white-space: nowrap;
 }
 
+/* 理論表示の右下。保存（左）とリセット（右）を横に並べる。高さは今までの 1 マスのまま。 */
+.exp-mobile-layout header .mobile-action-cell {
+  padding: 0 !important;
+}
+
+.exp-mobile-layout header .mobile-action-pair {
+  display: flex;
+  height: 17px;
+  gap: 1px;
+}
+
+.exp-mobile-layout header .mobile-action-button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 .exp-mobile-layout header .mobile-cross-rowspan .v-icon {
   font-size: 14px !important;
   line-height: 1 !important;
