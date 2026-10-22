@@ -146,6 +146,8 @@
             factorLocked: true,
             nodeId: null,
             pedigreeId: null,
+            // 配合の保存の画面で付けたメモ。馬を選ぶ画面の一覧で名前の下に出す。
+            memo: record.memo || "",
           };
         },
         createEditStallionSummary(record, baseHorse) {
@@ -313,6 +315,21 @@
             summary,
             ...this.savedHorseSummaries.filter((horse) => horse.id !== record.id),
           ];
+          this.refreshCandidateListsFromSelection();
+        },
+        // 配合の保存の画面でメモを書き換えたとき。一覧の要約と detail の両方に写す。
+        handleSavedHorseMemoUpdated(payload) {
+          const id = payload && payload.customHorseId;
+          if (!id) {
+            return;
+          }
+          const memo = payload.memo || "";
+          this.savedHorseSummaries = this.savedHorseSummaries.map((horse) =>
+            horse.id === id ? { ...horse, memo: memo } : horse
+          );
+          if (this.customHorseDetails[id]) {
+            this.$set(this.customHorseDetails, id, { ...this.customHorseDetails[id], memo: memo });
+          }
           this.refreshCandidateListsFromSelection();
         },
         handleSavedHorseRemoved(customHorseId) {

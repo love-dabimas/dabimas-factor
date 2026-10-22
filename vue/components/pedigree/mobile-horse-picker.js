@@ -184,6 +184,8 @@
                     :class="['exp-option-factor-badge', factor.className]"
                   >{{ factor.text }}</span>
                 </div>
+                <!-- 自家製馬のメモ（配合の保存の画面で付けたもの）の 1 行目 -->
+                <div v-if="horse.memo" class="exp-option-memo">{{ horse.memo }}</div>
               </button>
               <div
                 v-if="filteredMobileLists.length === 0"

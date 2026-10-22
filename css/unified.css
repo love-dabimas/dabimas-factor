@@ -325,6 +325,19 @@
 .exp-horse-badge--inmeisai { background: #ad1457; }
 .exp-horse-badge--saved { background: #2e7d32; }
 
+/* 馬を選ぶ画面の一覧で、自家製馬の名前の下に出すメモ（1 行で切る）。 */
+.exp-option-memo {
+  display: block;
+  margin: 2px 0 0 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #6c757d;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .table_main .exp-horse-cell--select {
   display: flex;
   align-items: center;

@@ -707,6 +707,26 @@ html.dabimas-dark .combination-title-hint {
   color: var(--dk-muted);
 }
 
+/* 馬を選ぶ画面の一覧の、自家製馬のメモ */
+html.dabimas-dark .exp-option-memo {
+  color: var(--dk-muted) !important;
+}
+
+/* 保存済み配合のメモと、メモの入力ダイアログ */
+html.dabimas-dark .combination-list-item-memo {
+  color: var(--dk-muted);
+}
+
+html.dabimas-dark .combination-memo-card.v-card {
+  background-color: var(--dk-raised) !important;
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .combination-memo-cancel.v-btn {
+  background-color: var(--dk-surface) !important;
+  color: var(--dk-text) !important;
+}
+
 /* 保存済み配合の見出し行。#212529 のままだと黒地に黒で消える */
 html.dabimas-dark .combination-list-item-title {
   color: var(--dk-text);

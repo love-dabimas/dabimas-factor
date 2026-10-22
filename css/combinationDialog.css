@@ -335,6 +335,91 @@
   line-height: 1.3;
 }
 
+/* 保存済み配合のメモ。2 行まで出し、残りは「…」で切る。 */
+.combination-list-item-memo {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #495057;
+  white-space: pre-wrap;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.combination-list-item .combination-memo-btn.v-btn {
+  flex: none;
+  margin-left: 4px;
+}
+
+/* メモの入力ダイアログ。上の帯は配合の保存の画面と同じ紫のグラデーション。 */
+.v-dialog.combination-memo-dialog {
+  border-radius: 18px;
+}
+
+.combination-memo-card.v-card {
+  border-radius: 18px !important;
+  overflow: hidden;
+}
+
+.combination-memo-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+}
+
+.combination-memo-head-text {
+  min-width: 0;
+}
+
+.combination-memo-title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.combination-memo-target {
+  font-size: 13px;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combination-memo-body {
+  padding: 16px 18px 4px;
+}
+
+/* iPhone は 16px 未満の入力欄に触れると画面を拡大してしまうので 16px にする。 */
+.combination-memo-input textarea {
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+}
+
+.combination-memo-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px 18px 18px;
+}
+
+.combination-memo-actions .v-btn {
+  height: 44px !important;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.combination-memo-cancel.v-btn {
+  background-color: #eceff1 !important;
+  color: #37474f !important;
+}
+
 /* 保存済み配合リストの種別バッジ。左の種牡馬／繁殖牝馬トグルと同じ
    父（青）・母（赤）にして、どちらの配合か一目で分かるようにする。 */
 .combination-list-kind.v-chip {

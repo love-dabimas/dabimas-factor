@@ -147,6 +147,33 @@
     });
   }
 
+  // 保存済み配合のメモ（100 文字まで）を書き換える。空文字ならメモを消す。
+  function updateConfigMemo(db, id, memo) {
+    return new Promise(function (resolve, reject) {
+      var transaction = db.transaction([STORE_NAME], "readwrite");
+      var objectStore = transaction.objectStore(STORE_NAME);
+      var getRequest = objectStore.get(id);
+      var updated = null;
+      getRequest.onsuccess = function () {
+        var config = getRequest.result;
+        if (!config) {
+          return;
+        }
+        updated = Object.assign({}, config, { memo: memo || "" });
+        objectStore.put(updated);
+      };
+      getRequest.onerror = function () {
+        reject(getRequest.error);
+      };
+      transaction.oncomplete = function () {
+        resolve(updated);
+      };
+      transaction.onerror = function () {
+        reject(transaction.error);
+      };
+    });
+  }
+
   // ===== 自家製馬ライブラリ（customHorses ストア）=====
 
   function saveCustomHorse(db, customHorse) {
@@ -234,6 +261,16 @@
     });
   }
 
+  // 自家製馬にも同じメモを写す。馬を選ぶ画面の一覧に出すため（一覧は customHorses から作る）。
+  function updateCustomHorseMemo(db, id, memo) {
+    return getCustomHorse(db, id).then(function (record) {
+      if (!record) {
+        return null;
+      }
+      return saveCustomHorse(db, Object.assign({}, record, { memo: memo || "" }));
+    });
+  }
+
   // ===== ストレージ永続化 / 残量 =====
 
   function ensurePersistentStorage() {
@@ -290,10 +327,12 @@
     loadConfigs: loadConfigs,
     deleteConfig: deleteConfig,
     getConfig: getConfig,
+    updateConfigMemo: updateConfigMemo,
     saveCustomHorse: saveCustomHorse,
     loadCustomHorses: loadCustomHorses,
     getCustomHorse: getCustomHorse,
     deleteCustomHorse: deleteCustomHorse,
+    updateCustomHorseMemo: updateCustomHorseMemo,
     ensurePersistentStorage: ensurePersistentStorage,
     estimateStorage: estimateStorage,
   };
