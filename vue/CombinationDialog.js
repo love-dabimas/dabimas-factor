@@ -729,7 +729,7 @@ Vue.component('combination-dialog', {
                           aria-label="メモ"
                           @click.stop="openMemoDialog(config)"
                         >
-                          <v-icon small class="combination-memo-btn-icon">{{ config.memo ? 'mdi-note-text' : 'mdi-note-edit-outline' }}</v-icon>
+                          <v-icon small class="combination-memo-btn-icon">{{ config.memo ? 'mdi-note-text' : 'mdi-pencil-outline' }}</v-icon>
                           <span>メモ</span>
                         </button>
                       </div>
@@ -782,7 +782,7 @@ Vue.component('combination-dialog', {
       >
         <v-card v-if="memoDialog.config" class="combination-memo-card">
           <div class="combination-memo-head">
-            <v-icon class="combination-memo-head-icon">mdi-note-edit-outline</v-icon>
+            <v-icon class="combination-memo-head-icon">mdi-pencil-outline</v-icon>
             <div class="combination-memo-head-text">
               <div class="combination-memo-title">メモ</div>
               <div class="combination-memo-target">{{ memoDialog.config.title }}</div>

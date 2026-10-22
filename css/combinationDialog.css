@@ -355,23 +355,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
-/* 日付の行の右端の「メモ」ボタン。押しやすいよう高さ 30px の丸いボタンにする。
+/* 日付の行の右端の「メモ」ボタン。カードを低く保つため高さ 26px にする。
    メモが入っている配合は塗りにして、開かなくても有無が分かるようにする。 */
 .combination-list-item .combination-memo-btn {
   flex: none;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  height: 30px;
-  padding: 0 12px;
+  height: 26px;
+  padding: 0 10px 0 8px;
   border: 1.5px solid #667eea;
-  border-radius: 16px;
+  border-radius: 13px;
   background: #ffffff;
   color: #5a67d8;
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1;
   font-weight: 700;
   cursor: pointer;
 }
@@ -381,11 +382,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   color: inherit !important;
-  font-size: 16px !important;
+  font-size: 15px !important;
   line-height: 1;
+}
+
+/* 保存済み配合のカード。メモのボタンを日付の行に入れたぶん、上下の余白を詰めて低く保つ。 */
+.combination-saved-list .combination-list-item {
+  padding: 6px 10px !important;
+}
+
+.combination-saved-list .combination-list-item-title {
+  margin-bottom: 0;
 }
 
 .combination-list-item .combination-memo-btn--filled {
