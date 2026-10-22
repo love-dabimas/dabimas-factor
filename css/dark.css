@@ -717,6 +717,12 @@ html.dabimas-dark .combination-list-item-memo {
   color: var(--dk-muted);
 }
 
+html.dabimas-dark .combination-list-item .combination-memo-btn:not(.combination-memo-btn--filled) {
+  background: var(--dk-surface);
+  border-color: #8c9bf0;
+  color: #b9c2f7;
+}
+
 html.dabimas-dark .combination-memo-card.v-card {
   background-color: var(--dk-raised) !important;
   color: var(--dk-text);

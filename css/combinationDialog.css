@@ -349,9 +349,34 @@
   overflow: hidden;
 }
 
-.combination-list-item .combination-memo-btn.v-btn {
+/* カードの右端の「メモ」ボタン。押しやすいよう高さ 32px の丸いボタンにする。
+   メモが入っている配合は塗りにして、開かなくても有無が分かるようにする。 */
+.combination-list-item .combination-memo-btn {
   flex: none;
-  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 32px;
+  margin-left: 8px;
+  padding: 0 12px;
+  border: 1.5px solid #667eea;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #5a67d8;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.combination-list-item .combination-memo-btn .v-icon {
+  color: inherit !important;
+  font-size: 16px !important;
+}
+
+.combination-list-item .combination-memo-btn--filled {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: #ffffff;
 }
 
 /* メモの入力ダイアログ。上の帯は配合の保存の画面と同じ紫のグラデーション。 */

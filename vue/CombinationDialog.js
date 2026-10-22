@@ -727,17 +727,18 @@ Vue.component('combination-dialog', {
                     >
                       mdi-check-circle
                     </v-icon>
-                    <v-btn
-                      icon
-                      small
+                    <!-- css/vuetify_compact.min.css は小さいアイコンボタンの大きさを持たず
+                         14px まで縮むので、Vuetify のボタンを使わず大きさを自分で決める。 -->
+                    <button
+                      type="button"
                       class="combination-memo-btn"
-                      :color="config.memo ? 'primary' : undefined"
+                      :class="{ 'combination-memo-btn--filled': !!config.memo }"
                       aria-label="メモ"
-                      title="メモ"
                       @click.stop="openMemoDialog(config)"
                     >
                       <v-icon small>{{ config.memo ? 'mdi-note-text' : 'mdi-note-edit-outline' }}</v-icon>
-                    </v-btn>
+                      <span>メモ</span>
+                    </button>
                   </div>
                 </div>
               </v-col>
