@@ -385,7 +385,29 @@
             </tr>
             <tr class="mobile-cross-header-row">
               <td colspan="16" class="f00_inbreed_header"></td>
-              <td v-if="dispCategory % 2 === 0" rowspan="2" @click="$emit('reset')" class="mobile-cross-rowspan" style="background-color: #aa0000" align="center"><v-icon size="large" color="white">mdi-reload</v-icon></td>
+              <!-- 理論表示でも自家製を登録できるよう、右下のマスを保存とリセットに分ける。 -->
+              <td v-if="dispCategory % 2 === 0" rowspan="2" class="mobile-cross-rowspan mobile-action-cell" align="center">
+                <div class="mobile-action-pair">
+                  <button
+                    type="button"
+                    class="mobile-action-button"
+                    :style="combinationCellStyle"
+                    aria-label="保存"
+                    title="保存"
+                    data-html2canvas-ignore="true"
+                    @click="$emit('combination-open')"
+                  ><v-icon color="white">mdi-content-save</v-icon></button>
+                  <button
+                    type="button"
+                    class="mobile-action-button"
+                    style="background-color: #aa0000"
+                    aria-label="血統表を空にする"
+                    title="血統表を空にする"
+                    data-html2canvas-ignore="true"
+                    @click="$emit('reset')"
+                  ><v-icon color="white">mdi-reload</v-icon></button>
+                </div>
+              </td>
               <td
                 v-else
                 rowspan="2"

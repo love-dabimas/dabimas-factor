@@ -136,6 +136,8 @@
           planLastWarningCellIndexes: [],
           // 戻るボタンを押してからホームに切り替わるまで。二度押しを防ぐ。
           goingHome: false,
+          // リセット（血統表を空にする）の確認ダイアログ。
+          resetConfirmVisible: false,
 
           // リストで選択された性別
           selectedSex: null,
