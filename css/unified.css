@@ -325,6 +325,41 @@
 .exp-horse-badge--inmeisai { background: #ad1457; }
 .exp-horse-badge--saved { background: #2e7d32; }
 
+/* 血統表の自家製馬のマスを長押ししたときに出す、メモの全文の吹き出し。 */
+.exp-cell-memo-bubble {
+  position: fixed;
+  z-index: 300;
+  box-sizing: border-box;
+  padding: 10px 14px 12px;
+  border-radius: 14px;
+  background: #2f3542;
+  color: #ffffff;
+  text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+.exp-cell-memo-bubble-name {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c8cdf7;
+}
+
+.exp-cell-memo-bubble-text {
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 長押しでメモを出すマスでは、iPhone の文字選択・長押しメニューを出さない。 */
+.exp-mobile-horse-trigger--memo {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* 馬を選ぶ画面の一覧で、自家製馬の名前の下に出すメモ（1 行で切る）。 */
 .exp-option-memo {
   display: block;
