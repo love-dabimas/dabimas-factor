@@ -420,9 +420,17 @@
   padding: 16px 18px 4px;
 }
 
+/* 軽量版の Vuetify の CSS ではこの v-icon が幅・高さ 0 になるので、大きさも自分で持たせる。 */
 .combination-memo-head .combination-memo-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
   color: #ffffff !important;
   font-size: 26px !important;
+  line-height: 1;
 }
 
 /* iPhone は 16px 未満の入力欄に触れると画面を拡大してしまうので 16px にする。 */
