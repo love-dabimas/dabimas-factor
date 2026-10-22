@@ -105,17 +105,27 @@
       ></plan-diagnosis-panel>
 
       <!-- リセット（血統表を空にする）の確認。保存ボタンの隣にあるので押し間違えに備える -->
-      <v-dialog v-model="resetConfirmVisible" max-width="320">
-        <v-card>
-          <v-card-title class="text-subtitle-1">血統表を空にしますか？</v-card-title>
-          <v-card-text>
-            選んだ馬・メモ・クロス指定がすべて消えます。保存した配合と自家製馬は消えません。
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn text @click="resetConfirmVisible = false">キャンセル</v-btn>
-            <v-btn color="error" @click="resetConfirmVisible = false; initializer()">空にする</v-btn>
-          </v-card-actions>
+      <v-dialog v-model="resetConfirmVisible" max-width="340" content-class="dabimas-reset-dialog">
+        <v-card class="dabimas-reset-card">
+          <div class="dabimas-reset-icon"><v-icon color="white">mdi-broom</v-icon></div>
+          <div class="dabimas-reset-title">血統表を空にしますか？</div>
+          <div class="dabimas-reset-lists">
+            <div class="dabimas-reset-list dabimas-reset-list--gone">
+              <div class="dabimas-reset-list-head"><v-icon small>mdi-close-circle</v-icon>消えるもの</div>
+              <div>選んだ馬（{{ 32 - planEmptyCellCount }}頭）</div>
+              <div>メモ</div>
+              <div>クロス指定</div>
+            </div>
+            <div class="dabimas-reset-list dabimas-reset-list--kept">
+              <div class="dabimas-reset-list-head"><v-icon small>mdi-check-circle</v-icon>残るもの</div>
+              <div>保存した配合</div>
+              <div>自家製馬</div>
+            </div>
+          </div>
+          <div class="dabimas-reset-actions">
+            <v-btn depressed rounded class="dabimas-reset-cancel" @click="resetConfirmVisible = false">キャンセル</v-btn>
+            <v-btn depressed rounded color="error" class="dabimas-reset-confirm" @click="resetConfirmVisible = false; initializer()">空にする</v-btn>
+          </div>
         </v-card>
       </v-dialog>
 
