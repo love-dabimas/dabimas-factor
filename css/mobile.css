@@ -150,36 +150,43 @@
 }
 
 .exp-mobile-layout header .factorNumCell {
-  height: 16px;
-  font-size: 9px;
+  height: 18px;
+  font-size: 10px;
+}
+
+/* 右端の列（理論・相性、保存とリセット）。因子の 14 列を 1px ずつ詰めた分を回して、
+   右下の保存・リセットのボタンを押しやすくする。 */
+.exp-mobile-layout header .f00_theory {
+  width: 54px !important;
 }
 
 .exp-mobile-layout header .f00_nitro,
 .exp-mobile-layout header .f00_inbreed {
   font-size: 12px;
-  height: 16px !important;
-  max-height: 16px !important;
+  height: 18px !important;
+  max-height: 18px !important;
   box-sizing: border-box;
 }
 
 /* ニトロ・クロスの値行を同じ高さに固定 */
 .exp-mobile-layout header .mobile-nitro-value-row,
 .exp-mobile-layout header .mobile-cross-value-row {
-  height: 16px !important;
-  max-height: 16px !important;
+  height: 18px !important;
+  max-height: 18px !important;
 }
 
 .exp-mobile-layout header .mobile-nitro-value-row td,
 .exp-mobile-layout header .mobile-cross-value-row td {
-  height: 16px !important;
-  max-height: 16px !important;
+  height: 18px !important;
+  max-height: 18px !important;
 }
 
-/* rowspan=2 のセル（理論・リロードボタン）が行を押し広げないように制限 */
+/* rowspan=2 のセル（理論・リロードボタン）が行を押し広げないように制限。
+   値行（18px）と、その上の区切りの行（1px）をまたぐ高さ。 */
 .exp-mobile-layout header .mobile-nitro-rowspan,
 .exp-mobile-layout header .mobile-cross-rowspan {
-  height: 17px !important;
-  max-height: 17px !important;
+  height: 19px !important;
+  max-height: 19px !important;
   overflow: hidden;
   font-size: 16px !important;
   line-height: 1 !important;
@@ -191,14 +198,14 @@
   white-space: nowrap;
 }
 
-/* 理論表示の右下。保存（左）とリセット（右）を横に並べる。高さは今までの 1 マスのまま。 */
+/* 理論表示の右下。保存（左）とリセット（右）を横に並べる。 */
 .exp-mobile-layout header .mobile-action-cell {
   padding: 0 !important;
 }
 
 .exp-mobile-layout header .mobile-action-pair {
   display: flex;
-  height: 17px;
+  height: 19px;
   gap: 1px;
 }
 
