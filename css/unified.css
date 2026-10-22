@@ -334,7 +334,8 @@
   aspect-ratio: 1 / 1;
   border-radius: 50%;
   border: 1.5px solid currentColor;
-  background: transparent;
+  /* 中を白で塗る。繁殖牝馬の行（サーモン色）や面白枠・見事枠の地の上でも浮くように。 */
+  background: #fff;
 }
 
 .exp-horse-badges .exp-horse-badge.exp-horse-badge--male { color: #3e499c; }

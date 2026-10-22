@@ -45,7 +45,13 @@ html.dabimas-dark .v-application .dabimas-tab-bar .v-icon {
 }
 
 /* ===== 性別バッジ（白抜きの丸） =====
-   紺・臙脂のままだと暗い地に沈むので、色相はそのままで明るさだけ上げる。 */
+   紺・臙脂のままだと暗い地に沈むので、色相はそのままで明るさだけ上げる。
+   中の白は暗い表示だとそこだけ光って浮くので、透明に戻す。 */
+html.dabimas-dark .exp-horse-badges .exp-horse-badge.exp-horse-badge--male,
+html.dabimas-dark .exp-horse-badges .exp-horse-badge.exp-horse-badge--female {
+  background: transparent;
+}
+
 html.dabimas-dark .exp-horse-badges .exp-horse-badge.exp-horse-badge--male {
   color: #9fa8da;
 }
