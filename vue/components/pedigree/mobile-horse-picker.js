@@ -43,8 +43,10 @@
   var horseListKeyCache = new WeakMap();
   var horseListKeySeq = 0;
 
-  // 指でこの時間押し続けたら長押しとみなし、自家製馬のメモを全文と 1 行で切り替える。
+  // 指でこの時間押し続けたら長押しとみなし、自家製馬のメモの全文を吹き出しに出す。
   var MEMO_LONG_PRESS_MS = 500;
+  // 行の下にこれだけの余白が無ければ、吹き出しを行の上に出す。
+  var MEMO_BUBBLE_MIN_SPACE = 140;
 
   // index.html のモジュールスコープにあった定数を同名で再宣言する。
   var INDEX_TO_ROW_NUMBER = window.Dabimas.constants.pedigreeIndexes.INDEX_TO_ROW_NUMBER;
@@ -90,12 +92,26 @@
         lastPointerType: "",
         memoPressTimer: null,
         memoPressStart: null,
+        memoPressRow: null,
         memoLongPressFired: false,
+        // 長押しで出したメモの吹き出し（null なら出していない）。
+        memoBubble: null,
+        // 吹き出しを消したタップで、その下の候補を選ばないための印。
+        memoBubbleJustClosed: false,
       };
     },
     beforeDestroy() {
       this.clearMobileQuerySyncTimer();
       this.clearMemoPressTimer();
+      this.removeMemoBubbleListener();
+    },
+    watch: {
+      // 選ぶ画面を閉じたら吹き出しも消す。
+      mobileDialogVisible(visible) {
+        if (!visible) {
+          this.hideMemoBubble();
+        }
+      },
     },
     template: `
       <v-dialog
@@ -103,7 +119,7 @@
         content-class="exp-mobile-picker-dialog"
         max-width="560"
       >
-        <v-card>
+        <v-card class="exp-mobile-picker-card">
           <div class="exp-mobile-picker-header">
             <div>
               <div class="exp-mobile-picker-title">{{ mobileDialogTitle }}</div>
@@ -163,7 +179,7 @@
                 @click="clearMobileQuery"
               >クリア</button>
             </div>
-            <div class="exp-mobile-option-list">
+            <div class="exp-mobile-option-list" @scroll.passive="hideMemoBubble">
               <button
                 v-for="horse in filteredMobileLists"
                 :key="getHorseListKey(horse)"
@@ -202,7 +218,8 @@
                   >{{ factor.text }}</span>
                 </div>
                 <!-- 自家製馬のメモ（配合の保存の画面で付けたもの）。ふだんは 1 行。
-                     マウスではこの行のクリック、指では候補の行の長押しで全文に切り替わる。 -->
+                     マウスではこの行のクリックで全文に切り替わる。指では候補の行の長押しで、
+                     全文を吹き出しに出す（下の exp-memo-bubble）。 -->
                 <div
                   v-if="horse.memo"
                   class="exp-option-memo exp-option-memo--toggle"
@@ -223,6 +240,17 @@
                 該当するデータはありません
               </div>
             </div>
+          </div>
+          <!-- 指で候補の行を長押ししたときに出す、自家製馬のメモの全文の吹き出し。
+               画面のどこかを触るか、一覧をスクロールすると消える。 -->
+          <div
+            v-if="memoBubble"
+            class="exp-memo-bubble"
+            :class="{ 'exp-memo-bubble--above': memoBubble.above }"
+            :style="memoBubble.style"
+          >
+            <div class="exp-memo-bubble-name">{{ memoBubble.name }}</div>
+            <div class="exp-memo-bubble-text">{{ memoBubble.text }}</div>
           </div>
         </v-card>
       </v-dialog>
@@ -312,10 +340,11 @@
           return;
         }
         this.memoPressStart = { x: event.clientX, y: event.clientY };
+        this.memoPressRow = event.currentTarget;
         this.memoPressTimer = setTimeout(() => {
           this.memoPressTimer = null;
           this.memoLongPressFired = true;
-          this.toggleMemo(horse);
+          this.showMemoBubble(horse, this.memoPressRow);
         }, MEMO_LONG_PRESS_MS);
       },
       // 一覧をスクロールしようとして指が動いたら、長押しにしない。
@@ -339,12 +368,63 @@
         }
       },
       onOptionClick(horse) {
-        // 長押しでメモを開閉したときは、指を離したときのクリックで馬を選ばない。
-        if (this.memoLongPressFired) {
+        // 長押しで吹き出しを出したときや、吹き出しを消すためのタップでは馬を選ばない。
+        if (this.memoLongPressFired || this.memoBubbleJustClosed) {
           this.memoLongPressFired = false;
+          this.memoBubbleJustClosed = false;
           return;
         }
         this.selectMobileHorse(horse);
+      },
+      // 長押しした行のすぐ下（入りきらなければ上）に、メモの全文の吹き出しを出す。
+      showMemoBubble(horse, row) {
+        if (!row || !horse || !horse.memo) {
+          return;
+        }
+        // ダイアログは開くときに transform がかかるので、画面ではなくダイアログの枠
+        // （.exp-mobile-picker-card）を基準に置く。
+        var card = row.closest(".exp-mobile-picker-card");
+        if (!card) {
+          return;
+        }
+        var rect = row.getBoundingClientRect();
+        var cardRect = card.getBoundingClientRect();
+        var above = rect.bottom + MEMO_BUBBLE_MIN_SPACE > cardRect.bottom;
+        var style = {
+          left: Math.round(rect.left - cardRect.left + 8) + "px",
+          width: Math.round(rect.width - 16) + "px",
+        };
+        if (above) {
+          style.bottom = Math.round(cardRect.bottom - rect.top + 6) + "px";
+        } else {
+          style.top = Math.round(rect.bottom - cardRect.top + 6) + "px";
+        }
+        this.memoBubble = {
+          name: this.getHorseListText(horse),
+          text: horse.memo,
+          above: above,
+          style: style,
+        };
+        // 次に画面のどこかを触ったら消す（この長押しの指を離す操作では消さない）。
+        this.removeMemoBubbleListener();
+        this.memoBubbleListener = () => {
+          this.hideMemoBubble();
+          this.memoBubbleJustClosed = true;
+          setTimeout(() => {
+            this.memoBubbleJustClosed = false;
+          }, 600);
+        };
+        document.addEventListener("pointerdown", this.memoBubbleListener, true);
+      },
+      hideMemoBubble() {
+        this.memoBubble = null;
+        this.removeMemoBubbleListener();
+      },
+      removeMemoBubbleListener() {
+        if (this.memoBubbleListener) {
+          document.removeEventListener("pointerdown", this.memoBubbleListener, true);
+          this.memoBubbleListener = null;
+        }
       },
       // メモの行のクリック。マウスでは開閉、指では普通のタップとして馬を選ぶ。
       onMemoClick(horse) {
