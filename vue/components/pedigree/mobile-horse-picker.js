@@ -389,15 +389,23 @@
         }
         var rect = row.getBoundingClientRect();
         var cardRect = card.getBoundingClientRect();
-        var above = rect.bottom + MEMO_BUBBLE_MIN_SPACE > cardRect.bottom;
+        // 開くときの拡大アニメーションの途中だと見た目が縮んでいるので、その縮み具合で
+        // 割り戻して、枠の中の本来の位置（CSS の px）にする。
+        var scale = card.offsetWidth ? cardRect.width / card.offsetWidth : 1;
+        if (!scale) {
+          scale = 1;
+        }
+        var rowTop = (rect.top - cardRect.top) / scale;
+        var rowBottom = (rect.bottom - cardRect.top) / scale;
+        var above = rowBottom + MEMO_BUBBLE_MIN_SPACE > card.offsetHeight;
         var style = {
-          left: Math.round(rect.left - cardRect.left + 8) + "px",
-          width: Math.round(rect.width - 16) + "px",
+          left: Math.round((rect.left - cardRect.left) / scale + 8) + "px",
+          width: Math.round(rect.width / scale - 16) + "px",
         };
         if (above) {
-          style.bottom = Math.round(cardRect.bottom - rect.top + 6) + "px";
+          style.bottom = Math.round(card.offsetHeight - rowTop + 6) + "px";
         } else {
-          style.top = Math.round(rect.bottom - cardRect.top + 6) + "px";
+          style.top = Math.round(rowBottom + 6) + "px";
         }
         this.memoBubble = {
           name: this.getHorseListText(horse),
