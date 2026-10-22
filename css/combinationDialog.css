@@ -420,10 +420,43 @@
   padding: 16px 18px 4px;
 }
 
+.combination-memo-head .combination-memo-head-icon {
+  color: #ffffff !important;
+  font-size: 26px !important;
+}
+
 /* iPhone は 16px 未満の入力欄に触れると画面を拡大してしまうので 16px にする。 */
-.combination-memo-input textarea {
-  font-size: 16px !important;
-  line-height: 1.5 !important;
+.combination-memo-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 132px;
+  padding: 10px 12px;
+  border: 1.5px solid #ced4da;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #212529;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+.combination-memo-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.18);
+}
+
+.combination-memo-input::placeholder {
+  color: #adb5bd;
+}
+
+.combination-memo-counter {
+  margin-top: 4px;
+  text-align: right;
+  font-size: 12px;
+  color: #6c757d;
 }
 
 .combination-memo-actions {

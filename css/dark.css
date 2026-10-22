@@ -728,6 +728,16 @@ html.dabimas-dark .combination-memo-card.v-card {
   color: var(--dk-text);
 }
 
+html.dabimas-dark .combination-memo-input {
+  background: var(--dk-surface);
+  border-color: var(--dk-line);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .combination-memo-counter {
+  color: var(--dk-muted);
+}
+
 html.dabimas-dark .combination-memo-cancel.v-btn {
   background-color: var(--dk-surface) !important;
   color: var(--dk-text) !important;

@@ -778,24 +778,23 @@ Vue.component('combination-dialog', {
       >
         <v-card v-if="memoDialog.config" class="combination-memo-card">
           <div class="combination-memo-head">
-            <v-icon color="white">mdi-note-edit-outline</v-icon>
+            <v-icon class="combination-memo-head-icon">mdi-note-edit-outline</v-icon>
             <div class="combination-memo-head-text">
               <div class="combination-memo-title">メモ</div>
               <div class="combination-memo-target">{{ memoDialog.config.title }}</div>
             </div>
           </div>
+          <!-- css/vuetify_compact.min.css は v-textarea の枠や高さを持たず 1 行につぶれるので、
+               素の textarea を使い、大きさ・枠・文字数の表示を自分で決める。 -->
           <div class="combination-memo-body">
-            <v-textarea
+            <textarea
               v-model="memoDialog.text"
-              outlined
-              auto-grow
-              rows="4"
-              :maxlength="memoMaxLength"
-              :counter="memoMaxLength"
-              placeholder="例：凱旋門賞狙い。母父に底を2つ入れた版"
-              hide-details="auto"
               class="combination-memo-input"
-            ></v-textarea>
+              rows="5"
+              :maxlength="memoMaxLength"
+              placeholder="例：凱旋門賞狙い。母父に底を2つ入れた版"
+            ></textarea>
+            <div class="combination-memo-counter">{{ (memoDialog.text || '').length }} / {{ memoMaxLength }}</div>
           </div>
           <div class="combination-memo-actions">
             <v-btn depressed rounded class="combination-memo-cancel" @click="memoDialog.show = false">キャンセル</v-btn>
