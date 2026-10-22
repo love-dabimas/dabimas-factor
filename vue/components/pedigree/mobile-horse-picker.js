@@ -43,6 +43,9 @@
   var horseListKeyCache = new WeakMap();
   var horseListKeySeq = 0;
 
+  // 指でこの時間押し続けたら長押しとみなし、自家製馬のメモを全文と 1 行で切り替える。
+  var MEMO_LONG_PRESS_MS = 500;
+
   // index.html のモジュールスコープにあった定数を同名で再宣言する。
   var INDEX_TO_ROW_NUMBER = window.Dabimas.constants.pedigreeIndexes.INDEX_TO_ROW_NUMBER;
 
@@ -83,10 +86,16 @@
         mobileQuerySyncTimer: null,
         // メモを全文表示に開いている候補（getHorseListKey のキー → true）。
         expandedMemoKeys: {},
+        // 候補の行を押したときの指／マウスの別と、長押しの状態。
+        lastPointerType: "",
+        memoPressTimer: null,
+        memoPressStart: null,
+        memoLongPressFired: false,
       };
     },
     beforeDestroy() {
       this.clearMobileQuerySyncTimer();
+      this.clearMemoPressTimer();
     },
     template: `
       <v-dialog
@@ -163,7 +172,13 @@
                   'exp-mobile-option-btn',
                   { 'exp-mobile-option-btn--selected': isSelectedHorse(horse) }
                 ]"
-                @click="selectMobileHorse(horse)"
+                @pointerdown="onOptionPressStart($event, horse)"
+                @pointermove="onOptionPressMove"
+                @pointerup="onOptionPressEnd"
+                @pointerleave="onOptionPressEnd"
+                @pointercancel="onOptionPressEnd"
+                @contextmenu="onOptionContextMenu"
+                @click="onOptionClick(horse)"
               >
                 <div class="exp-option-item">
                   <span
@@ -186,13 +201,13 @@
                     :class="['exp-option-factor-badge', factor.className]"
                   >{{ factor.text }}</span>
                 </div>
-                <!-- 自家製馬のメモ（配合の保存の画面で付けたもの）。ふだんは 1 行で、
-                     この行をタップすると全文に切り替わる（馬は選ばない）。 -->
+                <!-- 自家製馬のメモ（配合の保存の画面で付けたもの）。ふだんは 1 行。
+                     マウスではこの行のクリック、指では候補の行の長押しで全文に切り替わる。 -->
                 <div
                   v-if="horse.memo"
                   class="exp-option-memo exp-option-memo--toggle"
                   :class="{ 'exp-option-memo--expanded': isMemoExpanded(horse) }"
-                  @click.stop="toggleMemo(horse)"
+                  @click.stop="onMemoClick(horse)"
                 >
                   <span class="exp-option-memo-text">{{ horse.memo }}</span>
                   <span
@@ -281,6 +296,63 @@
       isMemoLong(horse) {
         var memo = String((horse && horse.memo) || "");
         return memo.indexOf(String.fromCharCode(10)) !== -1 || memo.length > 24;
+      },
+      clearMemoPressTimer() {
+        if (this.memoPressTimer) {
+          clearTimeout(this.memoPressTimer);
+          this.memoPressTimer = null;
+        }
+      },
+      // 指で候補の行を 0.5 秒押し続けたら、メモを全文と 1 行で切り替える（馬は選ばない）。
+      onOptionPressStart(event, horse) {
+        this.lastPointerType = event.pointerType || "";
+        this.memoLongPressFired = false;
+        this.clearMemoPressTimer();
+        if (event.pointerType !== "touch" || !horse || !horse.memo) {
+          return;
+        }
+        this.memoPressStart = { x: event.clientX, y: event.clientY };
+        this.memoPressTimer = setTimeout(() => {
+          this.memoPressTimer = null;
+          this.memoLongPressFired = true;
+          this.toggleMemo(horse);
+        }, MEMO_LONG_PRESS_MS);
+      },
+      // 一覧をスクロールしようとして指が動いたら、長押しにしない。
+      onOptionPressMove(event) {
+        if (!this.memoPressTimer || !this.memoPressStart) {
+          return;
+        }
+        var dx = event.clientX - this.memoPressStart.x;
+        var dy = event.clientY - this.memoPressStart.y;
+        if (dx * dx + dy * dy > 100) {
+          this.clearMemoPressTimer();
+        }
+      },
+      onOptionPressEnd() {
+        this.clearMemoPressTimer();
+      },
+      // iPhone の長押しメニュー（コピーなど）を出さない。
+      onOptionContextMenu(event) {
+        if (this.lastPointerType === "touch") {
+          event.preventDefault();
+        }
+      },
+      onOptionClick(horse) {
+        // 長押しでメモを開閉したときは、指を離したときのクリックで馬を選ばない。
+        if (this.memoLongPressFired) {
+          this.memoLongPressFired = false;
+          return;
+        }
+        this.selectMobileHorse(horse);
+      },
+      // メモの行のクリック。マウスでは開閉、指では普通のタップとして馬を選ぶ。
+      onMemoClick(horse) {
+        if (this.lastPointerType === "touch") {
+          this.onOptionClick(horse);
+          return;
+        }
+        this.toggleMemo(horse);
       },
       toggleMemo(horse) {
         var key = this.getHorseListKey(horse);

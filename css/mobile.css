@@ -579,6 +579,10 @@
   border-bottom: 1px solid #ecf0f4;
   /* 1 画面に並ぶ候補を増やすため、上下の余白を詰める（1 行 41px → 33px）。 */
   padding: 7px 12px;
+  /* 長押しで自家製馬のメモを開くので、iPhone の文字選択・長押しメニューを出さない。 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   text-align: left;
   background: transparent;
   transition: background-color 0.15s ease, color 0.15s ease;
