@@ -338,6 +338,35 @@
   text-overflow: ellipsis;
 }
 
+/* スマホの選ぶ画面では、メモの行をタップすると全文に切り替わる。右端の ▼▲ が目印。 */
+.exp-option-memo--toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.exp-option-memo--toggle .exp-option-memo-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.exp-option-memo--expanded .exp-option-memo-text {
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: visible;
+}
+
+.exp-option-memo-chevron {
+  flex: none;
+  font-size: 10px;
+  line-height: 1.7;
+  color: #868e96;
+}
+
 .table_main .exp-horse-cell--select {
   display: flex;
   align-items: center;

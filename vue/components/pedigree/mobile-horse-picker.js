@@ -81,6 +81,8 @@
         mobileQuery: "",
         mobileSearchCompositionActive: false,
         mobileQuerySyncTimer: null,
+        // メモを全文表示に開いている候補（getHorseListKey のキー → true）。
+        expandedMemoKeys: {},
       };
     },
     beforeDestroy() {
@@ -184,8 +186,20 @@
                     :class="['exp-option-factor-badge', factor.className]"
                   >{{ factor.text }}</span>
                 </div>
-                <!-- 自家製馬のメモ（配合の保存の画面で付けたもの）の 1 行目 -->
-                <div v-if="horse.memo" class="exp-option-memo">{{ horse.memo }}</div>
+                <!-- 自家製馬のメモ（配合の保存の画面で付けたもの）。ふだんは 1 行で、
+                     この行をタップすると全文に切り替わる（馬は選ばない）。 -->
+                <div
+                  v-if="horse.memo"
+                  class="exp-option-memo exp-option-memo--toggle"
+                  :class="{ 'exp-option-memo--expanded': isMemoExpanded(horse) }"
+                  @click.stop="toggleMemo(horse)"
+                >
+                  <span class="exp-option-memo-text">{{ horse.memo }}</span>
+                  <span
+                    v-if="isMemoExpanded(horse) || isMemoLong(horse)"
+                    class="exp-option-memo-chevron"
+                  >{{ isMemoExpanded(horse) ? '▲' : '▼' }}</span>
+                </div>
               </button>
               <div
                 v-if="filteredMobileLists.length === 0"
@@ -260,6 +274,22 @@
       },
     },
     methods: {
+      isMemoExpanded(horse) {
+        return !!this.expandedMemoKeys[this.getHorseListKey(horse)];
+      },
+      // 1 行に収まりそうにないメモか。改行があるか、行の幅（約 24 文字）を超えるとき。
+      isMemoLong(horse) {
+        var memo = String((horse && horse.memo) || "");
+        return memo.indexOf(String.fromCharCode(10)) !== -1 || memo.length > 24;
+      },
+      toggleMemo(horse) {
+        var key = this.getHorseListKey(horse);
+        if (this.expandedMemoKeys[key]) {
+          this.$delete(this.expandedMemoKeys, key);
+        } else {
+          this.$set(this.expandedMemoKeys, key, true);
+        }
+      },
       openMusumeSearch() {
         this.$root.$emit("musume:open-search", { index: this.index, label: this.mobileDialogContextLabel, select: this.selectMobileHorse });
       },

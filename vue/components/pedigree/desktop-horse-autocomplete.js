@@ -90,8 +90,8 @@
                 </span>
                 <span v-html="getHorse(data.item)"></span>
               </v-list-item-title>
-              <!-- 自家製馬のメモ（配合の保存の画面で付けたもの）の 1 行目 -->
-              <v-list-item-subtitle v-if="data.item.memo" class="exp-option-memo">{{ data.item.memo }}</v-list-item-subtitle>
+              <!-- 自家製馬のメモ（配合の保存の画面で付けたもの）の 1 行目。マウスを重ねると全文が出る -->
+              <v-list-item-subtitle v-if="data.item.memo" class="exp-option-memo" :title="data.item.memo">{{ data.item.memo }}</v-list-item-subtitle>
             </v-list-item-content>
           </template>
         </template>
