@@ -42,6 +42,8 @@ Vue.component('combination-dialog', {
         saving: false
       },
       memoMaxLength: 100,
+      // 保存できる配合の上限（vue/logic/storage/combination-storage.js）。
+      maxSavedConfigs: window.Dabimas.logic.storage.combinationStorage.MAX_SAVED_CONFIGS,
       toast: {
         show: false,
         message: '',
@@ -166,7 +168,7 @@ Vue.component('combination-dialog', {
         return new Promise((resolve, reject) => {
           request.onsuccess = (event) => {
             const cursor = event.target.result;
-            if (cursor && configs.length < 15) {
+            if (cursor && configs.length < this.maxSavedConfigs) {
               configs.push(cursor.value);
               cursor.continue();
             } else {
@@ -192,6 +194,13 @@ Vue.component('combination-dialog', {
     async saveConfig() {
       if (!this.newTitle.trim()) {
         this.showToast('タイトルを入力してください', 'error');
+        return;
+      }
+      if (this.savedConfigs.length >= this.maxSavedConfigs) {
+        this.showToast(
+          `保存できるのは ${this.maxSavedConfigs} 件までです。古い配合を削除してください`,
+          'error'
+        );
         return;
       }
 
@@ -679,7 +688,7 @@ Vue.component('combination-dialog', {
               >
                 <h3 class="combination-section-title">
                   <v-icon small class="mr-1">mdi-format-list-bulleted</v-icon>
-                  保存済み配合（最新15件）
+                  保存済み配合（{{ savedConfigs.length }}／{{ maxSavedConfigs }}件）
                 </h3>
 
                 <div class="combination-saved-list">

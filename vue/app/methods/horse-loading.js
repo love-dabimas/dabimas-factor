@@ -240,14 +240,22 @@
           const selectedBroodmare = this.selected[16] ? [this.selected[16]] : [];
           this.refreshCandidateLists(selectedHorses, selectedBroodmare);
         },
+        // 選ぶ画面に出す自家製馬の一覧。保存の画面にカード（配合）がある馬だけにする。
+        // 配合を復元すると、その配合に同梱した自家製馬の写しが customHorses へ書き戻される
+        // （消した馬も戻る）。写しは血統表を正しく出すために detail としては持つが、
+        // カードが無いと削除もメモもできないので、選ぶ画面には出さない。
         loadSavedHorseSummaries() {
-          return this.loadCustomHorseDetails()
-            .then((records) => {
+          return Promise.all([
+            this.loadCustomHorseDetails(),
+            this.loadSavedConfigHorseIds(),
+          ])
+            .then(([records, configHorseIds]) => {
               const savedRecords = (records || [])
                 .filter(
                   (record) =>
                     record &&
-                    (record.kind === "stallion" || record.kind === "broodmare")
+                    (record.kind === "stallion" || record.kind === "broodmare") &&
+                    (!configHorseIds || configHorseIds.has(record.id))
                 )
                 .sort((a, b) =>
                   String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
@@ -815,6 +823,24 @@
             });
         },
         // customHorses store を全件読み込んで customHorseDetails に載せる（候補再利用用）。
+        // 保存済み配合が持つ自家製馬の id の集合。読めなかったときは null（絞り込まない）。
+        loadSavedConfigHorseIds() {
+          return this.ensureCustomHorseDb()
+            .then((db) =>
+              window.Dabimas.logic.storage.combinationStorage.loadConfigs(db)
+            )
+            .then((configs) =>
+              new Set(
+                (configs || [])
+                  .map((config) => config && config.customHorseId)
+                  .filter(Boolean)
+              )
+            )
+            .catch((error) => {
+              console.warn("saved config ids load failed", error);
+              return null;
+            });
+        },
         loadCustomHorseDetails() {
           return this.ensureCustomHorseDb()
             .then((db) => {
