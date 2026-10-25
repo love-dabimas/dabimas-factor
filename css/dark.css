@@ -707,6 +707,13 @@ html.dabimas-dark .combination-title-hint {
   color: var(--dk-muted);
 }
 
+/* 馬を選ぶ画面の行の、メモを書く鉛筆（塗っていないほう） */
+html.dabimas-dark .exp-option-memo-btn:not(.exp-option-memo-btn--filled) {
+  background: var(--dk-surface);
+  border-color: #8c9bf0;
+  color: #b9c2f7;
+}
+
 /* 馬を選ぶ画面の一覧の、自家製馬のメモ */
 html.dabimas-dark .exp-option-memo {
   color: var(--dk-muted) !important;

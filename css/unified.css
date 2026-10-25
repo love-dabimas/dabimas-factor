@@ -353,6 +353,80 @@
   word-break: break-all;
 }
 
+/* 長押しの吹き出しは中の「書く」を押せるようにする。PC のマウスオーバーの吹き出しは
+   見るだけなので、マウスを吸わないようにする（吸うとマスから外れた扱いになって消える）。 */
+.exp-cell-memo-bubble:not(.exp-cell-memo-bubble--hover) {
+  pointer-events: auto;
+}
+
+.exp-cell-memo-bubble-empty {
+  font-size: 13px;
+  color: #aeb4bf;
+}
+
+.exp-cell-memo-bubble-write {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  float: right;
+  height: 30px;
+  margin-top: 8px;
+  padding: 0 14px 0 10px;
+  border: 0;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exp-cell-memo-bubble::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+/* 軽量版の Vuetify の CSS では v-icon の大きさが 0 になるので、大きさを持たせる。 */
+.exp-cell-memo-bubble-write .exp-cell-memo-bubble-write-icon,
+.exp-option-memo-btn .exp-option-memo-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: inherit !important;
+  font-size: 16px !important;
+  line-height: 1;
+}
+
+/* 馬を選ぶ画面の行の右端の、メモを書く鉛筆。押しても馬は選ばない。 */
+.exp-option-memo-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  margin-left: 6px;
+  border: 1.5px solid #667eea;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #5a67d8;
+  cursor: pointer;
+}
+
+.exp-option-memo-btn--filled {
+  border-color: transparent;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+}
+
+.exp-option-memo-action.v-list-item__action {
+  margin: 0 0 0 4px !important;
+  min-width: 0 !important;
+}
+
 /* 長押しでメモを出すマスでは、iPhone の文字選択・長押しメニューを出さない。 */
 .exp-mobile-horse-trigger--memo {
   -webkit-touch-callout: none;

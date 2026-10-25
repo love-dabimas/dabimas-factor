@@ -325,6 +325,78 @@
           ];
           this.refreshCandidateListsFromSelection();
         },
+        // ===== 馬のメモ（vue/logic/horses/horse-memo.js）=====
+        // 馬のメモ。自家製馬は配合の保存の画面のメモ、公式の馬はこの端末に持つメモ。
+        getHorseMemo(horse) {
+          return window.Dabimas.logic.horses.horseMemo.getMemo(
+            horse,
+            this.savedHorseSummaries
+          );
+        },
+        // メモの対象になる馬か（★N薄めの仮の馬・ワタシノヒンバ・空のマスは対象外）。
+        canWriteHorseMemo(horse) {
+          return !!window.Dabimas.logic.horses.horseMemo.memoTargetOf(horse);
+        },
+        // メモを書くダイアログを開く。血統表のマスの吹き出しと、選ぶ画面の行から呼ばれる。
+        openHorseMemoEditor(horse) {
+          const target = window.Dabimas.logic.horses.horseMemo.memoTargetOf(horse);
+          if (!target) {
+            return;
+          }
+          let name = window.Dabimas.logic.horses.getHorseNameText(horse);
+          if (target.kind === "custom") {
+            const summary = this.savedHorseSummaries.find((item) => item.id === target.id);
+            if (summary) {
+              name = window.Dabimas.logic.horses.getHorseNameText(summary);
+            }
+          } else if (horse.placeholderMareRef) {
+            // 牝馬を選んだマスは「父(牝馬名)」と出ているので、牝馬名だけにする。
+            const match = /^\((.*)\)$/.exec(horse.subName || "");
+            if (match) {
+              name = match[1];
+            }
+          }
+          this.horseMemoEditor = {
+            show: true,
+            target: target,
+            name: name,
+            text: this.getHorseMemo(horse),
+            saving: false,
+          };
+        },
+        // メモを保存する。自家製馬は配合の記録（configs）と自家製馬（customHorses）の両方、
+        // 公式の馬はこの端末の localStorage に書く。空ならメモを消す。
+        async saveHorseMemo(memo) {
+          const editor = this.horseMemoEditor;
+          const target = editor.target;
+          if (!target || editor.saving) {
+            return;
+          }
+          editor.saving = true;
+          try {
+            if (target.kind === "master") {
+              window.Dabimas.logic.horses.horseMemo.setMasterMemo(target.key, memo);
+            } else {
+              const storage = window.Dabimas.logic.storage.combinationStorage;
+              const db = await this.ensureCustomHorseDb();
+              const configs = await storage.loadConfigs(db);
+              const config = (configs || []).find(
+                (item) => item && item.customHorseId === target.id
+              );
+              if (config) {
+                await storage.updateConfigMemo(db, config.id, memo);
+              }
+              await storage.updateCustomHorseMemo(db, target.id, memo);
+              this.handleSavedHorseMemoUpdated({ customHorseId: target.id, memo: memo });
+            }
+            editor.show = false;
+          } catch (error) {
+            console.error("horse memo save failed", error);
+            this.horseDetailError = { show: true, message: "メモを保存できませんでした。" };
+          } finally {
+            editor.saving = false;
+          }
+        },
         // 配合の保存の画面でメモを書き換えたとき。一覧の要約と detail の両方に写す。
         handleSavedHorseMemoUpdated(payload) {
           const id = payload && payload.customHorseId;

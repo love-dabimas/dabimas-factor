@@ -78,6 +78,8 @@
           customHorseDetails: {},
           customHorseDb: null,
           savedHorseSummaries: [],
+          // 馬のメモを書くダイアログ（vue/components/memo/horse-memo-dialog.js）。
+          horseMemoEditor: { show: false, target: null, name: "", text: "", saving: false },
           editStallions: [],
           horseSummaryLoaded: false,
           // identityResolver（vue/app/app-computed.js）の材料を読み終えるたびに 1 増やす。

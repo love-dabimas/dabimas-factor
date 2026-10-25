@@ -104,6 +104,15 @@
         :self-ancestor-warning-count="visibleSelfAncestorWarningIndexes.length"
       ></plan-diagnosis-panel>
 
+      <!-- 馬のメモを書くダイアログ（血統表のマスの吹き出し・選ぶ画面の鉛筆から開く） -->
+      <horse-memo-dialog
+        v-model="horseMemoEditor.show"
+        :horse-name="horseMemoEditor.name"
+        :initial-text="horseMemoEditor.text"
+        :saving="horseMemoEditor.saving"
+        @save="saveHorseMemo"
+      ></horse-memo-dialog>
+
       <!-- detail（血統）取得失敗時の再試行メッセージ -->
       <v-snackbar
         v-model="horseDetailError.show"
@@ -173,6 +182,7 @@
   <script src="./vue/logic/sire-line-colors.js"></script>
   <script src="./vue/logic/pedigree/pedigree-selection.js"></script>
   <script src="./vue/logic/horses/horse-search.js"></script>
+  <script src="./vue/logic/horses/horse-memo.js"></script>
   <script src="./vue/logic/storage/local-storage.js"></script>
   <script src="./vue/logic/theory/compatibility.js"></script>
   <script src="./vue/logic/theory/theory-session.js"></script>
@@ -198,6 +208,7 @@
   <script src="./vue/components/pedigree/pedigree-card.js"></script>
   <script src="./vue/components/header/factor-summary-header.js"></script>
   <script src="./vue/components/plan/plan-diagnosis-panel.js"></script>
+  <script src="./vue/components/memo/horse-memo-dialog.js"></script>
 
   <!-- 統合版（カテゴリ・作業枠）: dabifaku_unified への接続はこの層のみが持つ -->
   <script src="./vue/logic/storage/unified-db.js"></script>

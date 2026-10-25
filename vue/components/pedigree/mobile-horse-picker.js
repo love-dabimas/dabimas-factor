@@ -183,9 +183,18 @@
                     :key="getHorseListKey(horse) + '-factor-' + factorIndex"
                     :class="['exp-option-factor-badge', factor.className]"
                   >{{ factor.text }}</span>
+                  <!-- メモを書く鉛筆。押しても馬は選ばない（行のボタンの中なので span にする）。 -->
+                  <span
+                    v-if="canWriteMemo(horse)"
+                    role="button"
+                    aria-label="メモを書く"
+                    class="exp-option-memo-btn"
+                    :class="{ 'exp-option-memo-btn--filled': !!horseMemo(horse) }"
+                    @click.stop="openMemo(horse)"
+                  ><v-icon class="exp-option-memo-btn-icon">{{ horseMemo(horse) ? 'mdi-note-text' : 'mdi-pencil-outline' }}</v-icon></span>
                 </div>
-                <!-- 自家製馬のメモ（配合の保存の画面で付けたもの）の 1 行目 -->
-                <div v-if="horse.memo" class="exp-option-memo">{{ horse.memo }}</div>
+                <!-- 馬のメモ（自家製馬は配合の保存の画面のメモ）の 1 行目 -->
+                <div v-if="horseMemo(horse)" class="exp-option-memo">{{ horseMemo(horse) }}</div>
               </button>
               <div
                 v-if="filteredMobileLists.length === 0"
@@ -260,6 +269,17 @@
       },
     },
     methods: {
+      // 馬のメモ（vue/logic/horses/horse-memo.js）。
+      horseMemo(horse) {
+        void window.Dabimas.logic.horses.horseMemo.state.memos;
+        return this.$root.getHorseMemo(horse);
+      },
+      canWriteMemo(horse) {
+        return this.$root.canWriteHorseMemo(horse);
+      },
+      openMemo(horse) {
+        this.$root.openHorseMemoEditor(horse);
+      },
       openMusumeSearch() {
         this.$root.$emit("musume:open-search", { index: this.index, label: this.mobileDialogContextLabel, select: this.selectMobileHorse });
       },
