@@ -436,6 +436,18 @@
   margin-left: 0;
 }
 
+/* 鉛筆のぶん右があいたので、因子のバッジとすき間を詰めて、名前の長い馬でも
+   因子が 2 行目に落ちないようにする（1 文字なので 18px の正方形で足りる）。 */
+.exp-mobile-option-btn .exp-option-item {
+  gap: 4px;
+}
+
+.exp-mobile-option-btn .exp-option-factor-badge {
+  width: 18px;
+  min-width: 18px;
+  padding: 1px 0;
+}
+
 .exp-option-memo-action.v-list-item__action {
   margin: 0 0 0 4px !important;
   min-width: 0 !important;
