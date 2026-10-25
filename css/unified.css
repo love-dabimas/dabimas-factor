@@ -408,8 +408,7 @@
   justify-content: center;
   width: 28px;
   height: 24px;
-  /* 行の右端に寄せる（行の中身は折り返す flex なので、左の余白で押し出す）。 */
-  margin-left: auto;
+  margin-left: 6px;
   border: 1.5px solid #667eea;
   border-radius: 12px;
   background: #ffffff;
@@ -421,6 +420,20 @@
   border-color: transparent;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #ffffff;
+}
+
+/* スマホの選ぶ画面では、鉛筆を行の右上に固定する。名前と因子が長い行でも折り返して
+   2 行目に落ちないよう、行の右側を鉛筆のぶんあけておく。 */
+.exp-mobile-option-btn {
+  position: relative;
+  padding-right: 46px !important;
+}
+
+.exp-mobile-option-btn .exp-option-memo-btn {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  margin-left: 0;
 }
 
 .exp-option-memo-action.v-list-item__action {
