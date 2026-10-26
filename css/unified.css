@@ -1439,3 +1439,21 @@
   font-size: 12px;
   letter-spacing: normal;
 }
+
+
+/* ===== 明るい表示の血統表の区切り線を灰色にそろえる =====
+   行と行の間は #ddd なのに、左端の父・母の帯の右線（css/style.css で #FFFFFF）と、
+   種牡馬の表と繁殖牝馬の表の間のすき間（ページの白い地が見える）だけが白かった。
+   style.css は触らず、明るい表示のときだけここで上書きする。 */
+html:not(.dabimas-dark) .table_main td.father_0,
+html:not(.dabimas-dark) .table_main td.father,
+html:not(.dabimas-dark) .table_main td.father_1,
+html:not(.dabimas-dark) .table_main td.mother_0,
+html:not(.dabimas-dark) .table_main td.mother,
+html:not(.dabimas-dark) .table_main td.mother_1 {
+  border-right-color: #dddddd !important;
+}
+
+html:not(.dabimas-dark) .exp-mobile-layout main .container > .spacer > .row.mx-1 {
+  background-color: #dddddd;
+}
