@@ -120,11 +120,24 @@
           selfAncestorWarningIndexes: [],
 
           // 工程診断（vue/logic/plan/plan-diagnosis.js）の結果。
-          // 画面セッション内だけの派生データで、保存も自動再計算もしない。
+          // 画面セッション内だけの派生データで、保存はしない。
           // 選択が変わった結果は snapshotHash の不一致で無効化される（仕様 §13）。
           planDiagnosis: null,
           planDiagnosisRunning: false,
           planDiagnosisPanelVisible: false,
+          // 血統表が変わるたびに工程診断を自動で走らせるか。設定画面から変える。
+          planAutoDiagnosis:
+            !(window.Dabimas.logic.plan && window.Dabimas.logic.plan.autoSetting) ||
+            window.Dabimas.logic.plan.autoSetting.get(),
+          // 配合を開いた直後・保存した配合を呼び出した直後は、危険があっても
+          // 結果パネルを開かない。その時点の ⚠ を「前回の結果」として覚えるだけにする。
+          planAutoBaselinePending: true,
+          // 前回の自動診断で ⚠ が付いたセル。新しく危険が見つかったかの比較に使う。
+          planLastWarningCellIndexes: [],
+          // 戻るボタンを押してからホームに切り替わるまで。二度押しを防ぐ。
+          goingHome: false,
+          // リセット（血統表を空にする）の確認ダイアログ。
+          resetConfirmVisible: false,
 
           // リストで選択された性別
           selectedSex: null,

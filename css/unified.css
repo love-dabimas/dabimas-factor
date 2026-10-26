@@ -93,8 +93,13 @@
   text-align: center;
 }
 
-.dabimas-category-card {
+.v-card.dabimas-category-card {
   position: relative;
+  /* 高さは編集モードのボタン（左上の複製・右上の削除・右下の並び替え）の置き場。
+     中身（アイコンと名前）は上下中央に置いて、下だけが空いて見えないようにする。 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 96px;
   border-radius: 12px !important;
   cursor: pointer;
@@ -106,7 +111,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  width: 100%;
   gap: 4px;
   text-align: center;
 }
@@ -120,8 +125,27 @@
   text-overflow: ellipsis;
 }
 
-.dabimas-category-count {
-  color: #757575;
+/* 並びの最後の「配合を追加」。中身のある配合と見分けられるよう、点線の枠にする。 */
+.v-card.dabimas-category-add {
+  border-style: dashed !important;
+  border-width: 2px !important;
+}
+
+.dabimas-category-add .dabimas-category-name {
+  color: #1976d2;
+}
+
+/* 編集モードの「複製」。右上の削除・右下の並び替えと重ならないよう左上に置く。 */
+.dabimas-category-duplicate {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 1;
+}
+
+.dabimas-category-duplicate .v-btn {
+  font-size: 12px;
+  letter-spacing: normal;
 }
 
 .dabimas-category-delete {
@@ -174,58 +198,6 @@
   font-size: 16px;
 }
 
-/* ===== 作業枠タブバー（統合版仕様 §9.4） ===== */
-
-.dabimas-tab-bar {
-  display: flex;
-  align-items: center;
-  height: 40px;
-  border-bottom: 1px solid #e0e0e0;
-  background-color: #ffffff;
-}
-
-.dabimas-tab-bar-name {
-  font-size: 13px;
-  font-weight: 600;
-  max-width: 30vw;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin: 0 4px;
-}
-
-.dabimas-tab-bar-tabs {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-/* 「編集／完了」ボタン。コンパクト版 Vuetify では文字が極小になるため
-   読みやすいサイズに引き上げる */
-.dabimas-tab-bar-edit.v-btn {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: normal;
-  min-width: 48px;
-  padding: 0 10px;
-}
-
-.dabimas-tab-wrapper {
-  position: relative;
-  display: inline-block;
-  margin: 0 6px;
-}
-
-.dabimas-tab-btn {
-  min-width: 40px !important;
-  height: 32px !important;
-}
-
-.dabimas-tab-btn-close {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-}
-
 /* ===== 設定・エディット種牡馬 ===== */
 
 .dabimas-settings {
@@ -262,6 +234,16 @@
 .dabimas-settings-menu {
   max-width: 720px;
   margin: 0 auto;
+}
+
+/* 説明文は Vuetify の既定だと 1 行で「…」に切られる。スマホ幅では大事な部分が
+   見えなくなるので、折り返して全部出す。 */
+.dabimas-settings-menu .v-list-item__subtitle {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  -webkit-line-clamp: unset;
+  line-height: 1.4;
 }
 
 .dabimas-settings-empty {
@@ -769,49 +751,125 @@
   text-shadow: 0 0 2px #fff, 0 0 2px #fff;
 }
 
-/* ヘッダの工程診断ボタン。色が判別できなくても文字で状態が分かるようにする。 */
-.plan-diagnosis-cell {
+/* 集計表の左上の戻るボタン（スマホ・パソコン共通）。 */
+.summary-back-cell {
   background-color: #37474f;
   cursor: pointer;
   text-align: center;
   white-space: nowrap;
 }
 
-.plan-diagnosis-cell--incomplete,
-.plan-diagnosis-cell--running {
-  background-color: #90a4ae;
-  cursor: default;
+/* 「理論」「相性」のマス。押すと工程診断の結果、長押しで血統表の画像保存。
+   iPhone の長押しで文字選択やメニューが出ないようにする。 */
+.theory-press-cell {
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
-.plan-diagnosis-cell--danger {
-  background-color: #c62828;
+/* 長押しの時間に達した印。指を離すと血統表の画像を保存する。 */
+.theory-press-cell.theory-press-cell--armed {
+  box-shadow: inset 0 0 0 3px #ffb300;
+  filter: brightness(1.15);
 }
 
-.plan-diagnosis-cell--unknown {
-  background-color: #ef6c00;
+/* 血統表が埋まりきるまで、理論の代わりに出す「残り○枠」。 */
+.theory-remaining {
+  background-color: #eceff1;
+  color: #37474f;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
 }
 
-.plan-diagnosis-cell--safe {
-  background-color: #2e7d32;
+/* リセット（血統表を空にする）の確認ダイアログ。消えるもの・残るものを並べて見せる。 */
+.v-dialog.dabimas-reset-dialog {
+  border-radius: 18px;
 }
 
-.plan-diagnosis-badge {
-  display: block;
-  color: #fff;
-  font-size: 11px;
-  line-height: 1.2;
+.dabimas-reset-card.v-card {
+  border-radius: 18px !important;
+  padding: 24px 20px 18px;
+  text-align: center;
 }
 
-.exp-mobile-plan-diagnosis-button {
-  background: transparent;
-  border: 0;
-  color: #fff;
-  line-height: 1;
-  padding: 0;
+.dabimas-reset-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #e53935;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.exp-mobile-plan-diagnosis-button .plan-diagnosis-badge {
-  font-size: 9px;
+.dabimas-reset-icon .v-icon {
+  font-size: 28px !important;
+}
+
+.dabimas-reset-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.dabimas-reset-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.dabimas-reset-list {
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.dabimas-reset-list-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.dabimas-reset-list-head .v-icon {
+  color: inherit !important;
+}
+
+.dabimas-reset-list--gone {
+  background: #fdecea;
+  color: #b71c1c;
+}
+
+.dabimas-reset-list--kept {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.dabimas-reset-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dabimas-reset-actions .v-btn {
+  height: 44px !important;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.dabimas-reset-cancel.v-btn {
+  background-color: #eceff1 !important;
+  color: #37474f !important;
 }
 
 /* 診断結果パネル（下部シート） */
@@ -1380,4 +1438,31 @@
 .dabimas-theme-item .dabimas-theme-toggle .v-btn {
   font-size: 12px;
   letter-spacing: normal;
+}
+
+
+/* ===== 明るい表示の血統表の区切り線を灰色にそろえる =====
+   行と行の間は #ddd なのに、左端の父・母の帯の右線（css/style.css で #FFFFFF）と、
+   種牡馬の表と繁殖牝馬の表の間のすき間（ページの白い地が見える）だけが白かった。
+   style.css は触らず、明るい表示のときだけここで上書きする。 */
+html:not(.dabimas-dark) .table_main td.father_0,
+html:not(.dabimas-dark) .table_main td.father,
+html:not(.dabimas-dark) .table_main td.father_1,
+html:not(.dabimas-dark) .table_main td.mother_0,
+html:not(.dabimas-dark) .table_main td.mother,
+html:not(.dabimas-dark) .table_main td.mother_1 {
+  border-right-color: #dddddd !important;
+}
+
+/* スマホの帯の段の区切り（父と母が切り替わる横線）は css/mobile.css が
+   白の box-shadow で描いているので、これも灰色にする。階段の外縁は線なしのまま。 */
+html:not(.dabimas-dark) .exp-mobile-layout .table_main > tbody > tr > td.father_0:not(.exp-mobile-colorseg-edge),
+html:not(.dabimas-dark) .exp-mobile-layout .table_main > tbody > tr > td.father:not(.exp-mobile-colorseg-edge),
+html:not(.dabimas-dark) .exp-mobile-layout .table_main > tbody > tr > td.mother_0:not(.exp-mobile-colorseg-edge),
+html:not(.dabimas-dark) .exp-mobile-layout .table_main > tbody > tr > td.mother:not(.exp-mobile-colorseg-edge) {
+  box-shadow: inset 0 1px 0 0 #dddddd;
+}
+
+html:not(.dabimas-dark) .exp-mobile-layout main .container > .spacer > .row.mx-1 {
+  background-color: #dddddd;
 }

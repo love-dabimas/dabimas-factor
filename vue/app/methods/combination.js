@@ -226,6 +226,8 @@
           }
           this.deferInbreedCount = true;
           this.deferredInbreedCountRequested = false;
+          // 開いた直後の血統表で危険が見つかっても、結果パネルは勝手に開かない。
+          this.resetPlanAutoBaseline();
           try {
             if (JSON.parse(localStorage.getItem("dabimasFactor"))) {
               await this.restoreInputData();
@@ -256,6 +258,9 @@
             if (this.deferredInbreedCountRequested) {
               this.dispInbreedFactorCounts();
             }
+            // 復元の途中で自動診断が走っていても、復元し終えた血統表を起点にし直す。
+            this.resetPlanAutoBaseline();
+            this.schedulePlanAutoDiagnosis();
           }
         },
   });

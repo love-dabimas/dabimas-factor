@@ -6,7 +6,8 @@
  *   3) node scripts/smoke-plan-diagnosis.cjs [origin] [debugPort]
  *
  * 画面の onChangeMain（＝馬を選んだときと同じ入口）で血統表を組み立て、
- * runPlanDiagnosis を呼んで、ボタン状態・⚠ の数・工程結果を取り出す。
+ * 自動で走る工程診断（設定「工程診断を自動で行う」の既定はオン）を待って、
+ * 「理論」マスの表示・⚠ の数・結果パネルの開閉・工程結果を取り出す。
  */
 const ORIGIN = process.argv[2] || "http://localhost:8771";
 const DEBUG_PORT = process.argv[3] || "9222";
@@ -39,16 +40,15 @@ const PAGE_SCRIPT = `(async () => {
   await app.onChangeMain(1, 7, find("ガーサント", "神狂"));
   await app.onChangeMain(1, 15, find("アドマイヤグルーヴ"));
 
-  const beforeState = app.planDiagnosisState;
-  await app.runPlanDiagnosis();
+  // 自動診断は血統表が変わってから 0.15 秒後に走る。結果が出るまで待つ。
+  await waitFor(() => app.planDiagnosisResult, 10000);
   await new Promise((resolve) => setTimeout(resolve, 200));
 
   const result = app.planDiagnosisResult;
   return JSON.stringify({
     baseBroodmare: baseBroodmare && baseBroodmare.name,
-    beforeState,
-    state: app.planDiagnosisState,
-    badge: app.planDiagnosisBadgeText,
+    autoDiagnosis: app.planAutoDiagnosis,
+    remainingCells: app.planEmptyCellCount,
     dangerCells: app.planDangerCellIndexes,
     dangerMarksInDom: document.querySelectorAll(".plan-danger-mark").length,
     panelVisible: app.planDiagnosisPanelVisible,

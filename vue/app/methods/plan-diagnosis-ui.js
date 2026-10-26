@@ -1,8 +1,10 @@
 /**
  * このファイルの役割:
- * - 「工程診断」ボタンの入口 runPlanDiagnosis（判定に要る馬の detail を先に揃えて
+ * - 工程診断の入口 runPlanDiagnosis（判定に要る馬の detail を先に揃えて
  *   vue/logic/plan/plan-diagnosis.js を1回だけ呼ぶ）。
- * - 結果パネルの開閉。
+ * - 血統表が変わるたびに工程診断を自動で走らせる段取り（schedulePlanAutoDiagnosis /
+ *   runPlanAutoDiagnosis）。設定「工程診断を自動で行う」がオフなら何もしない。
+ * - 結果パネルの開閉。自動で開くのは、新しく危険が見つかったときだけ。
  *
  * このファイルに置かない処理:
  * - 工程の切り出し・クロス判定・理論判定（vue/logic/plan/plan-diagnosis.js の仕事）。
@@ -18,6 +20,9 @@
   window.Dabimas.app = window.Dabimas.app || {};
   window.Dabimas.app.methods = window.Dabimas.app.methods || {};
 
+  // 血統表が変わってから自動診断を始めるまでの待ち時間。
+  var PLAN_AUTO_DELAY_MS = 150;
+
   Object.assign(window.Dabimas.app.methods, {
         // 馬1頭を hydrate 済みマップで引くためのキー。
         planHorseKey: function (horse) {
@@ -27,17 +32,18 @@
           return [horse.nodeId || "", horse.name || "", horse.subName || ""].join("|");
         },
 
-        // 工程診断（ボタン押下 1 回につき 1 回だけ全工程を判定する）。
+        // 工程診断（呼ぶたびに 1 回だけ全工程を判定する）。結果は planDiagnosis に
+        // 入れて返す。判定できなかったとき・途中で血統表が変わったときは null を返す。
         runPlanDiagnosis: async function () {
           const planLogic = window.Dabimas.logic.plan;
 
           if (this.planDiagnosisRunning) {
-            return;
+            return null;
           }
           if (!planLogic.isPedigreeTableComplete(this.selected)) {
             this.planDiagnosis = null;
             this.planDiagnosisPanelVisible = false;
-            return;
+            return null;
           }
 
           this.planDiagnosisRunning = true;
@@ -110,7 +116,7 @@
 
             // 詳細取得の間に選択が変わっていたら、その結果は表示しない（仕様 §13.2）。
             if (planLogic.createSnapshotHash(this.selected) !== snapshotHash) {
-              return;
+              return null;
             }
 
             const result = planLogic.diagnoseBreedingPlan({
@@ -128,14 +134,84 @@
             if (result.status !== "completed") {
               this.planDiagnosis = null;
               this.planDiagnosisPanelVisible = false;
-              return;
+              return null;
             }
 
             this.planDiagnosis = result;
-            this.planDiagnosisPanelVisible = true;
+            return result;
           } finally {
             this.planDiagnosisRunning = false;
           }
+        },
+
+        // 血統表が変わったら、少し待ってから 1 回だけ自動診断する。保存した配合の
+        // 呼び出しなどで何十マスもまとめて変わるときに、判定を 1 回にまとめるため。
+        schedulePlanAutoDiagnosis: function () {
+          if (this.planAutoTimer) {
+            clearTimeout(this.planAutoTimer);
+            this.planAutoTimer = null;
+          }
+          if (!this.planAutoDiagnosis) {
+            return;
+          }
+          this.planAutoTimer = setTimeout(() => {
+            this.planAutoTimer = null;
+            this.runPlanAutoDiagnosis();
+          }, PLAN_AUTO_DELAY_MS);
+        },
+
+        runPlanAutoDiagnosis: async function () {
+          if (!this.planAutoDiagnosis) {
+            return;
+          }
+          if (this.planDiagnosisRunning) {
+            // 走っている診断が終わったら、最新の血統表でやり直す。
+            this.planAutoRerunPending = true;
+            return;
+          }
+          const isBaseline = this.planAutoBaselinePending;
+          this.planAutoBaselinePending = false;
+          if (!window.Dabimas.logic.plan.isPedigreeTableComplete(this.selected)) {
+            return;
+          }
+
+          const startedHash = this.planCurrentSnapshotHash;
+          const result = await this.runPlanDiagnosis();
+          if (this.planAutoRerunPending || this.planCurrentSnapshotHash !== startedHash) {
+            this.planAutoRerunPending = false;
+            this.schedulePlanAutoDiagnosis();
+            return;
+          }
+          if (!result) {
+            return;
+          }
+
+          const current = this.warningCellIndexes.slice();
+          const previous = this.planLastWarningCellIndexes;
+          this.planLastWarningCellIndexes = current;
+          if (isBaseline) {
+            return;
+          }
+          // 前回は無かった ⚠ が 1 つでもあれば、新しく危険が見つかったとみなす。
+          // 同じ危険が残っているだけなら開かない（直している途中に何度も開かないように）。
+          if (current.some((index) => previous.indexOf(index) === -1)) {
+            this.planDiagnosisPanelVisible = true;
+          }
+        },
+
+        // 配合を開いた直後・保存した配合を呼び出した直後に呼ぶ。次の自動診断では
+        // 結果パネルを開かず、その時点の ⚠ を比較の起点として覚えるだけにする。
+        resetPlanAutoBaseline: function () {
+          this.planAutoBaselinePending = true;
+          this.planLastWarningCellIndexes = [];
+        },
+
+        // 「理論」のマスを押したとき。自動診断の結果があるときだけ開く。
+        openPlanDiagnosisPanel: function () {
+          if (!this.planAutoDiagnosis || !this.planDiagnosisResult) {
+            return;
+          }
+          this.planDiagnosisPanelVisible = true;
         },
 
         closePlanDiagnosisPanel: function () {

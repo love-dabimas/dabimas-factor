@@ -31,6 +31,8 @@
     <!-- 明るい／暗いの選択を、最初の描画より前に <html> へ当てる。
          Vue の起動を待つと、暗い設定でも一瞬明るい画面が出てしまう。 -->
     <script src="./vue/logic/theme.js"></script>
+    <!-- 馬名の大きさ（大／小）も同じく、最初の描画より前に当てる。 -->
+    <script src="./vue/logic/name-size.js"></script>
     <link rel="icon" href="./favicon.ico" sizes="any" />
     <!-- 32×32 -->
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
@@ -64,7 +66,6 @@
       <musume-host></musume-host>
 
       <header ref="appHeader" v-show="currentScreen === 'category'">
-        <workspace-tab-bar></workspace-tab-bar>
         <factor-summary-header
           :factor-nums="factorNumtoString"
           :inbreed-factor-nums="inbreedFactorNumtoString"
@@ -75,14 +76,14 @@
           :sire-line-counts="dispCategory % 2 === 1 ? buildSireLineColorCounts() : null"
           :combination-cell-style="combinationCellStyle"
           :is-capturing-screenshot="isCapturingScreenshot"
-          :plan-diagnosis-state="planDiagnosisState"
-          :plan-diagnosis-badge-text="planDiagnosisBadgeText"
-          :plan-diagnosis-disabled="planDiagnosisDisabled"
+          :remaining-cell-count="planEmptyCellCount"
+          :going-home="goingHome"
           @toggle-category="handleClick"
           @combination-open="handleCombinationCellClick"
-          @reset="initializer"
+          @reset="resetConfirmVisible = true"
           @capture-screenshot="captureMobileScreenshot"
-          @plan-diagnose="runPlanDiagnosis"
+          @go-home="goHomeFromCategory"
+          @plan-open="openPlanDiagnosisPanel"
         ></factor-summary-header>
       </header>
 
@@ -102,6 +103,31 @@
         :result="planDiagnosisResult"
         :self-ancestor-warning-count="visibleSelfAncestorWarningIndexes.length"
       ></plan-diagnosis-panel>
+
+      <!-- リセット（血統表を空にする）の確認。保存ボタンの隣にあるので押し間違えに備える -->
+      <v-dialog v-model="resetConfirmVisible" max-width="340" content-class="dabimas-reset-dialog">
+        <v-card class="dabimas-reset-card">
+          <div class="dabimas-reset-icon"><v-icon color="white">mdi-broom</v-icon></div>
+          <div class="dabimas-reset-title">血統表を空にしますか？</div>
+          <div class="dabimas-reset-lists">
+            <div class="dabimas-reset-list dabimas-reset-list--gone">
+              <div class="dabimas-reset-list-head"><v-icon small>mdi-close-circle</v-icon>消えるもの</div>
+              <div>選んだ馬（{{ 32 - planEmptyCellCount }}頭）</div>
+              <div>メモ</div>
+              <div>クロス指定</div>
+            </div>
+            <div class="dabimas-reset-list dabimas-reset-list--kept">
+              <div class="dabimas-reset-list-head"><v-icon small>mdi-check-circle</v-icon>残るもの</div>
+              <div>保存した配合</div>
+              <div>自家製馬</div>
+            </div>
+          </div>
+          <div class="dabimas-reset-actions">
+            <v-btn depressed rounded class="dabimas-reset-cancel" @click="resetConfirmVisible = false">キャンセル</v-btn>
+            <v-btn depressed rounded color="error" class="dabimas-reset-confirm" @click="resetConfirmVisible = false; initializer()">空にする</v-btn>
+          </div>
+        </v-card>
+      </v-dialog>
 
       <!-- detail（血統）取得失敗時の再試行メッセージ -->
       <v-snackbar
@@ -185,6 +211,7 @@
   <script src="./vue/logic/inbreed/inbreed-detector.js"></script>
   <script src="./vue/logic/inbreed/inbreed-counts.js"></script>
   <script src="./vue/logic/plan/plan-diagnosis.js"></script>
+  <script src="./vue/logic/plan/plan-auto-setting.js"></script>
   <script src="./vue/logic/plan/assist-diagnosis.js"></script>
   <script src="./vue/logic/musume/theory-map-heavy.js"></script>
   <script src="./vue/logic/plan/assist-plan.js"></script>
@@ -198,7 +225,7 @@
   <script src="./vue/components/header/factor-summary-header.js"></script>
   <script src="./vue/components/plan/plan-diagnosis-panel.js"></script>
 
-  <!-- 統合版（カテゴリ・作業枠）: dabifaku_unified への接続はこの層のみが持つ -->
+  <!-- 統合版（ホームの配合一覧）: dabifaku_unified への接続はこの層のみが持つ -->
   <script src="./vue/logic/storage/unified-db.js"></script>
   <script src="./vue/logic/storage/category-repository.js"></script>
   <script src="./vue/logic/storage/workspace-repository.js"></script>
@@ -214,7 +241,6 @@
   <script src="./vue/components/assist/assist-factor-table.js"></script>
   <script src="./vue/components/assist/assist-pedigree-dialog.js"></script>
   <script src="./vue/components/assist/assist-screen.js"></script>
-  <script src="./vue/components/workspace/workspace-tab-bar.js"></script>
   <!-- ダビ娘の組み込み（お気に入り・検索） -->
   <script src="./vue/logic/musume-link.js"></script>
   <script src="./vue/logic/musume/custom-horse-payload.js"></script>

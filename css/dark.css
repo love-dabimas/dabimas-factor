@@ -27,21 +27,46 @@ html.dabimas-dark .v-application.theme--light {
   background-color: var(--dk-bg) !important;
 }
 
-/* ===== 作業枠のヘッダーとタブバー ===== */
-html.dabimas-dark .v-application header,
-html.dabimas-dark .v-application .dabimas-tab-bar {
+/* ===== 血統表のヘッダー ===== */
+html.dabimas-dark .v-application header {
   background-color: var(--dk-raised) !important;
   color: var(--dk-text);
   border-color: var(--dk-line) !important;
 }
 
-/* 背景色を持つボタン（作業枠の番号など）は Vuetify が白文字を前提に塗っているので触らない。
+/* 背景色を持つボタンは Vuetify が白文字を前提に塗っているので触らない。
    v-btn--has-bg が付いているものがそれ。 */
 html.dabimas-dark .v-application header .v-btn:not(.v-btn--has-bg),
-html.dabimas-dark .v-application header .v-icon,
-html.dabimas-dark .v-application .dabimas-tab-bar .v-btn:not(.v-btn--has-bg),
-html.dabimas-dark .v-application .dabimas-tab-bar .v-icon {
+html.dabimas-dark .v-application header .v-icon {
   color: var(--dk-text);
+}
+
+/* 理論の代わりに出す「残り○枠」。明るい側の薄い灰色を、明度だけ落とす。 */
+html.dabimas-dark .v-application header .theory-remaining {
+  background-color: var(--dk-surface) !important;
+  color: var(--dk-text);
+}
+
+/* ===== リセットの確認ダイアログ =====
+   明るい側の薄い赤・薄い緑の地を、色相はそのままで暗くする。 */
+html.dabimas-dark .dabimas-reset-card.v-card {
+  background-color: var(--dk-raised) !important;
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .dabimas-reset-list--gone {
+  background: #4a1f22;
+  color: #f4b4b0;
+}
+
+html.dabimas-dark .dabimas-reset-list--kept {
+  background: #1f3a24;
+  color: #a5d6a7;
+}
+
+html.dabimas-dark .dabimas-reset-cancel.v-btn {
+  background-color: var(--dk-surface) !important;
+  color: var(--dk-text) !important;
 }
 
 /* ===== 血統表の土台 ===== */
@@ -315,7 +340,6 @@ html.dabimas-dark .dabimas-home-section-title {
 }
 
 html.dabimas-dark .dabimas-home-empty,
-html.dabimas-dark .dabimas-category-count,
 html.dabimas-dark .dabimas-musume-tile__sub {
   color: var(--dk-muted);
 }
@@ -330,6 +354,14 @@ html.dabimas-dark .dabimas-home .dabimas-category-card.v-sheet {
 
 html.dabimas-dark .dabimas-home .dabimas-musume-tile.v-sheet .v-icon,
 html.dabimas-dark .dabimas-home .dabimas-category-card.v-sheet .v-icon {
+  color: var(--dk-accent);
+}
+
+html.dabimas-dark .dabimas-home .dabimas-category-add.v-sheet {
+  border: 2px dashed var(--dk-line) !important;
+}
+
+html.dabimas-dark .dabimas-home .dabimas-category-add .dabimas-category-name {
   color: var(--dk-accent);
 }
 

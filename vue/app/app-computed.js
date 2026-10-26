@@ -93,47 +93,9 @@
           }
           return result.snapshotHash === this.planCurrentSnapshotHash ? result : null;
         },
+        // 血統表の空きマス数。「理論」のマスに「残り○枠」として出す。
         planEmptyCellCount() {
           return this.selected.filter((entry) => !entry || !entry.name).length;
-        },
-        planDiagnosisState() {
-          if (this.planDiagnosisRunning) {
-            return "RUNNING";
-          }
-          if (this.planEmptyCellCount > 0) {
-            return "INCOMPLETE";
-          }
-          const result = this.planDiagnosisResult;
-          if (!result) {
-            return "READY";
-          }
-          if (this.warningCellIndexes.length > 0) {
-            return "DANGER";
-          }
-          // 判定不能（データ不足）は安全側にまとめる。安全と危険以外の状態は
-          // 出さない（危険が分かるところだけ拾えれば十分という運用判断）。
-          return "SAFE";
-        },
-        // 色が判別できなくても状態が分かるよう、必ず文字を出す（仕様 UI-08）。
-        planDiagnosisBadgeText() {
-          switch (this.planDiagnosisState) {
-            case "RUNNING":
-              return "診断中";
-            case "INCOMPLETE":
-              return "残り" + this.planEmptyCellCount + "枠";
-            case "READY":
-              return "未診断";
-            case "SAFE":
-              return "危険0";
-            case "DANGER":
-              return "危険" + this.warningCellIndexes.length;
-            default:
-              return "";
-          }
-        },
-        planDiagnosisDisabled() {
-          return this.planDiagnosisState === "INCOMPLETE" ||
-            this.planDiagnosisState === "RUNNING";
         },
         // ⚠ を出す血統セル。診断結果を参照するだけで、ここでは危険判定をやり直さない
         //（仕様 §16.2）。
@@ -231,6 +193,25 @@
   };
 
   window.Dabimas.app.watch = {
+        // 血統表が変わるたびに工程診断を自動で走らせる（設定がオンのときだけ）。
+        planCurrentSnapshotHash: function () {
+          this.schedulePlanAutoDiagnosis();
+        },
+        planAutoDiagnosis: function (enabled) {
+          if (enabled) {
+            // 設定で入れた直後に、今の血統表の危険でパネルを開かない。
+            this.resetPlanAutoBaseline();
+            this.schedulePlanAutoDiagnosis();
+            return;
+          }
+          if (this.planAutoTimer) {
+            clearTimeout(this.planAutoTimer);
+            this.planAutoTimer = null;
+          }
+          this.planDiagnosis = null;
+          this.planDiagnosisPanelVisible = false;
+          this.planLastWarningCellIndexes = [];
+        },
         dispCategory: function(value) {
           this.$nextTick(() => {
             this.applyMobileViewportLayout();

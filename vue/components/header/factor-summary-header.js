@@ -2,6 +2,10 @@
  * このコンポーネントの役割:
  * - appHeader 内のニトロ／クロス集計テーブルだけを担当する。
  * - root app から集計値と表示状態を props で受け取り、操作はイベントとして返す。
+ * - 左上のマスはホームへ戻るボタン（go-home）。
+ * - 「理論」（子系統表示では「相性」）のマスは、押すと工程診断の結果パネル
+ *   （plan-open）、長押しで血統表の画像保存（capture-screenshot）。血統表が
+ *   埋まりきるまでは理論の代わりに「残り○枠」を出す。
  *
  * このコンポーネントに置かない処理:
  * - ヘッダ外殻（<header ref="appHeader">）。$refs.appHeader は素の DOM 要素で
@@ -9,13 +13,15 @@
  * - 血統計算、保存処理、スクリーンショット処理。
  *
  * 分けている理由:
- * - index.html には将来のタブバー挿入位置として header の殻だけを残し、
- *   大きい集計テーブルは独立部品にする。
+ * - index.html には header の殻だけを残し、大きい集計テーブルは独立部品にする。
  * - ルート要素を table にして、描画後の DOM を既存と同じ header > table に保つ。
  */
 (function (window, Vue) {
   window.Dabimas = window.Dabimas || {};
   window.Dabimas.components = window.Dabimas.components || {};
+
+  // この時間押し続けたら長押しとみなす。
+  var LONG_PRESS_MS = 500;
 
   var FactorSummaryHeader = {
     name: "factor-summary-header",
@@ -29,27 +35,39 @@
       combinationCellStyle: { type: [Object, String], required: true },
       isCapturingScreenshot: { type: Boolean, required: true },
       sireLineCounts: { type: Object, default: null },
-      // 工程診断ボタン（vue/logic/plan/plan-diagnosis.js）。
-      planDiagnosisState: { type: String, default: "INCOMPLETE" },
-      planDiagnosisBadgeText: { type: String, default: "" },
-      planDiagnosisDisabled: { type: Boolean, default: true },
+      // 血統表の空きマス数。0 より大きい間は理論の代わりに「残り○枠」を出す。
+      remainingCellCount: { type: Number, default: 0 },
+      // 戻るボタンを押してからホームに切り替わるまで true。
+      goingHome: { type: Boolean, default: false },
+    },
+    data: function () {
+      return {
+        longPressTimer: null,
+        // 長押しの時間に達して、指を離せば画像保存する状態。マスの色を変えて知らせる。
+        longPressArmed: false,
+        longPressFired: false,
+      };
     },
     computed: {
-      planDiagnosisCellClass: function () {
-        return "plan-diagnosis-cell--" + this.planDiagnosisState.toLowerCase();
+      remainingText: function () {
+        return this.remainingCellCount > 0 ? "残り" + this.remainingCellCount + "枠" : "";
       },
-      planDiagnosisIcon: function () {
-        switch (this.planDiagnosisState) {
-          case "DANGER":
-            return "mdi-alert";
-          case "RUNNING":
-            return "mdi-progress-clock";
-          default:
-            return "mdi-magnify-scan";
-        }
+      theoryValueClass: function () {
+        return this.remainingText ? "theory-remaining" : this.theoryClass;
       },
-      planDiagnosisTitle: function () {
-        return "工程診断（" + this.planDiagnosisBadgeText + "）";
+      theoryArmedClass: function () {
+        return { "theory-press-cell--armed": this.longPressArmed };
+      },
+      // 「理論」「相性」のマスに付けるイベント一式。押す・長押しを 1 か所で扱う。
+      theoryPressHandlers: function () {
+        return {
+          pointerdown: this.onTheoryPressStart,
+          pointerup: this.onTheoryPressRelease,
+          pointerleave: this.onTheoryPressCancel,
+          pointercancel: this.onTheoryPressCancel,
+          contextmenu: this.onTheoryContextMenu,
+          click: this.onTheoryClick,
+        };
       },
       sireLineBuckets: function () {
         return Array.from({ length: 10 }, function (_, index) {
@@ -61,12 +79,60 @@
         });
       },
     },
+    beforeDestroy: function () {
+      this.clearLongPressTimer();
+    },
     methods: {
-      onPlanDiagnosisClick: function () {
-        if (this.planDiagnosisDisabled) {
+      onBackClick: function () {
+        if (this.goingHome) {
           return;
         }
-        this.$emit("plan-diagnose");
+        this.$emit("go-home");
+      },
+      clearLongPressTimer: function () {
+        if (this.longPressTimer) {
+          clearTimeout(this.longPressTimer);
+          this.longPressTimer = null;
+        }
+      },
+      onTheoryPressStart: function (event) {
+        if (event.button !== undefined && event.button !== 0) {
+          return;
+        }
+        this.clearLongPressTimer();
+        this.longPressArmed = false;
+        this.longPressFired = false;
+        this.longPressTimer = setTimeout(() => {
+          this.longPressTimer = null;
+          this.longPressArmed = true;
+        }, LONG_PRESS_MS);
+      },
+      // 画像保存は指を離した瞬間に始める。iPhone の共有シートは、指を離す操作の
+      // 直後でないと開けないため（押している最中に始めると失敗する）。
+      onTheoryPressRelease: function () {
+        var armed = this.longPressArmed;
+        this.clearLongPressTimer();
+        this.longPressArmed = false;
+        if (armed) {
+          this.longPressFired = true;
+          this.$emit("capture-screenshot");
+        }
+      },
+      onTheoryPressCancel: function () {
+        this.clearLongPressTimer();
+        this.longPressArmed = false;
+      },
+      // iPhone の長押しメニュー（コピーなど）を出さない。
+      onTheoryContextMenu: function (event) {
+        event.preventDefault();
+      },
+      onTheoryClick: function () {
+        // 長押しで画像保存したときは、指を離したときのクリックを無視する。
+        if (this.longPressFired) {
+          this.longPressFired = false;
+          return;
+        }
+        this.$emit("plan-open");
       },
       sireLineBucketValue: function (kind, index) {
         var values = this.sireLineCounts && this.sireLineCounts[kind];
@@ -77,6 +143,16 @@
         <table width="100%" style="border-collapse: collapse">
           <tbody v-if="$vuetify.breakpoint.mdAndUp && dispCategory % 2 === 0">
             <tr>
+              <th
+                rowspan="3"
+                width="3%"
+                class="summary-back-cell"
+                aria-label="ホームへ戻る"
+                title="ホームへ戻る"
+                @click="onBackClick"
+              >
+                <v-icon size="x-large" color="white">mdi-arrow-left</v-icon>
+              </th>
               <th rowspan="3" class="f00_nitro_space"></th>
               <th width="1%" rowspan="3" class="f00_nitro">
                 <span>ニトロ</span>
@@ -87,20 +163,8 @@
                 <span>クロス</span>
               </th>
               <th colspan="14" class="f00_inbreed_header"></th>
-              <th v-if="dispCategory % 2 === 0" rowspan="2" class="table_footer_TH_theory">理論</th>
+              <th v-if="dispCategory % 2 === 0" rowspan="2" class="table_footer_TH_theory theory-press-cell" :class="theoryArmedClass" v-on="theoryPressHandlers">理論</th>
               <th v-else rowspan="2" class="table_footer_TH_theory">子系統数</th>
-              <th
-                rowspan="3"
-                width="3%"
-                class="plan-diagnosis-cell"
-                :class="planDiagnosisCellClass"
-                aria-label="工程診断"
-                :title="planDiagnosisTitle"
-                @click="onPlanDiagnosisClick"
-              >
-                <v-icon size="large" color="white">{{ planDiagnosisIcon }}</v-icon>
-                <span class="plan-diagnosis-badge">{{ planDiagnosisBadgeText }}</span>
-              </th>
               <th
                 rowspan="3"
                 width="3%"
@@ -179,7 +243,7 @@
               <th class="factorNumCell">{{inbreedFactorNums[5]}}</th>
               <th class="factorNumCell">{{inbreedFactorNums[6]}}</th>
               <th class="factorNumCell">{{inbreedFactorNums[7]}}</th>
-              <th v-if="dispCategory % 2 === 0" :class="theoryClass"></th>
+              <th v-if="dispCategory % 2 === 0" :class="[theoryValueClass, 'theory-press-cell', theoryArmedClass]" v-on="theoryPressHandlers">{{ remainingText }}</th>
               <th v-else >{{categoryNum}}</th>
             </tr>
           </tbody>
@@ -189,6 +253,16 @@
             class="sire-line-summary sire-line-summary--desktop"
           >
             <tr>
+              <th
+                rowspan="3"
+                width="3%"
+                class="summary-back-cell"
+                aria-label="ホームへ戻る"
+                title="ホームへ戻る"
+                @click="onBackClick"
+              >
+                <v-icon size="x-large" color="white">mdi-arrow-left</v-icon>
+              </th>
               <th
                 width="1%"
                 rowspan="3"
@@ -207,19 +281,7 @@
                 width="8%"
                 :class="bucket.className"
               >{{ bucket.label }}</th>
-              <th width="5%" rowspan="2" class="table_footer_TH_theory">相性</th>
-              <th
-                rowspan="3"
-                width="3%"
-                class="plan-diagnosis-cell"
-                :class="planDiagnosisCellClass"
-                aria-label="工程診断"
-                :title="planDiagnosisTitle"
-                @click="onPlanDiagnosisClick"
-              >
-                <v-icon size="large" color="white">{{ planDiagnosisIcon }}</v-icon>
-                <span class="plan-diagnosis-badge">{{ planDiagnosisBadgeText }}</span>
-              </th>
+              <th width="5%" rowspan="2" class="table_footer_TH_theory theory-press-cell" :class="theoryArmedClass" v-on="theoryPressHandlers">相性</th>
               <th
                 rowspan="3"
                 width="3%"
@@ -252,28 +314,27 @@
                 colspan="3"
                 class="factorNumCell"
               >{{ sireLineBucketValue('total', bucket.index) }}</td>
-              <td class="sire-line-affinity-value">{{ affinityText }}</td>
+              <td
+                class="sire-line-affinity-value theory-press-cell"
+                :class="[{ 'theory-remaining': remainingText }, theoryArmedClass]"
+                v-on="theoryPressHandlers"
+              >{{ remainingText || affinityText }}</td>
             </tr>
           </tbody>
 
           <tbody v-if="$vuetify.breakpoint.smAndDown && dispCategory % 2 === 0">
             <tr>
-              <td
-                colspan="2"
-                class="exp-mobile-screenshot-cell plan-diagnosis-cell"
-                :class="planDiagnosisCellClass"
-              >
+              <td colspan="2" class="exp-mobile-back-cell summary-back-cell">
                 <button
                   type="button"
-                  class="exp-mobile-plan-diagnosis-button"
-                  :disabled="planDiagnosisDisabled"
-                  aria-label="工程診断"
-                  :title="planDiagnosisTitle"
+                  class="exp-mobile-back-button"
+                  :disabled="goingHome"
+                  aria-label="ホームへ戻る"
+                  title="ホームへ戻る"
                   data-html2canvas-ignore="true"
-                  @click.stop.prevent="onPlanDiagnosisClick"
+                  @click.stop.prevent="onBackClick"
                 >
-                  <v-icon small color="white">{{ planDiagnosisIcon }}</v-icon>
-                  <span class="plan-diagnosis-badge">{{ planDiagnosisBadgeText }}</span>
+                  <v-icon color="white">mdi-arrow-left</v-icon>
                 </button>
               </td>
               <td class="f01">短</td>
@@ -290,12 +351,18 @@
               <td class="f06">丈</td>
               <td class="f07">早</td>
               <td class="f08">晩</td>
-              <th v-if="dispCategory % 2 === 0" class="f00_theory">理論</th>
+              <th v-if="dispCategory % 2 === 0" class="f00_theory theory-press-cell" :class="theoryArmedClass" v-on="theoryPressHandlers">理論</th>
               <th v-else class="f00_theory">子系統</th>
             </tr>
             <tr class="mobile-nitro-header-row">
               <td colspan="16" class="f00_nitro_header"></td>
-              <td v-if="dispCategory % 2 === 0" rowspan="2" :class="['mobile-nitro-rowspan', theoryClass]" align="center"></td>
+              <td
+                v-if="dispCategory % 2 === 0"
+                rowspan="2"
+                :class="['mobile-nitro-rowspan', 'theory-press-cell', theoryValueClass, theoryArmedClass]"
+                align="center"
+                v-on="theoryPressHandlers"
+              >{{ remainingText }}</td>
               <td v-else rowspan="2" align="center" class="mobile-nitro-rowspan">{{categoryNum}}</td>
 
             </tr>
@@ -318,7 +385,29 @@
             </tr>
             <tr class="mobile-cross-header-row">
               <td colspan="16" class="f00_inbreed_header"></td>
-              <td v-if="dispCategory % 2 === 0" rowspan="2" @click="$emit('reset')" class="mobile-cross-rowspan" style="background-color: #aa0000" align="center"><v-icon size="large" color="white">mdi-reload</v-icon></td>
+              <!-- 理論表示でも自家製を登録できるよう、右下のマスを保存とリセットに分ける。 -->
+              <td v-if="dispCategory % 2 === 0" rowspan="2" class="mobile-cross-rowspan mobile-action-cell" align="center">
+                <div class="mobile-action-pair">
+                  <button
+                    type="button"
+                    class="mobile-action-button"
+                    :style="combinationCellStyle"
+                    aria-label="保存"
+                    title="保存"
+                    data-html2canvas-ignore="true"
+                    @click="$emit('combination-open')"
+                  ><v-icon color="white">mdi-content-save</v-icon></button>
+                  <button
+                    type="button"
+                    class="mobile-action-button"
+                    style="background-color: #aa0000"
+                    aria-label="血統表を空にする"
+                    title="血統表を空にする"
+                    data-html2canvas-ignore="true"
+                    @click="$emit('reset')"
+                  ><v-icon color="white">mdi-reload</v-icon></button>
+                </div>
+              </td>
               <td
                 v-else
                 rowspan="2"
@@ -352,29 +441,23 @@
             class="sire-line-summary sire-line-summary--mobile"
           >
             <tr>
-              <td
-                colspan="2"
-                class="exp-mobile-screenshot-cell plan-diagnosis-cell"
-                :class="planDiagnosisCellClass"
-              >
+              <td colspan="2" class="exp-mobile-back-cell summary-back-cell">
                 <button
                   type="button"
-                  class="exp-mobile-plan-diagnosis-button"
-                  :disabled="planDiagnosisDisabled"
-                  aria-label="工程診断"
-                  :title="planDiagnosisTitle"
+                  class="exp-mobile-back-button"
+                  :disabled="goingHome"
+                  aria-label="ホームへ戻る"
+                  title="ホームへ戻る"
                   data-html2canvas-ignore="true"
-                  @click.stop.prevent="onPlanDiagnosisClick"
-                ><v-icon small color="white">{{ planDiagnosisIcon }}</v-icon><span
-                  class="plan-diagnosis-badge"
-                >{{ planDiagnosisBadgeText }}</span></button>
+                  @click.stop.prevent="onBackClick"
+                ><v-icon color="white">mdi-arrow-left</v-icon></button>
               </td>
               <th
                 v-for="bucket in sireLineBuckets"
                 :key="'mobile-head-' + bucket.index"
                 :class="bucket.className"
               >{{ bucket.label }}</th>
-              <th class="f00_theory">相性</th>
+              <th class="f00_theory theory-press-cell" :class="theoryArmedClass" v-on="theoryPressHandlers">相性</th>
             </tr>
             <tr>
               <td colspan="2" class="f00_nitro">系統数</td>
@@ -383,7 +466,12 @@
                 :key="'mobile-distinct-' + bucket.index"
                 class="factorNumCell"
               >{{ sireLineBucketValue('distinct', bucket.index) }}</td>
-              <td class="mobile-nitro-rowspan sire-line-affinity-value" align="center">{{ affinityText }}</td>
+              <td
+                class="mobile-nitro-rowspan sire-line-affinity-value theory-press-cell"
+                :class="[{ 'theory-remaining': remainingText }, theoryArmedClass]"
+                align="center"
+                v-on="theoryPressHandlers"
+              >{{ remainingText || affinityText }}</td>
             </tr>
             <tr>
               <td colspan="2" class="f00_inbreed">出現数</td>
