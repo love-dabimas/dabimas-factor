@@ -17,6 +17,11 @@
  *   セル k は「祖先位置 bits(k) の父」を指す（1=F, 3=MF, 7=MMF, 15=MMMF）。
  * - よって母系で深さ d（0=本馬, 1=母, 2=母母, 3=母母母）の牝馬の父は
  *   セル 2^(d+1)-1 に入る。繁殖牝馬側は +16 が selected の index。
+ *
+ * 種牡馬側の工程:
+ * - 左上の種牡馬が自分で組んだ馬（★N薄めの仮の馬・自家製馬）のときは、その馬を
+ *   作るまでの母系も工程として診断する。種牡馬側の母（深さ 1）に父（セル 1）を
+ *   付けた配合が、その種牡馬が生まれる最後の工程になる。
  */
 (function (window) {
   window.Dabimas = window.Dabimas || {};
@@ -63,32 +68,34 @@
 
   // 母系チェーンのうち、ユーザー自身が選んだ一番深いセルを基礎繁殖牝馬の位置とみなす。
   // 例: 繁殖牝馬側セル 15（MMMF）を自分で選んでいれば 4 工程（=4代計画）。
-  function detectBaseDepth(selected) {
+  // sideOffset は繁殖牝馬側なら 16、種牡馬側なら 0。
+  function detectBaseDepth(selected, sideOffset, minDepth) {
     for (var depth = MAX_BASE_DEPTH; depth >= 1; depth -= 1) {
-      var entry = selected[ROWS_PER_SIDE + maternalSireCell(depth)];
+      var entry = selected[sideOffset + maternalSireCell(depth)];
       if (entry && entry.selfSelected === true) {
-        return depth;
+        return Math.max(depth, minDepth);
       }
     }
-    var root = selected[ROWS_PER_SIDE];
-    if (root && root.selfSelected === true) {
+    var root = selected[sideOffset];
+    if (minDepth === 0 && root && root.selfSelected === true) {
       return 0;
     }
     return MAX_BASE_DEPTH;
   }
 
-  function mareRefAtDepth(selected, depth) {
+  function mareRefAtDepth(selected, depth, sideOffset) {
     if (depth === 0) {
-      return selected[ROWS_PER_SIDE]?.identityRef || null;
+      return selected[sideOffset]?.identityRef || null;
     }
-    return selected[ROWS_PER_SIDE + maternalSireCell(depth)]?.placeholderMareRef || null;
+    return selected[sideOffset + maternalSireCell(depth)]?.placeholderMareRef || null;
   }
 
-  // 計画の工程一覧を作る。工程の種牡馬は「一つ浅い牝馬の父」セルで、
-  // 最終工程だけは種牡馬側のセル 0（画面左側の種牡馬）になる。
-  function detectPlan(selected, resolver) {
-    var baseDepth = detectBaseDepth(selected);
-    var baseMareRef = mareRefAtDepth(selected, baseDepth);
+  // 片側の母系から工程一覧を作る。工程の種牡馬は「一つ浅い牝馬の父」セル。
+  // 繁殖牝馬側（minDepth 0）の最後の工程は種牡馬側のセル 0（画面左側の種牡馬）、
+  // 種牡馬側（minDepth 1）の最後の工程はセル 1（左側の種牡馬の父）になる。
+  function detectChainPlan(selected, resolver, sideOffset, minDepth) {
+    var baseDepth = detectBaseDepth(selected, sideOffset, minDepth);
+    var baseMareRef = mareRefAtDepth(selected, baseDepth, sideOffset);
     while (
       baseDepth < MAX_BASE_DEPTH &&
       resolver &&
@@ -102,21 +109,22 @@
     }
     var baseCellIndex =
       baseDepth > 0
-        ? ROWS_PER_SIDE + maternalSireCell(baseDepth)
-        : ROWS_PER_SIDE;
+        ? sideOffset + maternalSireCell(baseDepth)
+        : sideOffset;
     var steps = [];
 
-    for (var depth = baseDepth; depth >= 0; depth -= 1) {
+    for (var depth = baseDepth; depth >= minDepth; depth -= 1) {
       steps.push({
         stepNo: steps.length + 1,
         mareDepth: depth,
-        isFinalStep: depth === 0,
+        isFinalStep: depth === minDepth,
         sireIndex:
-          depth === 0 ? 0 : ROWS_PER_SIDE + maternalSireCell(depth - 1),
+          depth === 0 ? 0 : sideOffset + maternalSireCell(depth - 1),
       });
     }
 
     return {
+      sideOffset: sideOffset,
       baseDepth: baseDepth,
       baseCellIndex: baseCellIndex,
       baseMareName: readMareNameFromCell(selected[baseCellIndex]),
@@ -124,6 +132,31 @@
       planDepth: steps.length,
       steps: steps,
     };
+  }
+
+  // 繁殖牝馬側の計画（従来どおりの工程診断）。
+  function detectPlan(selected, resolver) {
+    return detectChainPlan(selected, resolver, ROWS_PER_SIDE, 0);
+  }
+
+  // 左上の種牡馬が自分で組んだ馬か。★N薄めの仮の馬（深いマスを選んだときに
+  // 自動で作られる）と、保存した自家製馬が当てはまる。
+  function isBuiltStallion(entry) {
+    if (!entry || !entry.name) {
+      return false;
+    }
+    if (entry.source === "custom" || entry.customHorseId) {
+      return true;
+    }
+    return entry.disabled === true && /^★[0-9０-９]+薄め/.test(entry.name);
+  }
+
+  // 種牡馬側の計画。左上が自分で組んだ種牡馬のときだけ作る。
+  function detectSireSidePlan(selected, resolver) {
+    if (!isBuiltStallion(selected && selected[0])) {
+      return null;
+    }
+    return detectChainPlan(selected, resolver, 0, 1);
   }
 
   // 1頭ぶんの血統（16セル）を、既存の血統表展開処理そのままで作る。
@@ -177,7 +210,9 @@
   }
 
   // 基礎繁殖牝馬が無名（種牡馬しか置かれていない）ときは、画面の血統表から切り出す。
-  function sliceMareBoard(selected, depth) {
+  // sideOffset を省くと繁殖牝馬側（16）。種牡馬側の母系なら 0 を渡す。
+  function sliceMareBoard(selected, depth, sideOffset) {
+    var offset = sideOffset === undefined ? ROWS_PER_SIDE : sideOffset;
     var board = new Array(ROWS_PER_SIDE).fill(null);
 
     for (var cell = 1; cell < ROWS_PER_SIDE; cell += 1) {
@@ -187,7 +222,7 @@
         ((1 << depth) - 1) * (1 << parts.g) +
         parts.m;
       if (mainCell < ROWS_PER_SIDE) {
-        board[cell] = selected[ROWS_PER_SIDE + mainCell] || null;
+        board[cell] = selected[offset + mainCell] || null;
       }
     }
     return board;
@@ -279,6 +314,7 @@
         sireIndex: base.sireIndex,
         sireNodeId: base.sireNodeId,
         sireName: base.sireName,
+        sireSubName: base.sireSubName || "",
         matchedTheories: [],
         displayedTheory: null,
         isDangerous: false,
@@ -330,6 +366,15 @@
       .join(",");
   }
 
+  // 工程の種牡馬のサブ名（瑚闘・1973 など）。同じ馬の別の版を見分けるのに要る。
+  // 牝馬を選んだセルの "(牝馬名)" は種牡馬の名前ではないので出さない。
+  function sireSubNameOf(entry) {
+    if (!entry || typeof entry.subName !== "string" || readMareNameFromCell(entry)) {
+      return "";
+    }
+    return entry.subName;
+  }
+
   // 前工程が組めなかった場合、それ以降は判定できないので blocked にする。
   function appendBlockedLaterSteps(steps, plan, selected, fromIndex) {
     for (var i = fromIndex; i < plan.steps.length; i += 1) {
@@ -343,6 +388,7 @@
             sireIndex: step.sireIndex,
             sireNodeId: sireEntry ? sireEntry.nodeId || null : null,
             sireName: sireEntry ? sireEntry.name : "",
+            sireSubName: sireSubNameOf(sireEntry),
           },
           { status: "blocked", reasonCode: "PREVIOUS_STEP_BLOCKED" }
         )
@@ -363,18 +409,11 @@
    */
   function diagnoseBreedingPlan(input) {
     var selected = input.selected;
-    var judgeInbreed = window.Dabimas.logic.inbreed.judgeInbreed;
-    var theory = window.Dabimas.logic.theory;
-    var priority = window.Dabimas.constants.breedingTheories.PRIORITY;
 
     if (!isPedigreeTableComplete(selected)) {
       return { status: "incomplete", planDepth: 0, steps: [], summary: null };
     }
 
-    var plan = detectPlan(selected, input.resolver);
-    var steps = [];
-    var mareBoard = null;
-    var mareLabel = plan.baseMareName || "基礎繁殖牝馬";
     // 診断内だけの個体台帳。保存ストアと入力 resolver は変更しない。
     var registry = new Map();
     var baseResolver = input.resolver || null;
@@ -384,8 +423,58 @@
           ? registry.get(ref.id) : baseResolver.parentsOf(ref);
       },
     }));
+    var context = {
+      input: input,
+      registry: registry,
+      diagnosisResolver: diagnosisResolver,
+    };
+
+    var plan = detectPlan(selected, input.resolver);
+    var steps = runChain(plan, context, "plan:step:");
+
+    var sireSide = null;
+    var sirePlan = detectSireSidePlan(selected, input.resolver);
+    if (sirePlan) {
+      var sireSteps = runChain(sirePlan, context, "plan:sire-step:");
+      sireSide = {
+        planDepth: sirePlan.planDepth,
+        baseCellIndex: sirePlan.baseCellIndex,
+        baseMareName: sirePlan.baseMareName,
+        steps: sireSteps,
+        summary: buildDiagnosisSummary(sireSteps),
+      };
+    }
+
+    return {
+      status: "completed",
+      snapshotHash: createSnapshotHash(selected),
+      planDepth: plan.planDepth,
+      baseCellIndex: plan.baseCellIndex,
+      baseMareName: plan.baseMareName,
+      diagnosedAt: new Date().toISOString(),
+      steps: steps,
+      summary: buildDiagnosisSummary(steps),
+      // 種牡馬側の工程。左上が自分で組んだ種牡馬でなければ null。
+      sireSide: sireSide,
+    };
+  }
+
+  // 片側の母系の工程を、基礎繁殖牝馬から順に判定する。plan は detectChainPlan の戻り値。
+  // stepIdPrefix は仮想繁殖牝馬の個体 id の頭。繁殖牝馬側と種牡馬側で重ならないようにする。
+  function runChain(plan, context, stepIdPrefix) {
+    var input = context.input;
+    var selected = input.selected;
+    var judgeInbreed = window.Dabimas.logic.inbreed.judgeInbreed;
+    var theory = window.Dabimas.logic.theory;
+    var priority = window.Dabimas.constants.breedingTheories.PRIORITY;
+    var registry = context.registry;
+    var diagnosisResolver = context.diagnosisResolver;
+    var steps = [];
+    var mareBoard = null;
+    var mareLabel = plan.baseMareName || "基礎繁殖牝馬";
+
     function composeStepMare(sireBoard, previousMareBoard, stepNo) {
-      var ref = { kind: "custom", id: "plan:step:" + stepNo };
+      var ref = { kind: "custom", id: stepIdPrefix + stepNo };
       var createRef = window.Dabimas.logic.pedigree.createIdentityRef;
       registry.set(ref.id, {
         father: createRef(sireBoard[0]),
@@ -414,7 +503,7 @@
       // 名前の分からない基礎繁殖牝馬は画面の血統表から切り出す。
       mareBoard =
         plan.baseDepth > 0
-          ? sliceMareBoard(selected, plan.baseDepth)
+          ? sliceMareBoard(selected, plan.baseDepth, plan.sideOffset)
           : copySelectedBroodmareSide(selected);
     }
 
@@ -427,6 +516,7 @@
         sireIndex: step.sireIndex,
         sireNodeId: sireEntry ? sireEntry.nodeId || null : null,
         sireName: sireEntry ? sireEntry.name : "",
+        sireSubName: sireSubNameOf(sireEntry),
       };
 
       var sireRecord = input.resolveHorse ? input.resolveHorse(sireEntry) : null;
@@ -526,22 +616,14 @@
         mareLabel = "工程" + step.stepNo + "産駒（仮想繁殖牝馬）";
       }
     }
-
-    return {
-      status: "completed",
-      snapshotHash: createSnapshotHash(selected),
-      planDepth: plan.planDepth,
-      baseCellIndex: plan.baseCellIndex,
-      baseMareName: plan.baseMareName,
-      diagnosedAt: new Date().toISOString(),
-      steps: steps,
-      summary: buildDiagnosisSummary(steps),
-    };
+    return steps;
   }
 
   window.Dabimas.logic.plan.maternalSireCell = maternalSireCell;
   window.Dabimas.logic.plan.isPedigreeTableComplete = isPedigreeTableComplete;
   window.Dabimas.logic.plan.detectPlan = detectPlan;
+  window.Dabimas.logic.plan.detectSireSidePlan = detectSireSidePlan;
+  window.Dabimas.logic.plan.isBuiltStallion = isBuiltStallion;
   window.Dabimas.logic.plan.expandHorseBoard = expandHorseBoard;
   window.Dabimas.logic.plan.composeVirtualMareBoard = composeVirtualMareBoard;
   window.Dabimas.logic.plan.sliceMareBoard = sliceMareBoard;

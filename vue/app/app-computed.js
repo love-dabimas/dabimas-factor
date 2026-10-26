@@ -101,7 +101,12 @@
         //（仕様 §16.2）。
         planDangerCellIndexes() {
           const result = this.planDiagnosisResult;
-          return result ? result.summary.dangerCellIndexes : [];
+          if (!result) {
+            return [];
+          }
+          // 種牡馬側の工程（左上が自分で組んだ種牡馬のとき）の危険も同じく ⚠ を出す。
+          const sireSide = result.sireSide ? result.sireSide.summary.dangerCellIndexes : [];
+          return result.summary.dangerCellIndexes.concat(sireSide);
         },
         // 同一実馬 variant の自己重複セル。判定自体は judgeInbreed が血統表の更新
         // ごとに行っているが、⚠ の出方を工程診断（planDangerCellIndexes）と揃える

@@ -877,6 +877,19 @@
   padding: 12px 16px 16px;
 }
 
+/* 「繁殖牝馬側の工程」「種牡馬側の工程」の見出し。左上の種牡馬を自分で組んだときだけ出る。 */
+.plan-diagnosis-section-title {
+  margin: 12px 0 4px;
+  padding-left: 6px;
+  border-left: 4px solid #5c6bc0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.plan-diagnosis-section-title:first-child {
+  margin-top: 0;
+}
+
 .plan-diagnosis-panel-summary {
   font-weight: 700;
   margin-bottom: 8px;

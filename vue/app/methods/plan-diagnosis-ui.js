@@ -50,35 +50,42 @@
           const snapshotHash = planLogic.createSnapshotHash(this.selected);
 
           try {
-            const detected = planLogic.detectPlan(
-              this.selected,
-              this.identityResolver
-            );
+            // 繁殖牝馬側の計画と、左上が自分で組んだ種牡馬なら種牡馬側の計画。
+            // どちらも工程の種牡馬と基礎繁殖牝馬の detail を先に揃えておく。
+            const plans = [
+              planLogic.detectPlan(this.selected, this.identityResolver),
+              planLogic.detectSireSidePlan(this.selected, this.identityResolver),
+            ].filter(Boolean);
             const horsesByKey = new Map();
             const maresByName = new Map();
             const maresByRef = new Map();
             const refKey = (ref) =>
               this.identityResolver?.identityKey(ref) || "";
 
-            const targets = detected.steps.map((step) => this.selected[step.sireIndex]);
-            if (detected.baseMareRef?.kind === "custom") {
-              targets.push(
-                this.customHorseDetails[detected.baseMareRef.id] || null
-              );
-            } else if (detected.baseMareRef?.kind === "master") {
-              targets.push(
-                (this.horsesBase || []).find(
-                  (horse) =>
-                    horse.nodeId === detected.baseMareRef.nodeId &&
-                    horse.sex === "1"
-                ) || null
-              );
-            }
-            if (detected.baseMareName) {
-              targets.push(
-                this.findSummaryHorse({ name: detected.baseMareName, sex: "1" })
-              );
-            }
+            const targets = [];
+            plans.forEach((detected) => {
+              detected.steps.forEach((step) => {
+                targets.push(this.selected[step.sireIndex]);
+              });
+              if (detected.baseMareRef?.kind === "custom") {
+                targets.push(
+                  this.customHorseDetails[detected.baseMareRef.id] || null
+                );
+              } else if (detected.baseMareRef?.kind === "master") {
+                targets.push(
+                  (this.horsesBase || []).find(
+                    (horse) =>
+                      horse.nodeId === detected.baseMareRef.nodeId &&
+                      horse.sex === "1"
+                  ) || null
+                );
+              }
+              if (detected.baseMareName) {
+                targets.push(
+                  this.findSummaryHorse({ name: detected.baseMareName, sex: "1" })
+                );
+              }
+            });
 
             await Promise.all(
               targets.map(async (entry) => {
