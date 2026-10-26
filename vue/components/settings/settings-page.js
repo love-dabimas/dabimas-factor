@@ -12,7 +12,7 @@
       var nameSize = window.Dabimas.logic.nameSize;
       return {
         activeMenu: null,
-        themeMode: theme ? theme.get() : "dark",
+        themeMode: theme ? theme.get() : "light",
         pedigreeOpen: !!(link && link.pedigreeOpen()),
         planAutoDiagnosis: planAuto.get(),
         nameSize: nameSize ? nameSize.get() : "small",
