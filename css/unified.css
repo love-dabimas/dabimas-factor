@@ -1454,6 +1454,15 @@ html:not(.dabimas-dark) .table_main td.mother_1 {
   border-right-color: #dddddd !important;
 }
 
+/* スマホの帯の段の区切り（父と母が切り替わる横線）は css/mobile.css が
+   白の box-shadow で描いているので、これも灰色にする。階段の外縁は線なしのまま。 */
+html:not(.dabimas-dark) .exp-mobile-layout .table_main > tbody > tr > td.father_0:not(.exp-mobile-colorseg-edge),
+html:not(.dabimas-dark) .exp-mobile-layout .table_main > tbody > tr > td.father:not(.exp-mobile-colorseg-edge),
+html:not(.dabimas-dark) .exp-mobile-layout .table_main > tbody > tr > td.mother_0:not(.exp-mobile-colorseg-edge),
+html:not(.dabimas-dark) .exp-mobile-layout .table_main > tbody > tr > td.mother:not(.exp-mobile-colorseg-edge) {
+  box-shadow: inset 0 1px 0 0 #dddddd;
+}
+
 html:not(.dabimas-dark) .exp-mobile-layout main .container > .spacer > .row.mx-1 {
   background-color: #dddddd;
 }
