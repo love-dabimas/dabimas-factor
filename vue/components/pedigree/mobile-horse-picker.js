@@ -43,6 +43,9 @@
   var horseListKeyCache = new WeakMap();
   var horseListKeySeq = 0;
 
+  // 候補の行をこの時間押し続けたら長押しとみなし、その馬の血統表を開く（馬は選ばない）。
+  var OPTION_LONG_PRESS_MS = 500;
+
   // index.html のモジュールスコープにあった定数を同名で再宣言する。
   var INDEX_TO_ROW_NUMBER = window.Dabimas.constants.pedigreeIndexes.INDEX_TO_ROW_NUMBER;
 
@@ -81,10 +84,15 @@
         mobileQuery: "",
         mobileSearchCompositionActive: false,
         mobileQuerySyncTimer: null,
+        // 候補の行の長押し（血統表を開く）の状態。
+        optionPressTimer: null,
+        optionPressStart: null,
+        optionLongPressFired: false,
       };
     },
     beforeDestroy() {
       this.clearMobileQuerySyncTimer();
+      this.clearOptionPressTimer();
     },
     template: `
       <v-dialog
@@ -161,7 +169,13 @@
                   'exp-mobile-option-btn',
                   { 'exp-mobile-option-btn--selected': isSelectedHorse(horse) }
                 ]"
-                @click="selectMobileHorse(horse)"
+                @pointerdown="onOptionPressStart($event, horse)"
+                @pointermove="onOptionPressMove"
+                @pointerup="onOptionPressEnd"
+                @pointerleave="onOptionPressEnd"
+                @pointercancel="onOptionPressEnd"
+                @contextmenu.prevent
+                @click="onOptionClick(horse)"
               >
                 <div class="exp-option-item">
                   <span
@@ -269,6 +283,48 @@
       },
     },
     methods: {
+      // ===== 候補の行の長押しで、その馬の血統表を開く =====
+      clearOptionPressTimer() {
+        if (this.optionPressTimer) {
+          clearTimeout(this.optionPressTimer);
+          this.optionPressTimer = null;
+        }
+      },
+      onOptionPressStart(event, horse) {
+        this.optionLongPressFired = false;
+        this.clearOptionPressTimer();
+        if (!horse || (event.button !== undefined && event.button !== 0)) {
+          return;
+        }
+        this.optionPressStart = { x: event.clientX, y: event.clientY };
+        this.optionPressTimer = setTimeout(() => {
+          this.optionPressTimer = null;
+          this.optionLongPressFired = true;
+          this.$root.openHorsePedigreePreview(horse);
+        }, OPTION_LONG_PRESS_MS);
+      },
+      // 一覧をスクロールしようとして指が動いたら、長押しにしない。
+      onOptionPressMove(event) {
+        if (!this.optionPressTimer || !this.optionPressStart) {
+          return;
+        }
+        var dx = event.clientX - this.optionPressStart.x;
+        var dy = event.clientY - this.optionPressStart.y;
+        if (dx * dx + dy * dy > 100) {
+          this.clearOptionPressTimer();
+        }
+      },
+      onOptionPressEnd() {
+        this.clearOptionPressTimer();
+      },
+      onOptionClick(horse) {
+        // 長押しで血統表を開いたときは、指を離したときのクリックで馬を選ばない。
+        if (this.optionLongPressFired) {
+          this.optionLongPressFired = false;
+          return;
+        }
+        this.selectMobileHorse(horse);
+      },
       // 馬のメモ（vue/logic/horses/horse-memo.js）。
       horseMemo(horse) {
         void window.Dabimas.logic.horses.horseMemo.state.memos;

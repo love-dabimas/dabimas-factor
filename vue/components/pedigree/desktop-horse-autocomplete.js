@@ -93,8 +93,17 @@
               <!-- 馬のメモ（自家製馬は配合の保存の画面のメモ）の 1 行目 -->
               <v-list-item-subtitle v-if="horseMemo(data.item)" class="exp-option-memo">{{ horseMemo(data.item) }}</v-list-item-subtitle>
             </v-list-item-content>
-            <!-- メモを書く鉛筆。押しても候補は選ばない（mousedown で一覧の選択を止める）。 -->
+            <!-- その馬の血統表を開くボタンと、メモを書く鉛筆。押しても候補は選ばない
+                 （mousedown で一覧の選択を止める）。 -->
             <v-list-item-action v-if="canWriteMemo(data.item)" class="exp-option-memo-action">
+              <span
+                role="button"
+                aria-label="血統表を見る"
+                title="血統表を見る"
+                class="exp-option-memo-btn exp-option-pedigree-btn"
+                @mousedown.stop.prevent
+                @click.stop.prevent="openPedigree(data.item)"
+              ><v-icon class="exp-option-memo-btn-icon">mdi-family-tree</v-icon></span>
               <span
                 role="button"
                 aria-label="メモを書く"
@@ -134,6 +143,9 @@
       },
       openMemo(horse) {
         this.$root.openHorseMemoEditor(horse);
+      },
+      openPedigree(horse) {
+        this.$root.openHorsePedigreePreview(horse);
       },
       toggleFavoritesOnly() {
         const favorites = window.Dabimas.favorites;

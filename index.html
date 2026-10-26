@@ -113,6 +113,15 @@
         @save="saveHorseMemo"
       ></horse-memo-dialog>
 
+      <!-- 選ぶ画面の候補の 5 代血統表（スマホは行の長押し、PC は行の血統表ボタンから開く） -->
+      <assist-pedigree-dialog
+        v-model="horsePedigreePreview.show"
+        :title="horsePedigreePreview.title"
+        :note="horsePedigreePreview.note"
+        :sections="horsePedigreePreview.sections"
+        data-html2canvas-ignore
+      ></assist-pedigree-dialog>
+
       <!-- detail（血統）取得失敗時の再試行メッセージ -->
       <v-snackbar
         v-model="horseDetailError.show"

@@ -427,6 +427,10 @@
 .exp-mobile-option-btn {
   position: relative;
   padding-right: 46px !important;
+  /* 長押しでその馬の血統表を開くので、iPhone の文字選択・長押しメニューを出さない。 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .exp-mobile-option-btn .exp-option-memo-btn {
@@ -446,6 +450,12 @@
   width: 18px;
   min-width: 18px;
   padding: 1px 0;
+}
+
+/* PC の候補の一覧では、血統表のボタンと鉛筆を横に並べる。 */
+.exp-option-memo-action.v-list-item__action {
+  flex-direction: row;
+  gap: 4px;
 }
 
 .exp-option-memo-action.v-list-item__action {

@@ -397,6 +397,33 @@
             editor.saving = false;
           }
         },
+        // 選ぶ画面の候補の 5 代血統表を開く（スマホは行の長押し、PC は行の血統表ボタン）。
+        // 馬は選ばない。血統は detail（descendants 15 件）から本体と同じ展開で組む。
+        async openHorsePedigreePreview(horse) {
+          if (!horse) {
+            return;
+          }
+          try {
+            let detail = horse;
+            if (!(Array.isArray(horse.descendants) && horse.descendants.length === 15)) {
+              detail = await this.ensureHorseDetail(horse);
+            }
+            if (!detail || !Array.isArray(detail.descendants) || detail.descendants.length !== 15) {
+              throw new Error("horse detail not available");
+            }
+            const board = window.Dabimas.logic.plan.expandHorseBoard(detail, this.brosData);
+            const memo = this.getHorseMemo(horse);
+            this.horsePedigreePreview = {
+              show: true,
+              title: window.Dabimas.logic.horses.getHorseNameText(horse),
+              note: memo ? "メモ：" + memo : "",
+              sections: [{ side: horse.sex === "1" ? "broodmare" : "stallion", board: board }],
+            };
+          } catch (error) {
+            console.error("horse pedigree preview failed", error);
+            this.horseDetailError = { show: true, message: "血統表を読み込めませんでした。" };
+          }
+        },
         // 配合の保存の画面でメモを書き換えたとき。一覧の要約と detail の両方に写す。
         handleSavedHorseMemoUpdated(payload) {
           const id = payload && payload.customHorseId;
