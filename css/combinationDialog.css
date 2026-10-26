@@ -335,6 +335,182 @@
   line-height: 1.3;
 }
 
+/* 保存済み配合のメモ。2 行まで出し、残りは「…」で切る。 */
+.combination-list-item-memo {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #495057;
+  white-space: pre-wrap;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 日付の行。左に日付、右端に「メモ」ボタン。 */
+.combination-list-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 1px;
+}
+
+/* 日付の行の右端の「メモ」ボタン。カードを低く保つため高さ 26px にする。
+   メモが入っている配合は塗りにして、開かなくても有無が分かるようにする。 */
+.combination-list-item .combination-memo-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 10px 0 8px;
+  border: 1.5px solid #667eea;
+  border-radius: 13px;
+  background: #ffffff;
+  color: #5a67d8;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* 軽量版の Vuetify の CSS では v-icon の幅・高さが 0 になるので、大きさも持たせる。 */
+.combination-list-item .combination-memo-btn .combination-memo-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  color: inherit !important;
+  font-size: 15px !important;
+  line-height: 1;
+}
+
+/* 保存済み配合のカード。メモのボタンを日付の行に入れたぶん、上下の余白を詰めて低く保つ。 */
+.combination-saved-list .combination-list-item {
+  padding: 6px 10px !important;
+}
+
+.combination-saved-list .combination-list-item-title {
+  margin-bottom: 0;
+}
+
+.combination-list-item .combination-memo-btn--filled {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+/* メモの入力ダイアログ。上の帯は配合の保存の画面と同じ紫のグラデーション。 */
+.v-dialog.combination-memo-dialog {
+  border-radius: 18px;
+}
+
+.combination-memo-card.v-card {
+  border-radius: 18px !important;
+  overflow: hidden;
+}
+
+.combination-memo-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+}
+
+.combination-memo-head-text {
+  min-width: 0;
+}
+
+.combination-memo-title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.combination-memo-target {
+  font-size: 13px;
+  opacity: 0.9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.combination-memo-body {
+  padding: 16px 18px 4px;
+}
+
+/* 軽量版の Vuetify の CSS ではこの v-icon が幅・高さ 0 になるので、大きさも自分で持たせる。 */
+.combination-memo-head .combination-memo-head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  color: #ffffff !important;
+  font-size: 26px !important;
+  line-height: 1;
+}
+
+/* iPhone は 16px 未満の入力欄に触れると画面を拡大してしまうので 16px にする。 */
+.combination-memo-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 132px;
+  padding: 10px 12px;
+  border: 1.5px solid #ced4da;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #212529;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+.combination-memo-input:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.18);
+}
+
+.combination-memo-input::placeholder {
+  color: #adb5bd;
+}
+
+.combination-memo-counter {
+  margin-top: 4px;
+  text-align: right;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.combination-memo-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px 18px 18px;
+}
+
+.combination-memo-actions .v-btn {
+  height: 44px !important;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+
+.combination-memo-cancel.v-btn {
+  background-color: #eceff1 !important;
+  color: #37474f !important;
+}
+
 /* 保存済み配合リストの種別バッジ。左の種牡馬／繁殖牝馬トグルと同じ
    父（青）・母（赤）にして、どちらの配合か一目で分かるようにする。 */
 .combination-list-kind.v-chip {
@@ -353,15 +529,24 @@
 }
 
 /* 保存済み配合リストの因子バッジ（因子付与ダイアログのチップと同じ配色を流用） */
+/* 1 文字なので 20px の正方形にする（左右の余白込みで 40px あり、名前の行を狭くしていた）。 */
 .combination-list-factor.manual-factor-chip.v-chip {
   height: 20px !important;
+  width: 20px;
   min-width: 20px;
-  margin: 0 0 0 4px;
-  padding: 0 6px;
+  margin: 0 0 0 3px;
+  padding: 0 !important;
+  justify-content: center;
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0;
   border-radius: 3px !important;
   vertical-align: middle;
+}
+
+.combination-list-factor.manual-factor-chip.v-chip .v-chip__content {
+  padding: 0;
+  justify-content: center;
 }
 
 .combination-list-item-date {

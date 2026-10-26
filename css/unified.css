@@ -344,6 +344,164 @@
   }
 }
 
+/* 血統表の自家製馬のマスを長押ししたときに出す、メモの全文の吹き出し。 */
+.exp-cell-memo-bubble {
+  position: fixed;
+  z-index: 300;
+  box-sizing: border-box;
+  padding: 10px 14px 12px;
+  border-radius: 14px;
+  background: #2f3542;
+  color: #ffffff;
+  text-align: left;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  pointer-events: none;
+}
+
+.exp-cell-memo-bubble-name {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c8cdf7;
+}
+
+.exp-cell-memo-bubble-text {
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 長押しの吹き出しは中の「書く」を押せるようにする。PC のマウスオーバーの吹き出しは
+   見るだけなので、マウスを吸わないようにする（吸うとマスから外れた扱いになって消える）。 */
+.exp-cell-memo-bubble:not(.exp-cell-memo-bubble--hover) {
+  pointer-events: auto;
+}
+
+.exp-cell-memo-bubble-empty {
+  font-size: 13px;
+  color: #aeb4bf;
+}
+
+.exp-cell-memo-bubble-write {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  float: right;
+  height: 30px;
+  margin-top: 8px;
+  padding: 0 14px 0 10px;
+  border: 0;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exp-cell-memo-bubble::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
+/* 軽量版の Vuetify の CSS では v-icon の大きさが 0 になるので、大きさを持たせる。 */
+.exp-cell-memo-bubble-write .exp-cell-memo-bubble-write-icon,
+.exp-option-memo-btn .exp-option-memo-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: inherit !important;
+  font-size: 16px !important;
+  line-height: 1;
+}
+
+/* 馬を選ぶ画面の行の右端の、メモを書く鉛筆。押しても馬は選ばない。 */
+.exp-option-memo-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  margin-left: 6px;
+  border: 1.5px solid #667eea;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #5a67d8;
+  cursor: pointer;
+}
+
+.exp-option-memo-btn--filled {
+  border-color: transparent;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+}
+
+/* スマホの選ぶ画面では、鉛筆を行の右上に固定する。名前と因子が長い行でも折り返して
+   2 行目に落ちないよう、行の右側を鉛筆のぶんあけておく。 */
+.exp-mobile-option-btn {
+  position: relative;
+  padding-right: 46px !important;
+  /* 長押しでその馬の血統表を開くので、iPhone の文字選択・長押しメニューを出さない。 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.exp-mobile-option-btn .exp-option-memo-btn {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  margin-left: 0;
+}
+
+/* 鉛筆のぶん右があいたので、因子のバッジとすき間を詰めて、名前の長い馬でも
+   因子が 2 行目に落ちないようにする（1 文字なので 18px の正方形で足りる）。 */
+.exp-mobile-option-btn .exp-option-item {
+  gap: 4px;
+}
+
+.exp-mobile-option-btn .exp-option-factor-badge {
+  width: 18px;
+  min-width: 18px;
+  padding: 1px 0;
+}
+
+/* PC の候補の一覧では、血統表のボタンと鉛筆を横に並べる。 */
+.exp-option-memo-action.v-list-item__action {
+  flex-direction: row;
+  gap: 4px;
+}
+
+.exp-option-memo-action.v-list-item__action {
+  margin: 0 0 0 4px !important;
+  min-width: 0 !important;
+}
+
+/* 長押しでメモを出すマスでは、iPhone の文字選択・長押しメニューを出さない。 */
+.exp-mobile-horse-trigger--memo {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 馬を選ぶ画面の一覧で、自家製馬の名前の下に出すメモ（1 行で切る）。 */
+.exp-option-memo {
+  display: block;
+  margin: 2px 0 0 2px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #6c757d;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .table_main .exp-horse-cell--select {
   display: flex;
   align-items: center;

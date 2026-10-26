@@ -25,12 +25,19 @@
   // これによりメソッド本体を1文字も変えずに移動できる（逐語移動原則）。
   var INDEX_TO_ROW_NUMBER = window.Dabimas.constants.pedigreeIndexes.INDEX_TO_ROW_NUMBER;
 
+  // 自家製馬のマスをこの時間押し続けたら長押しとみなし、メモの全文を吹き出しに出す。
+  var CELL_MEMO_LONG_PRESS_MS = 500;
+  // マスの下にこれだけの余白が無ければ、吹き出しをマスの上に出す。
+  var CELL_MEMO_BUBBLE_MIN_SPACE = 140;
+
   // カスタムコンポーネント定義（コンボボックス）
   Vue.component("horse-cell", {
       template: `
       <div
         class="exp-mobile-autocomplete-root"
         :class="{ 'exp-horse-cell--select': dispCategory%2 === 0 }"
+        @mouseenter="onCellMouseEnter"
+        @mouseleave="onCellMouseLeave"
       >
         <template v-if="dispCategory%2 === 0">
           <span v-if="cellBadges.length" class="exp-horse-badges">
@@ -42,14 +49,23 @@
             >{{ badge.text }}</span>
           </span>
           <template v-if="isMobileLayout">
+            <!-- 自家製馬のマスは長押しでメモの全文を吹き出しに出す（下の exp-cell-memo-bubble）。 -->
             <button
               type="button"
               class="exp-mobile-horse-trigger"
-              @click="$refs.mobilePicker.openMobileEditor()"
+              :class="{ 'exp-mobile-horse-trigger--memo': !!cellMemoTarget }"
+              @pointerdown="onTriggerPressStart"
+              @pointermove="onTriggerPressMove"
+              @pointerup="onTriggerPressEnd"
+              @pointerleave="onTriggerPressEnd"
+              @pointercancel="onTriggerPressEnd"
+              @contextmenu="onTriggerContextMenu"
+              @click="onTriggerClick"
             >
               <span class="exp-mobile-horse-text">{{ mobileTriggerLabel }}</span>
               <i class="mdi mdi-chevron-down"></i>
             </button>
+
             <mobile-horse-picker
               ref="mobilePicker"
               :index="index"
@@ -79,6 +95,28 @@
         :color-settings="colorSettings"
         @memo-change="memoChange(index, $event)"
       ></memo-cell>
+      <!-- 馬のメモの吹き出し。スマホはマスの長押し（「書く」ボタンつき）、
+           PC はマウスを重ねたとき（メモがあるときだけ・見るだけ）に出す。 -->
+      <div
+        v-if="memoBubble"
+        ref="memoBubbleEl"
+        class="exp-cell-memo-bubble"
+        :class="{ 'exp-cell-memo-bubble--hover': memoBubble.hover }"
+        :style="memoBubble.style"
+      >
+        <div class="exp-cell-memo-bubble-name">{{ memoBubble.name }}</div>
+        <div v-if="memoBubble.text" class="exp-cell-memo-bubble-text">{{ memoBubble.text }}</div>
+        <div v-else class="exp-cell-memo-bubble-empty">メモはまだありません</div>
+        <button
+          v-if="!memoBubble.hover"
+          type="button"
+          class="exp-cell-memo-bubble-write"
+          @click.stop="onBubbleWrite"
+        >
+          <v-icon class="exp-cell-memo-bubble-write-icon">mdi-pencil-outline</v-icon>
+          <span>書く</span>
+        </button>
+      </div>
     </div>    `,
       props: {
         index: {
@@ -120,11 +158,153 @@
       },
       // data() / beforeDestroy() は mobile-horse-picker.js に外部化済み
       // （mobileDialogVisible 等のダイアログ状態と、その破棄処理）。
+      // ここに持つのは、自家製馬のメモを長押しで出す吹き出しの状態だけ。
+      data() {
+        return {
+          memoBubble: null,
+          memoPressTimer: null,
+          memoPressStart: null,
+          memoLongPressFired: false,
+          memoBubbleJustClosed: false,
+        };
+      },
+      beforeDestroy() {
+        this.clearMemoPressTimer();
+        this.removeMemoBubbleListeners();
+      },
       // 注意: 以前ここに getStableViewportHeight / applyMobileViewportLayout /
       // captureMobileScreenshot 等（root app 側と同名の重複コード、約369行）があったが、
       // このコンポーネントのテンプレート・他メソッドのどこからも呼ばれていない
       // 到達不能コードだったため削除した（実際に使われているのは root app 側のみ）。
       methods: {
+        // ===== 自家製馬のメモの吹き出し =====
+        clearMemoPressTimer() {
+          if (this.memoPressTimer) {
+            clearTimeout(this.memoPressTimer);
+            this.memoPressTimer = null;
+          }
+        },
+        // メモの対象になる馬のマスを 0.5 秒押し続けたら、メモの吹き出しを出す。
+        onTriggerPressStart(event) {
+          this.memoLongPressFired = false;
+          this.clearMemoPressTimer();
+          if (!this.cellMemoTarget || (event.button !== undefined && event.button !== 0)) {
+            return;
+          }
+          var trigger = event.currentTarget;
+          this.memoPressStart = { x: event.clientX, y: event.clientY };
+          this.memoPressTimer = setTimeout(() => {
+            this.memoPressTimer = null;
+            this.memoLongPressFired = true;
+            this.showMemoBubble(trigger);
+          }, CELL_MEMO_LONG_PRESS_MS);
+        },
+        // 血統表をスクロールしようとして指が動いたら、長押しにしない。
+        onTriggerPressMove(event) {
+          if (!this.memoPressTimer || !this.memoPressStart) {
+            return;
+          }
+          var dx = event.clientX - this.memoPressStart.x;
+          var dy = event.clientY - this.memoPressStart.y;
+          if (dx * dx + dy * dy > 100) {
+            this.clearMemoPressTimer();
+          }
+        },
+        onTriggerPressEnd() {
+          this.clearMemoPressTimer();
+        },
+        // iPhone の長押しメニュー（コピーなど）を出さない。
+        onTriggerContextMenu(event) {
+          if (this.cellMemoTarget) {
+            event.preventDefault();
+          }
+        },
+        onTriggerClick() {
+          // 長押しで吹き出しを出したとき・吹き出しを消すタップでは、選ぶ画面を開かない。
+          if (this.memoLongPressFired || this.memoBubbleJustClosed) {
+            this.memoLongPressFired = false;
+            this.memoBubbleJustClosed = false;
+            return;
+          }
+          this.$refs.mobilePicker.openMobileEditor();
+        },
+        // マスのすぐ下（入りきらなければ上）に吹き出しを出す。血統表は画面に固定で
+        // 並んでいるので、画面を基準に置く。
+        // hover が true なら PC のマウスオーバー（見るだけ。触っても消す仕組みは付けない）。
+        showMemoBubble(trigger, hover) {
+          var memo = this.cellMemo;
+          if (!trigger || !this.cellMemoTarget || (hover && !memo)) {
+            return;
+          }
+          var rect = trigger.getBoundingClientRect();
+          var viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+          var viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+          var width = Math.min(viewportWidth - 24, 320);
+          var left = Math.max(12, Math.min(rect.left, viewportWidth - width - 12));
+          var style = { left: Math.round(left) + "px", width: Math.round(width) + "px" };
+          if (rect.bottom + CELL_MEMO_BUBBLE_MIN_SPACE > viewportHeight) {
+            style.bottom = Math.round(viewportHeight - rect.top + 4) + "px";
+          } else {
+            style.top = Math.round(rect.bottom + 4) + "px";
+          }
+          this.memoBubble = {
+            name: this.cellMemoHorseName,
+            text: memo,
+            style: style,
+            hover: !!hover,
+          };
+          this.removeMemoBubbleListeners();
+          if (hover) {
+            return;
+          }
+          // 次に画面のどこかを触るか、スクロールしたら消す（吹き出しの中の「書く」は除く）。
+          this.memoBubbleCloser = (event) => {
+            var bubble = this.$refs.memoBubbleEl;
+            if (bubble && event && bubble.contains(event.target)) {
+              return;
+            }
+            this.hideMemoBubble();
+            this.memoBubbleJustClosed = true;
+            setTimeout(() => {
+              this.memoBubbleJustClosed = false;
+            }, 600);
+          };
+          this.memoBubbleScrollCloser = () => this.hideMemoBubble();
+          document.addEventListener("pointerdown", this.memoBubbleCloser, true);
+          window.addEventListener("scroll", this.memoBubbleScrollCloser, true);
+        },
+        // 吹き出しの「書く」。吹き出しを閉じて、メモを書くダイアログを開く。
+        onBubbleWrite() {
+          var horse = this.selected[this.index];
+          this.hideMemoBubble();
+          this.$root.openHorseMemoEditor(horse);
+        },
+        // PC はマウスを重ねている間だけ吹き出しを出す（メモがあるときだけ）。
+        onCellMouseEnter() {
+          if (this.isMobileLayout || this.dispCategory % 2 !== 0 || !this.cellMemo) {
+            return;
+          }
+          this.showMemoBubble(this.$el, true);
+        },
+        onCellMouseLeave() {
+          if (this.memoBubble && this.memoBubble.hover) {
+            this.hideMemoBubble();
+          }
+        },
+        hideMemoBubble() {
+          this.memoBubble = null;
+          this.removeMemoBubbleListeners();
+        },
+        removeMemoBubbleListeners() {
+          if (this.memoBubbleCloser) {
+            document.removeEventListener("pointerdown", this.memoBubbleCloser, true);
+            this.memoBubbleCloser = null;
+          }
+          if (this.memoBubbleScrollCloser) {
+            window.removeEventListener("scroll", this.memoBubbleScrollCloser, true);
+            this.memoBubbleScrollCloser = null;
+          }
+        },
         // normalizeSearchText / getHorseKey / getHorseListKey は
         // vue/components/pedigree/mobile-horse-picker.js に外部化済み。
         getHorseNameText(horse) {
@@ -206,6 +386,34 @@
             return this.mobilePlaceholderText;
           }
           return this.getHorseSelectedText(horse) || this.placeholderText;
+        },
+        // このマスの馬が、どの馬のメモになるか（vue/logic/horses/horse-memo.js）。
+        // ★N薄めの仮の馬・ワタシノヒンバ・空のマスは null。
+        cellMemoTarget() {
+          return window.Dabimas.logic.horses.horseMemo.memoTargetOf(this.selected[this.index]);
+        },
+        // このマスの馬のメモ。自家製馬は配合の保存の画面のメモ、公式の馬は端末に持つメモ。
+        // 血統表の馬はメモを付ける前に選んだこともあるので、マスの中ではなく一覧から引く。
+        cellMemo() {
+          void window.Dabimas.logic.horses.horseMemo.state.memos;
+          return this.cellMemoTarget ? this.$root.getHorseMemo(this.selected[this.index]) : "";
+        },
+        cellMemoHorseName() {
+          var horse = this.selected[this.index];
+          var target = this.cellMemoTarget;
+          if (!horse || !target) {
+            return "";
+          }
+          if (target.kind === "custom") {
+            var summaries = this.$root.savedHorseSummaries || [];
+            var summary = summaries.find((item) => item.id === target.id);
+            if (summary) {
+              return this.getHorseNameText(summary);
+            }
+          }
+          // 牝馬を選んだマスは「父(牝馬名)」と出ているので、牝馬名だけにする。
+          var match = horse.placeholderMareRef ? /^\((.*)\)$/.exec(horse.subName || "") : null;
+          return match ? match[1] : this.getHorseNameText(horse);
         },
         cellBadges() {
           const horse = this.selected[this.index];

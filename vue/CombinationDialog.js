@@ -34,6 +34,16 @@ Vue.component('combination-dialog', {
       saving: false,
       restoring: false,
       deleting: false,
+      // 保存済み配合ごとのメモ（100 文字まで）の入力ダイアログ。
+      memoDialog: {
+        show: false,
+        config: null,
+        text: '',
+        saving: false
+      },
+      memoMaxLength: 100,
+      // 保存できる配合の上限（vue/logic/storage/combination-storage.js）。
+      maxSavedConfigs: window.Dabimas.logic.storage.combinationStorage.MAX_SAVED_CONFIGS,
       toast: {
         show: false,
         message: '',
@@ -158,7 +168,7 @@ Vue.component('combination-dialog', {
         return new Promise((resolve, reject) => {
           request.onsuccess = (event) => {
             const cursor = event.target.result;
-            if (cursor && configs.length < 15) {
+            if (cursor && configs.length < this.maxSavedConfigs) {
               configs.push(cursor.value);
               cursor.continue();
             } else {
@@ -184,6 +194,13 @@ Vue.component('combination-dialog', {
     async saveConfig() {
       if (!this.newTitle.trim()) {
         this.showToast('タイトルを入力してください', 'error');
+        return;
+      }
+      if (this.savedConfigs.length >= this.maxSavedConfigs) {
+        this.showToast(
+          `保存できるのは ${this.maxSavedConfigs} 件までです。古い配合を削除してください`,
+          'error'
+        );
         return;
       }
 
@@ -339,6 +356,8 @@ Vue.component('combination-dialog', {
     },
 
     // 同梱されていた自家製馬レコードを customHorses store へ書き戻す（upsert）。
+    // 同梱分は配合を保存した時点の写しなので、あとから付けたメモは持っていない。
+    // すでにある自家製馬のメモは消さずに残す。
     writeCustomHorses(records) {
       return new Promise((resolve, reject) => {
         if (
@@ -355,7 +374,12 @@ Vue.component('combination-dialog', {
         transaction.onerror = () => reject(transaction.error);
         records.forEach((record) => {
           if (record && record.id) {
-            store.put(record);
+            const getRequest = store.get(record.id);
+            getRequest.onsuccess = () => {
+              const existing = getRequest.result;
+              const memo = existing && existing.memo ? existing.memo : record.memo;
+              store.put(memo ? Object.assign({}, record, { memo: memo }) : record);
+            };
           }
         });
       });
@@ -467,6 +491,39 @@ Vue.component('combination-dialog', {
       return '配合';
     },
 
+    // メモのボタン。カードを選ぶ操作とは別にする（@click.stop）。
+    openMemoDialog(config) {
+      this.memoDialog = {
+        show: true,
+        config: config,
+        text: config.memo || '',
+        saving: false
+      };
+    },
+    async saveMemo() {
+      const config = this.memoDialog.config;
+      if (!config || this.memoDialog.saving) {
+        return;
+      }
+      const memo = (this.memoDialog.text || '').trim().slice(0, this.memoMaxLength);
+      this.memoDialog.saving = true;
+      try {
+        const combinationStorage = window.Dabimas.logic.storage.combinationStorage;
+        await combinationStorage.updateConfigMemo(this.db, config.id, memo);
+        if (config.customHorseId) {
+          await combinationStorage.updateCustomHorseMemo(this.db, config.customHorseId, memo);
+          this.$emit('saved-horse-memo-updated', { customHorseId: config.customHorseId, memo: memo });
+        }
+        this.$set(config, 'memo', memo);
+        this.memoDialog.show = false;
+        this.showToast(memo ? 'メモを保存しました' : 'メモを消しました', 'success');
+      } catch (error) {
+        console.error('メモの保存エラー:', error);
+        this.showToast('メモを保存できませんでした', 'error');
+      } finally {
+        this.memoDialog.saving = false;
+      }
+    },
     showToast(message, type = 'success') {
       this.toast.message = message;
       this.toast.type = type;
@@ -631,7 +688,7 @@ Vue.component('combination-dialog', {
               >
                 <h3 class="combination-section-title">
                   <v-icon small class="mr-1">mdi-format-list-bulleted</v-icon>
-                  保存済み配合（最新15件）
+                  保存済み配合（{{ savedConfigs.length }}／{{ maxSavedConfigs }}件）
                 </h3>
 
                 <div class="combination-saved-list">
@@ -667,9 +724,25 @@ Vue.component('combination-dialog', {
                           :class="badge.className"
                         >{{ badge.text }}</v-chip>
                       </div>
-                      <div class="combination-list-item-date">
-                        {{ formatDate(config.savedAt) }}
+                      <!-- 日付の行の右端に「メモ」ボタン。名前の行に置くと名前と因子が折り返すため。 -->
+                      <div class="combination-list-item-meta">
+                        <div class="combination-list-item-date">
+                          {{ formatDate(config.savedAt) }}
+                        </div>
+                        <!-- css/vuetify_compact.min.css は小さいアイコンボタンの大きさを持たず
+                             14px まで縮むので、Vuetify のボタンを使わず大きさを自分で決める。 -->
+                        <button
+                          type="button"
+                          class="combination-memo-btn"
+                          :class="{ 'combination-memo-btn--filled': !!config.memo }"
+                          aria-label="メモ"
+                          @click.stop="openMemoDialog(config)"
+                        >
+                          <v-icon small class="combination-memo-btn-icon">{{ config.memo ? 'mdi-note-text' : 'mdi-pencil-outline' }}</v-icon>
+                          <span>メモ</span>
+                        </button>
                       </div>
+                      <div v-if="config.memo" class="combination-list-item-memo">{{ config.memo }}</div>
                     </div>
                     <v-icon
                       v-if="selectedId === config.id"
@@ -678,6 +751,7 @@ Vue.component('combination-dialog', {
                     >
                       mdi-check-circle
                     </v-icon>
+
                   </div>
                 </div>
               </v-col>
@@ -708,6 +782,39 @@ Vue.component('combination-dialog', {
           </v-btn>
         </v-card-actions>
       </v-card>
+
+      <!-- 保存済み配合のメモ -->
+      <v-dialog
+        v-model="memoDialog.show"
+        max-width="360"
+        content-class="combination-memo-dialog"
+      >
+        <v-card v-if="memoDialog.config" class="combination-memo-card">
+          <div class="combination-memo-head">
+            <v-icon class="combination-memo-head-icon">mdi-pencil-outline</v-icon>
+            <div class="combination-memo-head-text">
+              <div class="combination-memo-title">メモ</div>
+              <div class="combination-memo-target">{{ memoDialog.config.title }}</div>
+            </div>
+          </div>
+          <!-- css/vuetify_compact.min.css は v-textarea の枠や高さを持たず 1 行につぶれるので、
+               素の textarea を使い、大きさ・枠・文字数の表示を自分で決める。 -->
+          <div class="combination-memo-body">
+            <textarea
+              v-model="memoDialog.text"
+              class="combination-memo-input"
+              rows="5"
+              :maxlength="memoMaxLength"
+              placeholder="例：凱旋門賞狙い。母父に底を2つ入れた版"
+            ></textarea>
+            <div class="combination-memo-counter">{{ (memoDialog.text || '').length }} / {{ memoMaxLength }}</div>
+          </div>
+          <div class="combination-memo-actions">
+            <v-btn depressed rounded class="combination-memo-cancel" @click="memoDialog.show = false">キャンセル</v-btn>
+            <v-btn depressed rounded color="primary" :loading="memoDialog.saving" @click="saveMemo">保存</v-btn>
+          </div>
+        </v-card>
+      </v-dialog>
 
       <v-snackbar
         v-model="toast.show"

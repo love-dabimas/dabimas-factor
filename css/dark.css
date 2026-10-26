@@ -755,6 +755,49 @@ html.dabimas-dark .combination-title-hint {
   color: var(--dk-muted);
 }
 
+/* 馬を選ぶ画面の行の、メモを書く鉛筆（塗っていないほう） */
+html.dabimas-dark .exp-option-memo-btn:not(.exp-option-memo-btn--filled) {
+  background: var(--dk-surface);
+  border-color: #8c9bf0;
+  color: #b9c2f7;
+}
+
+/* 馬を選ぶ画面の一覧の、自家製馬のメモ */
+html.dabimas-dark .exp-option-memo {
+  color: var(--dk-muted) !important;
+}
+
+/* 保存済み配合のメモと、メモの入力ダイアログ */
+html.dabimas-dark .combination-list-item-memo {
+  color: var(--dk-muted);
+}
+
+html.dabimas-dark .combination-list-item .combination-memo-btn:not(.combination-memo-btn--filled) {
+  background: var(--dk-surface);
+  border-color: #8c9bf0;
+  color: #b9c2f7;
+}
+
+html.dabimas-dark .combination-memo-card.v-card {
+  background-color: var(--dk-raised) !important;
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .combination-memo-input {
+  background: var(--dk-surface);
+  border-color: var(--dk-line);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .combination-memo-counter {
+  color: var(--dk-muted);
+}
+
+html.dabimas-dark .combination-memo-cancel.v-btn {
+  background-color: var(--dk-surface) !important;
+  color: var(--dk-text) !important;
+}
+
 /* 保存済み配合の見出し行。#212529 のままだと黒地に黒で消える */
 html.dabimas-dark .combination-list-item-title {
   color: var(--dk-text);

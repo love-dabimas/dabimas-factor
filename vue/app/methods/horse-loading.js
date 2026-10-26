@@ -146,6 +146,8 @@
             factorLocked: true,
             nodeId: null,
             pedigreeId: null,
+            // 配合の保存の画面で付けたメモ。馬を選ぶ画面の一覧で名前の下に出す。
+            memo: record.memo || "",
           };
         },
         createEditStallionSummary(record, baseHorse) {
@@ -238,14 +240,22 @@
           const selectedBroodmare = this.selected[16] ? [this.selected[16]] : [];
           this.refreshCandidateLists(selectedHorses, selectedBroodmare);
         },
+        // 選ぶ画面に出す自家製馬の一覧。保存の画面にカード（配合）がある馬だけにする。
+        // 配合を復元すると、その配合に同梱した自家製馬の写しが customHorses へ書き戻される
+        // （消した馬も戻る）。写しは血統表を正しく出すために detail としては持つが、
+        // カードが無いと削除もメモもできないので、選ぶ画面には出さない。
         loadSavedHorseSummaries() {
-          return this.loadCustomHorseDetails()
-            .then((records) => {
+          return Promise.all([
+            this.loadCustomHorseDetails(),
+            this.loadSavedConfigHorseIds(),
+          ])
+            .then(([records, configHorseIds]) => {
               const savedRecords = (records || [])
                 .filter(
                   (record) =>
                     record &&
-                    (record.kind === "stallion" || record.kind === "broodmare")
+                    (record.kind === "stallion" || record.kind === "broodmare") &&
+                    (!configHorseIds || configHorseIds.has(record.id))
                 )
                 .sort((a, b) =>
                   String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
@@ -313,6 +323,120 @@
             summary,
             ...this.savedHorseSummaries.filter((horse) => horse.id !== record.id),
           ];
+          this.refreshCandidateListsFromSelection();
+        },
+        // ===== 馬のメモ（vue/logic/horses/horse-memo.js）=====
+        // 馬のメモ。自家製馬は配合の保存の画面のメモ、公式の馬はこの端末に持つメモ。
+        getHorseMemo(horse) {
+          return window.Dabimas.logic.horses.horseMemo.getMemo(
+            horse,
+            this.savedHorseSummaries
+          );
+        },
+        // メモの対象になる馬か（★N薄めの仮の馬・ワタシノヒンバ・空のマスは対象外）。
+        canWriteHorseMemo(horse) {
+          return !!window.Dabimas.logic.horses.horseMemo.memoTargetOf(horse);
+        },
+        // メモを書くダイアログを開く。血統表のマスの吹き出しと、選ぶ画面の行から呼ばれる。
+        openHorseMemoEditor(horse) {
+          const target = window.Dabimas.logic.horses.horseMemo.memoTargetOf(horse);
+          if (!target) {
+            return;
+          }
+          let name = window.Dabimas.logic.horses.getHorseNameText(horse);
+          if (target.kind === "custom") {
+            const summary = this.savedHorseSummaries.find((item) => item.id === target.id);
+            if (summary) {
+              name = window.Dabimas.logic.horses.getHorseNameText(summary);
+            }
+          } else if (horse.placeholderMareRef) {
+            // 牝馬を選んだマスは「父(牝馬名)」と出ているので、牝馬名だけにする。
+            const match = /^\((.*)\)$/.exec(horse.subName || "");
+            if (match) {
+              name = match[1];
+            }
+          }
+          this.horseMemoEditor = {
+            show: true,
+            target: target,
+            name: name,
+            text: this.getHorseMemo(horse),
+            saving: false,
+          };
+        },
+        // メモを保存する。自家製馬は配合の記録（configs）と自家製馬（customHorses）の両方、
+        // 公式の馬はこの端末の localStorage に書く。空ならメモを消す。
+        async saveHorseMemo(memo) {
+          const editor = this.horseMemoEditor;
+          const target = editor.target;
+          if (!target || editor.saving) {
+            return;
+          }
+          editor.saving = true;
+          try {
+            if (target.kind === "master") {
+              window.Dabimas.logic.horses.horseMemo.setMasterMemo(target.key, memo);
+            } else {
+              const storage = window.Dabimas.logic.storage.combinationStorage;
+              const db = await this.ensureCustomHorseDb();
+              const configs = await storage.loadConfigs(db);
+              const config = (configs || []).find(
+                (item) => item && item.customHorseId === target.id
+              );
+              if (config) {
+                await storage.updateConfigMemo(db, config.id, memo);
+              }
+              await storage.updateCustomHorseMemo(db, target.id, memo);
+              this.handleSavedHorseMemoUpdated({ customHorseId: target.id, memo: memo });
+            }
+            editor.show = false;
+          } catch (error) {
+            console.error("horse memo save failed", error);
+            this.horseDetailError = { show: true, message: "メモを保存できませんでした。" };
+          } finally {
+            editor.saving = false;
+          }
+        },
+        // 選ぶ画面の候補の 5 代血統表を開く（スマホは行の長押し、PC は行の血統表ボタン）。
+        // 馬は選ばない。血統は detail（descendants 15 件）から本体と同じ展開で組む。
+        async openHorsePedigreePreview(horse) {
+          if (!horse) {
+            return;
+          }
+          try {
+            let detail = horse;
+            if (!(Array.isArray(horse.descendants) && horse.descendants.length === 15)) {
+              detail = await this.ensureHorseDetail(horse);
+            }
+            if (!detail || !Array.isArray(detail.descendants) || detail.descendants.length !== 15) {
+              throw new Error("horse detail not available");
+            }
+            const board = window.Dabimas.logic.plan.expandHorseBoard(detail, this.brosData);
+            const memo = this.getHorseMemo(horse);
+            this.horsePedigreePreview = {
+              show: true,
+              title: window.Dabimas.logic.horses.getHorseNameText(horse),
+              note: memo ? "メモ：" + memo : "",
+              sections: [{ side: horse.sex === "1" ? "broodmare" : "stallion", board: board }],
+            };
+          } catch (error) {
+            console.error("horse pedigree preview failed", error);
+            this.horseDetailError = { show: true, message: "血統表を読み込めませんでした。" };
+          }
+        },
+        // 配合の保存の画面でメモを書き換えたとき。一覧の要約と detail の両方に写す。
+        handleSavedHorseMemoUpdated(payload) {
+          const id = payload && payload.customHorseId;
+          if (!id) {
+            return;
+          }
+          const memo = payload.memo || "";
+          this.savedHorseSummaries = this.savedHorseSummaries.map((horse) =>
+            horse.id === id ? { ...horse, memo: memo } : horse
+          );
+          if (this.customHorseDetails[id]) {
+            this.$set(this.customHorseDetails, id, { ...this.customHorseDetails[id], memo: memo });
+          }
           this.refreshCandidateListsFromSelection();
         },
         handleSavedHorseRemoved(customHorseId) {
@@ -798,6 +922,24 @@
             });
         },
         // customHorses store を全件読み込んで customHorseDetails に載せる（候補再利用用）。
+        // 保存済み配合が持つ自家製馬の id の集合。読めなかったときは null（絞り込まない）。
+        loadSavedConfigHorseIds() {
+          return this.ensureCustomHorseDb()
+            .then((db) =>
+              window.Dabimas.logic.storage.combinationStorage.loadConfigs(db)
+            )
+            .then((configs) =>
+              new Set(
+                (configs || [])
+                  .map((config) => config && config.customHorseId)
+                  .filter(Boolean)
+              )
+            )
+            .catch((error) => {
+              console.warn("saved config ids load failed", error);
+              return null;
+            });
+        },
         loadCustomHorseDetails() {
           return this.ensureCustomHorseDb()
             .then((db) => {

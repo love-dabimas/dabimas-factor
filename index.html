@@ -95,6 +95,7 @@
         @restore="onCombinationRestore"
         @saved-horse-created="handleSavedHorseCreated"
         @saved-horse-removed="handleSavedHorseRemoved"
+        @saved-horse-memo-updated="handleSavedHorseMemoUpdated"
       ></combination-dialog>
 
       <!-- 工程診断の結果パネル -->
@@ -128,6 +129,24 @@
           </div>
         </v-card>
       </v-dialog>
+
+      <!-- 馬のメモを書くダイアログ（血統表のマスの吹き出し・選ぶ画面の鉛筆から開く） -->
+      <horse-memo-dialog
+        v-model="horseMemoEditor.show"
+        :horse-name="horseMemoEditor.name"
+        :initial-text="horseMemoEditor.text"
+        :saving="horseMemoEditor.saving"
+        @save="saveHorseMemo"
+      ></horse-memo-dialog>
+
+      <!-- 選ぶ画面の候補の 5 代血統表（スマホは行の長押し、PC は行の血統表ボタンから開く） -->
+      <assist-pedigree-dialog
+        v-model="horsePedigreePreview.show"
+        :title="horsePedigreePreview.title"
+        :note="horsePedigreePreview.note"
+        :sections="horsePedigreePreview.sections"
+        data-html2canvas-ignore
+      ></assist-pedigree-dialog>
 
       <!-- detail（血統）取得失敗時の再試行メッセージ -->
       <v-snackbar
@@ -198,6 +217,7 @@
   <script src="./vue/logic/sire-line-colors.js"></script>
   <script src="./vue/logic/pedigree/pedigree-selection.js"></script>
   <script src="./vue/logic/horses/horse-search.js"></script>
+  <script src="./vue/logic/horses/horse-memo.js"></script>
   <script src="./vue/logic/storage/local-storage.js"></script>
   <script src="./vue/logic/theory/compatibility.js"></script>
   <script src="./vue/logic/theory/theory-session.js"></script>
@@ -224,6 +244,7 @@
   <script src="./vue/components/pedigree/pedigree-card.js"></script>
   <script src="./vue/components/header/factor-summary-header.js"></script>
   <script src="./vue/components/plan/plan-diagnosis-panel.js"></script>
+  <script src="./vue/components/memo/horse-memo-dialog.js"></script>
 
   <!-- 統合版（ホームの配合一覧）: dabifaku_unified への接続はこの層のみが持つ -->
   <script src="./vue/logic/storage/unified-db.js"></script>

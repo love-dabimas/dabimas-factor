@@ -65,6 +65,10 @@
 
   // ===== 配合保存（configs ストア）=====
 
+  // 保存できる配合の上限。これを超えると保存の画面が重くなり、選ぶ画面の
+  // 自家製馬の一覧も長くなりすぎるので、ここで止める（1 件はおよそ 30KB）。
+  var MAX_SAVED_CONFIGS = 200;
+
   function saveConfig(db, title, configData) {
     return new Promise(function (resolve, reject) {
       try {
@@ -92,6 +96,7 @@
     });
   }
 
+  // 保存済み配合を新しい順に全部返す（上限 MAX_SAVED_CONFIGS 件）。
   function loadConfigs(db) {
     return new Promise(function (resolve, reject) {
       var transaction = db.transaction([STORE_NAME], "readonly");
@@ -103,7 +108,7 @@
 
       request.onsuccess = function (event) {
         var cursor = event.target.result;
-        if (cursor && configs.length < 15) {
+        if (cursor && configs.length < MAX_SAVED_CONFIGS) {
           configs.push(cursor.value);
           cursor.continue();
         } else {
@@ -143,6 +148,33 @@
       };
       request.onerror = function () {
         reject(request.error);
+      };
+    });
+  }
+
+  // 保存済み配合のメモ（100 文字まで）を書き換える。空文字ならメモを消す。
+  function updateConfigMemo(db, id, memo) {
+    return new Promise(function (resolve, reject) {
+      var transaction = db.transaction([STORE_NAME], "readwrite");
+      var objectStore = transaction.objectStore(STORE_NAME);
+      var getRequest = objectStore.get(id);
+      var updated = null;
+      getRequest.onsuccess = function () {
+        var config = getRequest.result;
+        if (!config) {
+          return;
+        }
+        updated = Object.assign({}, config, { memo: memo || "" });
+        objectStore.put(updated);
+      };
+      getRequest.onerror = function () {
+        reject(getRequest.error);
+      };
+      transaction.oncomplete = function () {
+        resolve(updated);
+      };
+      transaction.onerror = function () {
+        reject(transaction.error);
       };
     });
   }
@@ -234,6 +266,16 @@
     });
   }
 
+  // 自家製馬にも同じメモを写す。馬を選ぶ画面の一覧に出すため（一覧は customHorses から作る）。
+  function updateCustomHorseMemo(db, id, memo) {
+    return getCustomHorse(db, id).then(function (record) {
+      if (!record) {
+        return null;
+      }
+      return saveCustomHorse(db, Object.assign({}, record, { memo: memo || "" }));
+    });
+  }
+
   // ===== ストレージ永続化 / 残量 =====
 
   function ensurePersistentStorage() {
@@ -283,6 +325,7 @@
   window.Dabimas.logic.storage.combinationStorage = {
     DB_NAME: DB_NAME,
     DB_VERSION: DB_VERSION,
+    MAX_SAVED_CONFIGS: MAX_SAVED_CONFIGS,
     STORE_NAME: STORE_NAME,
     CUSTOM_STORE_NAME: CUSTOM_STORE_NAME,
     openDB: openDB,
@@ -290,10 +333,12 @@
     loadConfigs: loadConfigs,
     deleteConfig: deleteConfig,
     getConfig: getConfig,
+    updateConfigMemo: updateConfigMemo,
     saveCustomHorse: saveCustomHorse,
     loadCustomHorses: loadCustomHorses,
     getCustomHorse: getCustomHorse,
     deleteCustomHorse: deleteCustomHorse,
+    updateCustomHorseMemo: updateCustomHorseMemo,
     ensurePersistentStorage: ensurePersistentStorage,
     estimateStorage: estimateStorage,
   };

@@ -642,7 +642,8 @@ html.dabimas-name-small .exp-mobile-layout .exp-mobile-horse-text {
   width: 100%;
   border: 0;
   border-bottom: 1px solid #ecf0f4;
-  padding: 11px 12px;
+  /* 1 画面に並ぶ候補を増やすため、上下の余白を詰める（1 行 41px → 33px）。 */
+  padding: 7px 12px;
   text-align: left;
   background: transparent;
   transition: background-color 0.15s ease, color 0.15s ease;
