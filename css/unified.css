@@ -302,10 +302,47 @@
 .exp-horse-badge--nature { background: #00796b; }
 .exp-horse-badge--focused { background: #a67c00; }
 .exp-horse-badge--double { background: #01579b; }
-.exp-horse-badge--normal { background: #c62828; }
+.exp-horse-badge--normal { background: #ff3d00; }
 .exp-horse-badge--noability { background: #8d9aa5; }
 .exp-horse-badge--inmeisai { background: #ad1457; }
 .exp-horse-badge--saved { background: #2e7d32; }
+/* 性別。能力（非凡・天性など）とは別の種類なので、塗りの四角ではなく白抜きの丸にする。
+   色は自家製登録の「種牡馬」「繁殖牝馬」（css/combinationDialog.css）と同じで、
+   血統表の父＝紺・母＝臙脂とも同じ色相。暗い表示では css/dark.css で明るくする。
+   スマホ・PC の血統表のバッジ指定（角丸・左右の余白）より強くするため、親から指定する。 */
+.exp-horse-badges .exp-horse-badge.exp-horse-badge--male,
+.exp-horse-badges .exp-horse-badge.exp-horse-badge--female {
+  padding: 0;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  /* 中を白で塗る。繁殖牝馬の行（サーモン色）や面白枠・見事枠の地の上でも浮くように。 */
+  background: #fff;
+}
+
+.exp-horse-badges .exp-horse-badge.exp-horse-badge--male { color: #3e499c; }
+.exp-horse-badges .exp-horse-badge.exp-horse-badge--female { color: #b34e5f; }
+
+/* 丸の中に漢字の角が当たらないよう、文字を四角のバッジより一回り小さくする
+   （直径に対して 6 割ほど）。候補の一覧など行高に追従しない場所の大きさ。 */
+.exp-horse-badges .exp-horse-badge.exp-horse-badge--male,
+.exp-horse-badges .exp-horse-badge.exp-horse-badge--female {
+  font-size: 9px;
+}
+
+/* スマホの血統表（バッジの直径は行の高さ × 0.8）。 */
+.exp-mobile-layout .exp-horse-badges .exp-horse-badge.exp-horse-badge--male,
+.exp-mobile-layout .exp-horse-badges .exp-horse-badge.exp-horse-badge--female {
+  font-size: clamp(7px, calc(var(--exp-mobile-row-height) * 0.48), 12px);
+}
+
+/* PC の血統表（バッジの直径は行の高さ × 0.58）。 */
+@media screen and (min-width: 960px) {
+  .table_main .exp-horse-badges .exp-horse-badge.exp-horse-badge--male,
+  .table_main .exp-horse-badges .exp-horse-badge.exp-horse-badge--female {
+    font-size: clamp(9px, calc(var(--exp-pc-row-height) * 0.35), 16px);
+  }
+}
 
 .table_main .exp-horse-cell--select {
   display: flex;

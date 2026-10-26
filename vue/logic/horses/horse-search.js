@@ -117,6 +117,18 @@
     );
   }
 
+  // 血統表で深いマスに牝馬を選んだとき、そのマスにはその牝馬の父が
+  // 「(牝馬名)」付きで入り、選んだ牝馬は placeholderMareRef に残る
+  // （vue/logic/pedigree/pedigree-builder.js の牝馬ルート）。
+  function selectedMareRef(horse) {
+    return horse && horse.placeholderMareRef ? horse.placeholderMareRef : null;
+  }
+
+  // 牝馬（セール牝馬・自家製の繁殖牝馬、深いマスで選んだ牝馬を含む）か。
+  function isMareBadgeTarget(horse) {
+    return !!selectedMareRef(horse) || horse.sex === "1";
+  }
+
   // 画面共通の1文字バッジを、表示順どおりの新しい配列で返す。
   function getHorseBadges(horse, options) {
     if (!horse) {
@@ -124,13 +136,38 @@
     }
     var badges = [];
     var hideEditBadge = !!(options && options.hideEditBadge);
-    if (isSavedHorse(horse)) {
+    var mareRef = selectedMareRef(horse);
+    var saved = mareRef ? mareRef.kind === "custom" : isSavedHorse(horse);
+    if (saved) {
       badges.push({
         key: "saved",
         text: "自",
         className: "exp-horse-badge--saved",
         title: "自家製（保存した配合）",
       });
+    }
+    // 性別は、牝馬と自家製の種牡馬にだけ付ける。公式の種牡馬は数が多く、
+    // 付けなくても種牡馬と分かるので付けない。色は自家製登録の牡・牝と同じ。
+    if (isMareBadgeTarget(horse)) {
+      badges.push({
+        key: "sex",
+        text: "牝",
+        className: "exp-horse-badge--female",
+        title: mareRef ? "このマスで繁殖牝馬を選んでいる" : "繁殖牝馬",
+      });
+    } else if (saved) {
+      badges.push({
+        key: "sex",
+        text: "牡",
+        className: "exp-horse-badge--male",
+        title: "種牡馬",
+      });
+    }
+    // 牝馬を選んだマスに入っているのは、その牝馬の父。ここで付く天性・非凡などは
+    // 父のものなので、選んだ牝馬のマスとして「自」「牝」だけを出す
+    // （右端の因子は父のものだがニトロに数えるので、そちらはそのまま残る）。
+    if (mareRef) {
+      return badges;
     }
     if (horse.source === "edit" && !hideEditBadge) {
       badges.push({
@@ -172,6 +209,14 @@
     // この関数を呼ぶ場所（血統表のセル・候補一覧・スマホの検索ダイアログ）は
     // いずれも同じ場所へ getHorseBadges の結果を並べている。
     var name = String(horse.name || "").replace(SAVED_NAME_PREFIX, "");
+    // 深いマスで牝馬を選んだマスは、その牝馬の父に「(牝馬名)」が付いて入っている。
+    // 選んだのは牝馬なので、「牝馬名(父の名前)」の順に入れ替えて見せる。
+    var mareMatch = selectedMareRef(horse)
+      ? /^\((.*)\)$/.exec(String(horse.subName || ""))
+      : null;
+    if (mareMatch) {
+      return mareMatch[1].replace(SAVED_NAME_PREFIX, "") + "(" + name + ")";
+    }
     return [name, horse.subName || ""].filter(Boolean).join("");
   }
 
@@ -184,7 +229,12 @@
       return "";
     }
     var hideEditTag = !!(options && options.hideEditTag);
+    // 性別のバッジは見た目だけに出す。この文字列はデータ生成側（Python）の
+    // displayName と一致させているので、ここには入れない。
     var badgeText = getHorseBadges(horse, { hideEditBadge: hideEditTag })
+      .filter(function (badge) {
+        return badge.key !== "sex";
+      })
       .map(function (badge) {
         return "[" + badge.text + "]";
       })
