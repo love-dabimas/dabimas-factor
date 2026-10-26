@@ -209,6 +209,14 @@
     // この関数を呼ぶ場所（血統表のセル・候補一覧・スマホの検索ダイアログ）は
     // いずれも同じ場所へ getHorseBadges の結果を並べている。
     var name = String(horse.name || "").replace(SAVED_NAME_PREFIX, "");
+    // 深いマスで牝馬を選んだマスは、その牝馬の父に「(牝馬名)」が付いて入っている。
+    // 選んだのは牝馬なので、「牝馬名(父の名前)」の順に入れ替えて見せる。
+    var mareMatch = selectedMareRef(horse)
+      ? /^\((.*)\)$/.exec(String(horse.subName || ""))
+      : null;
+    if (mareMatch) {
+      return mareMatch[1].replace(SAVED_NAME_PREFIX, "") + "(" + name + ")";
+    }
     return [name, horse.subName || ""].filter(Boolean).join("");
   }
 

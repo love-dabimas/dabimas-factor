@@ -188,6 +188,17 @@ assert.equal(
   "性別のバッジは文字列（displayName と揃える側）には入れない"
 );
 
+// 牝馬を選んだマスは「牝馬名(父の名前)」の順で見せる（自家製の ☆ は外す）。
+assert.equal(
+  horseSearch.getHorseNameText({ name: "ストームキャット", subName: "(メゾンフォルティー)", placeholderMareRef: { kind: "master", nodeId: "x" } }),
+  "メゾンフォルティー(ストームキャット)"
+);
+assert.equal(
+  horseSearch.getHorseNameText({ name: "★１薄めシンボリルドルフ巌瓏", subName: "(☆ガリレオ牝馬)", placeholderMareRef: { kind: "custom", id: "c" } }),
+  "ガリレオ牝馬(★１薄めシンボリルドルフ巌瓏)"
+);
+assert.equal(horseSearch.getHorseNameText({ name: "アイスカペイド", subName: "瑚闘" }), "アイスカペイド瑚闘", "普通の馬は今までどおり");
+
 const summaryPath = path.join(__dirname, "..", "json", "dabimasFactor.summary.json");
 const summaryJson = JSON.parse(fs.readFileSync(summaryPath, "utf8"));
 const horses = summaryJson.horseLists;
