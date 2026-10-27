@@ -884,3 +884,7 @@ html.dabimas-dark footer {
   background: var(--dk-raised);
   color: var(--dk-text);
 }
+
+html.dabimas-dark .exp-mobile-option-more {
+  color: var(--dk-accent);
+}

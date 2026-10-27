@@ -92,9 +92,13 @@ async function run() {
   failRead = false; await f.load();
   const lists = Array.from({length:100},(_,i)=>({id:'s'+(i+1),name:'horse '+i}));
   for (let i = 2; i <= 70; i++) await f.toggle('s'+i);
-  const mobile = D.components.MobileHorsePicker.computed.filteredMobileLists;
+  const page = D.components.MobileHorsePicker.computed.mobileListPage;
+  const mobile = { call: (ctx) => page.call(ctx).items };
   const context = {lists,mobileQuery:'',normalizeSearchText:t=>t,getHorseSearchIndexText:h=>h.name};
-  await f.setOnly(false); assert.equal(mobile.call(context).length,60);
+  await f.setOnly(false); assert.equal(mobile.call(context).length,60); assert.equal(page.call(context).hasMore,true);
+  // スクロールで描き足すと、最後まで出せる
+  context.mobileListLimit = 120; assert.equal(mobile.call(context).length,100); assert.equal(page.call(context).hasMore,false);
+  delete context.mobileListLimit;
   await f.setOnly(true); assert.equal(mobile.call(context).length,70);
   for (let i = 71; i <= 90; i++) await f.toggle('s'+i);
   context.mobileQuery = 'horse'; assert.equal(mobile.call(context).length,90);

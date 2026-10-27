@@ -45,6 +45,9 @@
 
   // 候補の行をこの時間押し続けたら長押しとみなし、その馬の血統表を開く（馬は選ばない）。
   var OPTION_LONG_PRESS_MS = 500;
+  // 候補一覧は一度に全部描くと重いので、この件数ずつ描き足す。
+  // 一覧の下まで来たら次の分を足すので、スクロールすれば全件たどれる。
+  var MOBILE_LIST_PAGE = 60;
 
   // index.html のモジュールスコープにあった定数を同名で再宣言する。
   var INDEX_TO_ROW_NUMBER = window.Dabimas.constants.pedigreeIndexes.INDEX_TO_ROW_NUMBER;
@@ -88,6 +91,8 @@
         optionPressTimer: null,
         optionPressStart: null,
         optionLongPressFired: false,
+        // 候補一覧に描いている件数。スクロールで MOBILE_LIST_PAGE ずつ増える。
+        mobileListLimit: MOBILE_LIST_PAGE,
       };
     },
     beforeDestroy() {
@@ -160,7 +165,7 @@
                 @click="clearMobileQuery"
               >クリア</button>
             </div>
-            <div class="exp-mobile-option-list">
+            <div ref="mobileOptionList" class="exp-mobile-option-list" @scroll="onMobileListScroll">
               <button
                 v-for="horse in filteredMobileLists"
                 :key="getHorseListKey(horse)"
@@ -210,6 +215,12 @@
                 <!-- 馬のメモ（自家製馬は配合の保存の画面のメモ）の 1 行目 -->
                 <div v-if="horseMemo(horse)" class="exp-option-memo">{{ horseMemo(horse) }}</div>
               </button>
+              <button
+                v-if="mobileListHasMore"
+                type="button"
+                class="exp-mobile-option-more"
+                @click="showMoreMobileList"
+              >さらに表示</button>
               <div
                 v-if="filteredMobileLists.length === 0"
                 class="exp-mobile-option-empty"
@@ -250,14 +261,21 @@
         return `exp-mobile-search-${this.index}`;
       },
       filteredMobileLists() {
+        return this.mobileListPage.items;
+      },
+      mobileListHasMore() {
+        return this.mobileListPage.hasMore;
+      },
+      mobileListPage() {
         const favorites = window.Dabimas.favorites;
         const only = favorites.state.only;
         // お気に入りの集合は Set でリアクティブでないため、version を読んで再計算の依存を張る。
         void favorites.state.version;
         const source = Array.isArray(this.lists) ? this.lists : [];
         const normalizedQuery = this.normalizeSearchText(this.mobileQuery);
-        const limit = only ? Infinity : (normalizedQuery ? 80 : 60);
+        const limit = only ? Infinity : (this.mobileListLimit || MOBILE_LIST_PAGE);
         const filtered = [];
+        let hasMore = false;
 
         for (let i = 0; i < source.length; i++) {
           const horse = source[i];
@@ -273,16 +291,43 @@
           ) {
             continue;
           }
-          filtered.push(horse);
           if (filtered.length >= limit) {
+            hasMore = true;
             break;
           }
+          filtered.push(horse);
         }
 
-        return filtered;
+        return { items: filtered, hasMore: hasMore };
+      },
+    },
+    watch: {
+      // 絞り込みが変わったら、一覧は先頭から描き直す。
+      mobileQuery() {
+        this.resetMobileListPaging();
       },
     },
     methods: {
+      resetMobileListPaging() {
+        this.mobileListLimit = MOBILE_LIST_PAGE;
+        const list = this.$refs.mobileOptionList;
+        if (list) {
+          list.scrollTop = 0;
+        }
+      },
+      showMoreMobileList() {
+        this.mobileListLimit += MOBILE_LIST_PAGE;
+      },
+      // 一覧の下端の手前まで来たら、次の分を描き足す。
+      onMobileListScroll(event) {
+        if (!this.mobileListHasMore) {
+          return;
+        }
+        const list = event.target;
+        if (list.scrollTop + list.clientHeight >= list.scrollHeight - 400) {
+          this.showMoreMobileList();
+        }
+      },
       // ===== 候補の行の長押しで、その馬の血統表を開く =====
       clearOptionPressTimer() {
         if (this.optionPressTimer) {
@@ -449,6 +494,7 @@
       // 公開エントリポイント）。
       openMobileEditor() {
         this.mobileDialogVisible = true;
+        this.resetMobileListPaging();
         this.primeMobileQueryFromSelection();
         this.$nextTick(() => {
           const input = this.$refs.mobileSearchInput;
