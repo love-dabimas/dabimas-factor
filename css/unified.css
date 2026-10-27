@@ -1171,6 +1171,8 @@
   flex: 0 0 auto;
   padding: 0 4px;
   background: #fff;
+  /* style.css の header 全体に付く赤い枠を消し、下の罫線だけ残す。 */
+  border: 0;
   border-bottom: 1px solid #e2ddec;
 }
 
