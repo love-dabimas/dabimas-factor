@@ -30,7 +30,26 @@ async function run() {
   assert.equal(link.fromMusume('1234', '2'), null);
   assert.equal(link.fromMusume(1234, '0'), null);
   assert.equal(link.fromMusume('0314537268', '0'), 's0314537268');
-  for (const id of [null, {}, 'ch_1', 'es_1', 's12a', 123]) assert.equal(link.isMasterHorseId(id), false);
+  // R2 から日次で足した馬。ダビふぁくは sg/bg + ゲーム内 ID、ダビ娘は r/rb + ゲーム内 ID で持つ。
+  assert.equal(link.toMusumeKey('sg1063'), 'r1063-0');
+  assert.equal(link.toMusumeKey('bg283', '1'), 'rb283-1');
+  assert.equal(link.fromMusume('r1063', '0'), 'sg1063');
+  assert.equal(link.fromMusume('rb283', '1'), 'bg283');
+  for (const [id, gender] of [['r1063', '1'], ['rb283', '0'], ['x12', '0'], ['rb', '1']]) {
+    assert.equal(link.fromMusume(id, gender), null, id + '-' + gender);
+  }
+  assert.ok(['s1', 'b1', 'sg1', 'bg1'].every(link.isMasterHorseId));
+  for (const id of [null, {}, 'ch_1', 'es_1', 's12a', 123, 'r1', 'rb1', 'sgx1', 'sb1']) assert.equal(link.isMasterHorseId(id), false);
+  // 候補の行。R2 から足した馬は r329・rb283 のように英字が前に付く。
+  // 合わない行は落とすが、ほかの行は残す（1行で全部を捨てると理論チップが出なくなる）。
+  const goodRows = [['3315497239-0','Te','Ma','EcTe','EcEcEcEc'], ['r329-0','Ro','Ha','NeNs','StStNsNe'],
+    ['rb283-1','Ne','Na','HaTe','StEcMaEc'], ['1234-1','Ne','Na','HaTe','StEcMa'],
+    ['5678-0','Ne','Na','HaTe','StEcMaEc','g101-0']];
+  const badRows = [['ch_a1-0','Ne','Na','HaTe','StEcMaEc'], ['329-2','Ne','Na','HaTe','StEcMaEc'], ['-0','Ne','Na','HaTe','StEcMaEc'],
+    ['329-0','N','Na','HaTe','StEcMaEc'], ['329-0','Ne','Na','HaTe'], ['329-0','Ne','Na','HaTe',1], 'row', null];
+  assert.deepEqual(link.readCandidateRows(goodRows.concat(badRows)), goodRows);
+  assert.deepEqual(link.readCandidateRows([]), []);
+  for (const rows of [null, undefined, {}, 'rows']) assert.equal(link.readCandidateRows(rows), null);
   const source = {}, origin = 'https://example.test';
   const event = { origin, source, data: { type: 'dabimas:select', v: 1 } };
   assert.equal(link.readMessage(event, [source], origin), event.data);

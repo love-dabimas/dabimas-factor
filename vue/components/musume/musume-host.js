@@ -219,11 +219,9 @@
           return;
         }
         if (data.type === "dabimas:candidates") {
-          if (!Array.isArray(data.rows) || !data.rows.every(row => Array.isArray(row) && row.length === 5 &&
-              row.every(value => typeof value === "string") && /^\d+-[01]$/.test(row[0]) &&
-              /^[A-Za-z]{2}$/.test(row[1]) && /^[A-Za-z]{2}$/.test(row[2]) &&
-              /^[A-Za-z]{4}$/.test(row[3]) && /^[A-Za-z]{6}([A-Za-z]{2})?$/.test(row[4]))) return;
-          this.candidateRows = data.rows;
+          var rows = link.readCandidateRows(data.rows);
+          if (!rows) return;
+          this.candidateRows = rows;
           var source = this.$refs.sheetFrame && this.$refs.sheetFrame.contentWindow;
           if (this.readySources.has(source)) this.sendCustomAndTheory(source);
           return;
