@@ -195,6 +195,33 @@ async function runHost() {
   assert.deepEqual(plain(cleared.entries), []);
   host.openSearch({ index: 16, select() {} });
   assert.equal(host.target.sex, '1', '既存セル経由は維持');
+  // ダビ娘が実際に送る候補をそのまま受け取れるか。R2 から足した馬は HorseId が
+  // r329・rb283 のように英字で始まり、以前はこれ1行で候補を丸ごと捨てていた
+  // （理論チップが1つも出なかった）。
+  if (fs.existsSync(musumeJsonPath)) {
+    const realRows = JSON.parse(fs.readFileSync(musumeJsonPath, 'utf8'))
+      .filter(entry => !entry.HorseId.startsWith('ch_'))
+      .map(entry => [entry.HorseId + '-' + entry.Gender, entry.Paternal_t, entry.Paternal_ht,
+        entry.Paternal_jik, entry.Paternal_mig]);
+    assert.ok(realRows.some(row => /^[a-z]/i.test(row[0])), '接頭辞つきの HorseId が無く、検証にならない');
+    host.candidateRows = null;
+    receive({ type: 'dabimas:candidates', rows: realRows });
+    assert.equal(host.candidateRows && host.candidateRows.length, realRows.length, 'ダビ娘の候補が捨てられた');
+    // 完璧が成立する種牡馬がいる母で、実際にチップが立つこと。
+    const counts = ['アイリッシュリリー', 'アルプミープリーズ'].map(name => {
+      const target = horses.find(h => h.name === name && h.sex === '1');
+      return musume.buildTheoryMap({ mareKey: target.id, rows: host.candidateRows,
+        damLines: theory.prepareMareLines(plan.expandHorseBoard(target, brosData)) }).entries.length;
+    });
+    assert.ok(counts.every(count => count > 0), '実データで理論チップが立たない: ' + counts);
+    // R2 から足した馬（sg/bg）が、ダビ娘の同じ馬（r/rb）のキーに当たること。
+    // 当たらないと、理論の候補から外れ、ダビ娘で選んでも「未対応」になる。
+    const realKeys = new Set(realRows.map(row => row[0]));
+    const added = horses.filter(h => /^[sb]g\d+$/.test(h.id));
+    const missing = added.filter(h => !realKeys.has(link.toMusumeKey(h.id, h.sex)));
+    assert.deepEqual(missing.map(h => h.id + ' ' + h.name), [], 'ダビ娘に見つからない R2 由来の馬');
+    console.log('[verify-theory-assist-phase4a] ダビ娘の候補 ' + realRows.length + '行を受理、チップ ' + counts.join('・') + '頭');
+  }
   definition.beforeDestroy.call(host);
   console.log('[verify-theory-assist-phase4a] OK: 完璧6頭、純粋変換、通信順序、自家製増減、性別・非同期境界');
 }

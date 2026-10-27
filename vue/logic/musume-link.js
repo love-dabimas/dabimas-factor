@@ -32,19 +32,37 @@
     if (index === 16) return "1";
     return [3, 5, 7, 9, 11, 13, 15].includes(index % 16) ? "any" : "0";
   }
+  // マスターの馬の ID。全書から作った馬は s/b + 全書の HorseId、R2 のゲームマスターから
+  // 日次で足した馬は sg/bg + ゲーム内 ID（scripts/game_master_source.py）。
+  // ダビ娘は後者を r/rb + ゲーム内 ID で持つ（dabimas-data の tools/horse_data/id_ledger.py）。
+  var MASTER_ID_PREFIXES = [
+    { factor: "sg", musume: "r", gender: "0" },
+    { factor: "bg", musume: "rb", gender: "1" },
+    { factor: "s", musume: "", gender: "0" },
+    { factor: "b", musume: "", gender: "1" },
+  ];
+  function splitId(id, side) {
+    if (typeof id !== "string") return null;
+    var match = /^([a-z]*)(\d+)$/.exec(id);
+    if (!match) return null;
+    return MASTER_ID_PREFIXES.filter(function (rule) { return rule[side] === match[1]; })
+      .map(function (rule) { return { rule: rule, number: match[2] }; });
+  }
   function isMasterHorseId(id) {
-    return typeof id === "string" && /^[sb]\d+$/.test(id);
+    var found = splitId(id, "factor");
+    return !!found && found.length > 0;
   }
   function toMusumeKey(id, gender) {
-    if (isMasterHorseId(id)) return id.slice(1) + (id[0] === "s" ? "-0" : "-1");
+    var found = splitId(id, "factor");
+    if (found && found.length) return found[0].rule.musume + found[0].number + "-" + found[0].rule.gender;
     return typeof id === "string" && id.length > 0 && ["0", "1"].includes(gender)
       ? "ch_" + id + "-" + gender : null;
   }
   function fromMusume(horseId, gender) {
     if (typeof horseId !== "string" || !["0", "1"].includes(gender)) return null;
     if (horseId.startsWith("ch_") && horseId.length > 3) return horseId.slice(3);
-    if (!/^\d+$/.test(horseId)) return null;
-    return (gender === "0" ? "s" : "b") + horseId;
+    var found = (splitId(horseId, "musume") || []).filter(function (item) { return item.rule.gender === gender; });
+    return found.length ? found[0].rule.factor + found[0].number : null;
   }
   // ゲーム内 ID（ゲーム本体が持つ番号）で作るキー。全書の更新や R2 の採取の
   // タイミングに左右されないので、ダビ娘との突き合わせでいちばん安定する。
@@ -61,6 +79,21 @@
     var byGame = idByGameId && data && gameKey(data.gameId, data.gender)
       ? idByGameId.get(gameKey(data.gameId, data.gender)) : null;
     return byGame || fromMusume(data && data.horseId, data && data.gender);
+  }
+  // ダビ娘から届いた候補（[キー, 父系, 父父系, 3・4代の父系, 見事4枠]）のうち、
+  // 形の合う行だけを残す。キーの HorseId は数字だけとは限らない。R2 から足した馬は
+  // r329・rb283 のように英字が前に付く。1行でも合わない行があるときに全部を
+  // 捨てると、理論チップが1つも出なくなる（実際にそうなった）ので、行ごとに落とす。
+  // 6列目以降は見ない。ダビ娘が列を足しても、先に出た側が困らないようにしておく。
+  function readCandidateRows(rows) {
+    if (!Array.isArray(rows)) return null;
+    return rows.filter(function (row) {
+      return Array.isArray(row) && row.length >= 5 &&
+        row.slice(0, 5).every(function (value) { return typeof value === "string"; }) &&
+        /^[A-Za-z]*\d+-[01]$/.test(row[0]) &&
+        /^[A-Za-z]{2}$/.test(row[1]) && /^[A-Za-z]{2}$/.test(row[2]) &&
+        /^[A-Za-z]{4}$/.test(row[3]) && /^[A-Za-z]{6}([A-Za-z]{2})?$/.test(row[4]);
+    });
   }
   function readMessage(event, sources, expectedOrigin) {
     if (!event || event.origin !== expectedOrigin || !event.source || !sources.includes(event.source)) return null;
@@ -84,5 +117,6 @@
     gameKey: gameKey,
     resolveId: resolveId,
     readMessage: readMessage,
+    readCandidateRows: readCandidateRows,
   };
 })(window);
