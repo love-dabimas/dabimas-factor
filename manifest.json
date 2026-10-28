@@ -1,6 +1,6 @@
 {
-    "short_name": "ダビふぁく",
-    "name": "ダビふぁく",
+    "short_name": "ダビふぁく２",
+    "name": "ダビふぁく２",
     "display": "standalone",
     "start_url": "./index.html",
     "scope": "./",
