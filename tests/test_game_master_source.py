@@ -173,8 +173,11 @@ def test_rebuild_keeps_unknown_slots_and_root_fields():
     stallion, _ = sources()
     entry = stallion.build_entry(stallion.find_record('1'), {})
     entry['descendants'][-1]['name'] = '全書にしかない祖先'
-    root = {k:v for k,v in entry.items() if k not in ('descendants', 'gameId', 'nodeId', 'pedigreeId', 'mares')}
+    root = {k:v for k,v in entry.items() if k not in ('descendants', 'gameId', 'nodeId', 'pedigreeId', 'mares', 'factors')}
+    # 既存馬に後から因子が足された場合も、再構築で自身の因子へ反映される。
+    stallion.fields.source.node(entry['nodeId'])['pedigree_effect_ids'] = [2, 5]
     stallion.rebuild_pedigree_fields(entry, {})
     assert entry['descendants'][-1]['name'] == '全書にしかない祖先'
     assert entry['descendants'][-1]['nodeId'] is None
     assert root == {k:v for k,v in entry.items() if k in root}
+    assert entry['factors'] == ['', '適', '速']

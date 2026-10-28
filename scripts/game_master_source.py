@@ -204,6 +204,8 @@ class PedigreeFields:
             return
         pid = node['pedigree_id']
         entry['nodeId'], entry['pedigreeId'] = node['node_id'], pid
+        # 自身の因子もマスターから取り直す。既存馬へ後から因子が足されることがある。
+        entry['factors'] = self.factors(node)
         entry['mares'] = self.source.mare_slots(pid)
         for old, nid in zip(entry['descendants'], self.source.sire_slots(pid)):
             ancestor = self.source.node(nid)
