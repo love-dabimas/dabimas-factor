@@ -34,6 +34,13 @@
    作業枠（血統表）の <header ref="appHeader"> はここに含めない。あちらは
    因子集計の表を抱えていて、高さを変えると16行の行高がそのぶん痩せる
    （実測：ヘッダ 109px → 本文 734px → 1行 23px）。 */
+/* 作業枠の <header ref="appHeader"> にも style.css の赤い枠が付くので、
+   配合理論補助のバーと同じく下の罫線だけにする。 */
+.v-application--wrap > header:not(.dabimas-appbar) {
+  border: 0;
+  border-bottom: 1px solid #e2ddec;
+}
+
 .dabimas-appbar.v-app-bar,
 .dabimas-appbar {
   height: 48px !important;
