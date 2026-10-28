@@ -1,5 +1,5 @@
 // cache name, cache files
-var CACHE_NAME = 'dabimas-factor-v20261028-04';
+var CACHE_NAME = 'dabimas-factor-v20261028-05';
 var BASE_PATH = self.location.pathname.replace(/\/service-worker\.js$/, '/');
 var APP_SHELL_URL = BASE_PATH + 'index.html';
 // プリキャッシュは「実行時に実際に使われるもの」だけに絞る。
