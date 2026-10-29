@@ -95,22 +95,75 @@
           });
       },
     },
+    watch: {
+      value: function (open) {
+        if (open) this.fitSoon();
+      },
+      sections: function () {
+        if (this.value) this.fitSoon();
+      },
+    },
+    mounted: function () {
+      this.onResize = this.fit.bind(this);
+      window.addEventListener("resize", this.onResize);
+      if (this.value) this.fitSoon();
+    },
+    beforeDestroy: function () {
+      window.removeEventListener("resize", this.onResize);
+    },
     methods: {
       close: function () {
         this.$emit("input", false);
+      },
+      // 32行を1画面に収める。行の高さは端末の字形で変わる（iPhone は
+      // Chrome より行が高くなる）ので、CSS の固定値では足りない。
+      // 縮める前の表の高さを測り、ダイアログに入る高さを超えるぶんだけ
+      // zoom で縮める。幅は zoom を掛けても枠いっぱいに広がるので触らない。
+      // v-dialog は開いてから中身を描くので、表が出るまで少しずつ待つ。
+      fitSoon: function (tries) {
+        var self = this;
+        var left = tries === undefined ? 20 : tries;
+        window.setTimeout(function () {
+          if (!self.fit() && left > 0) self.fitSoon(left - 1);
+        }, 50);
+      },
+      fit: function () {
+        var shell = this.$refs.shell;
+        var head = this.$refs.head;
+        if (!shell || !head) return false;
+        var body = shell.parentNode;
+        var style = window.getComputedStyle(body);
+        // max-height は calc(100% - 余白) なので計算値が px にならない。
+        // 外枠（.v-dialog__content は画面いっぱい）から上下の余白を引く。
+        var dialog = body.closest(".v-dialog");
+        if (!dialog) return false;
+        var outer = window.getComputedStyle(dialog);
+        var room = dialog.parentNode.clientHeight -
+          parseFloat(outer.marginTop) - parseFloat(outer.marginBottom) -
+          // v-card-title は関数型コンポーネントなので ref は要素そのもの。
+          head.offsetHeight -
+          parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+        // 縮めた後の高さは測り方がブラウザで揃わないので、一度戻して測る。
+        // style は Vue に持たせず直接書く（値が同じだと書き戻されないため）。
+        shell.style.zoom = "";
+        var natural = shell.offsetHeight;
+        // 閉じている間（2回目以降の開き始め）は表示が消えていて高さが 0。
+        if (!natural) return false;
+        shell.style.zoom = natural > room && room > 0 ? String(room / natural) : "";
+        return true;
       },
     },
     template: `
       <v-dialog :value="value" scrollable max-width="560"
         content-class="assist-ped-dialog" @input="$emit('input', $event)">
         <v-card class="assist-ped-card">
-          <v-card-title class="assist-ped-head">
+          <v-card-title ref="head" class="assist-ped-head">
             <span class="assist-ped-title">{{ title }}</span>
             <v-btn icon small aria-label="閉じる" @click="close"><v-icon small>mdi-close</v-icon></v-btn>
           </v-card-title>
           <v-card-text class="assist-ped-body">
             <p v-if="note" class="assist-ped-note">{{ note }}</p>
-            <div class="assist-ped-shell pedigree-card-shell">
+            <div ref="shell" class="assist-ped-shell pedigree-card-shell">
               <table v-for="(block, index) in blocks" :key="index" class="table_main assist-ped-table">
                 <colgroup>
                   <col class="assist-ped-col-label" />

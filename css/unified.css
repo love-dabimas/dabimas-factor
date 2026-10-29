@@ -1259,9 +1259,11 @@
    描くので、ここでは器と、操作を出さないぶんの調整だけを持つ。 */
 /* 血統表が32行あるので、器（ヘッダーと余白）は要る分だけにして
    表に高さを回す。Vuetify の既定は max-height 90% ＋ 上下 24px の余白。 */
+/* 1画面に収めたいので上下左右の余白も詰める。収まらないぶんは
+   assist-pedigree-dialog.js が表を縮める。 */
 .v-dialog.assist-ped-dialog {
-  max-height: 95%;
-  margin: 12px 24px;
+  max-height: calc(100% - 16px);
+  margin: 8px 12px;
 }
 
 .assist-ped-head {
@@ -1283,7 +1285,7 @@
   white-space: nowrap;
 }
 
-.assist-ped-body { padding: 10px 10px 14px !important; }
+.assist-ped-body { padding: 8px 8px 10px !important; }
 
 .assist-ped-note {
   margin: 0 0 8px;
@@ -1318,7 +1320,7 @@
   line-height: 1.15;
 }
 
-.assist-ped-table + .assist-ped-table { margin-top: 10px; }
+.assist-ped-table + .assist-ped-table { margin-top: 6px; }
 
 /* 列幅。本体の血統表は .exp-mobile-layout の下でしか colgroup が効かず、
    ダイアログは v-app 直下へ出るのでここで同じ幅を持たせる。

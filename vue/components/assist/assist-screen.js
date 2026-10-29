@@ -109,8 +109,9 @@
       openResult(step) {
         var selected = step.diagnosis && step.diagnosis.selected;
         if (!selected) return;
+        // 説明文は出さない。32行を1画面に収めるため、表に高さを回す。
         this.pedigreeDialog = { open: true, title: step.stepNo + "代目の配合結果",
-          note: "選んだ1組の血統です。ここでは選べません。",
+          note: "",
           sections: [
             { side: "stallion", board: selected.slice(0, 16) },
             { side: "broodmare", board: selected.slice(16, 32) },
