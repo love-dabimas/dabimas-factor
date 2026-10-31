@@ -19,6 +19,34 @@
   window.Dabimas.app = window.Dabimas.app || {};
   window.Dabimas.app.methods = window.Dabimas.app.methods || {};
 
+  // 新しさの目安。ゲーム内 ID は追加された順に増えるので、大きいほど新しい。
+  // summary 由来は releaseOrder、full JSON の退避経路は gameId を読む。
+  function releaseOrderOf(horse) {
+    const value = horse.releaseOrder != null ? horse.releaseOrder : Number(horse.gameId);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  // 一覧はよみ順に並んでいる。その並びは崩さず、同じ名前の馬だけを
+  // 新しい順に並べ替える（馬を選ぶ画面で新馬が名前の仲間の先頭に出る）。
+  // 日次で足した馬が末尾に離れて置かれていても、最初に出てくる仲間の位置へ寄せる。
+  // 新しさが分からない馬は、仲間の後ろへ元の順のまま置く。
+  function orderSameNameByNewest(list) {
+    const groupOf = new Map();
+    const keyed = list.map((horse, index) => {
+      const key = horse.sex + "|" + horse.name;
+      if (!groupOf.has(key)) groupOf.set(key, index);
+      return { horse, index, group: groupOf.get(key), order: releaseOrderOf(horse) };
+    });
+    keyed.sort((a, b) => {
+      if (a.group !== b.group) return a.group - b.group;
+      if (a.order !== null && b.order !== null && a.order !== b.order) return b.order - a.order;
+      if (a.order === null && b.order !== null) return 1;
+      if (a.order !== null && b.order === null) return -1;
+      return a.index - b.index;
+    });
+    return keyed.map((item) => item.horse);
+  }
+
   // 選択状態の復元用 extras は、同じマスター馬が候補へ二重に入らないようにする。
   // 現行データは id を優先し、id がない旧 snapshot は表示内容で照合する。
   function mergeHorseCandidateExtras(baseCandidates, extraCandidates) {
@@ -84,6 +112,9 @@
             nodeId: typeof horse.nodeId === "string" ? horse.nodeId : null,
             pedigreeId:
               typeof horse.pedigreeId === "string" ? horse.pedigreeId : null,
+            // 並べ替えだけに使う。gameId という名前で持つとダビ娘との
+            // ゲーム内 ID 照合（musume-host.js）が動き出すので、別の名前にする。
+            releaseOrder: Number(horse.gameId) || null,
             detailChunk:
               typeof horse.detailChunk === "number" ? horse.detailChunk : 0,
             name: horse.name || "",
@@ -107,6 +138,7 @@
         },
         // 馬リスト（horsesBase / horses / stallions / broodmares 等）を作る共通処理。
         buildHorseLists(horsesList) {
+          horsesList = orderSameNameByNewest(horsesList);
           horsesList.forEach((horse) => Object.freeze(horse));
           this.horsesBase = Object.freeze(horsesList);
           const selectableHorses = this.horsesBase.filter(
