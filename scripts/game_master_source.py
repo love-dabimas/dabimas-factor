@@ -297,6 +297,25 @@ class BroodmareMasterSource:
             category=GRADE_CATEGORY_ICON[grade['code']], factors=['', '', ''], hints=name_hints)
 
 
+def insert_in_reading_order(entries, entry):
+    """馬を、同じ性別の並びの中でよみ順の位置へ差し込む。
+
+    一覧は種牡馬→繁殖牝馬の順で、それぞれよみ（ruby）の昇順に並んでいて、
+    馬を選ぶ画面はこの並びのまま出す。末尾に足すと、金曜の週次で並べ直される
+    までよみ順から外れて一覧の最後に出てしまう。よみが同じ馬の後ろに入れる。
+    """
+    ruby = entry.get('ruby') or ''
+    same_sex = [i for i, e in enumerate(entries) if e['sex'] == entry['sex']]
+    if not same_sex:
+        entries.insert(0 if entry['sex'] == '0' else len(entries), entry)
+        return
+    position = same_sex[0]
+    for i in same_sex:
+        if (entries[i].get('ruby') or '') <= ruby:
+            position = i + 1
+    entries.insert(position, entry)
+
+
 class GameUpdate:
     """日次の追記と金曜のID引き継ぎ・持ち越しを、監査記録と一緒に扱う。"""
     def __init__(self, bundle, source, previous, mode, as_of, exclusions):
@@ -346,6 +365,14 @@ class GameUpdate:
         entries = deepcopy(self.previous)
         for entry in entries:
             self.rebuild(entry)
+        # 以前の日次が末尾に足した馬（全書の馬より後ろにある sg/bg）も、よみ順の位置へ移す。
+        tail = len(entries)
+        while tail and entries[tail - 1]['id'].startswith(('sg', 'bg')):
+            tail -= 1
+        if tail:
+            appended, entries = entries[tail:], entries[:tail]
+            for entry in appended:
+                insert_in_reading_order(entries, entry)
         known = {e['nodeId'] for e in entries if e.get('nodeId')}
         for kind, source, excluded in [('stallion', self.stallions, self.exclusions[0]),
                                        ('broodmare', self.mares, self.exclusions[1])]:
@@ -358,7 +385,7 @@ class GameUpdate:
                                        for i in getattr(selection, key))
             for game_id, _, start in selection.selected:
                 entry = source.build_entry(source.find_record(game_id), self.hints)
-                entries.append(entry)
+                insert_in_reading_order(entries, entry)
                 known.add(entry['nodeId'])
                 self.audit['added'].append(dict(id=entry['id'], kind=kind, name=entry['name'],
                                                subName=entry['subName'], game_id=game_id, display_start_at=start))

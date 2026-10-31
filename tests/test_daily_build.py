@@ -179,3 +179,30 @@ def test_weekly_cli_adopts_id_and_rejects_empty_list(tmp_path, monkeypatch):
     assert len(new) == 1 and new[0]['id'] == 'sg1' and new[0]['gameId'] == '1'
     monkeypatch.setattr(build, 'collect_horse_urls', lambda fetcher: [])
     assert build.main(args + ['--mode', 'weekly']) == 1
+
+
+def test_daily_inserts_new_horses_in_reading_order():
+    def horse(identifier, sex, ruby):
+        return {'id': identifier, 'sex': sex, 'ruby': ruby}
+    entries = [horse('s1', '0', 'あ'), horse('s2', '0', 'か'), horse('s3', '0', 'か'),
+               horse('s4', '0', 'さ'), horse('b1', '1', 'あ'), horse('b2', '1', 'さ')]
+    for entry in [horse('sg1', '0', 'か'), horse('sg2', '0', 'ぁ'), horse('sg3', '0', 'ん'),
+                  horse('bg1', '1', 'か')]:
+        game.insert_in_reading_order(entries, entry)
+    # よみが同じ馬の後ろ、種牡馬は繁殖牝馬より前に入る。
+    assert [e['id'] for e in entries] == ['sg2', 's1', 's2', 's3', 'sg1', 's4', 'sg3',
+                                          'b1', 'bg1', 'b2']
+
+
+def test_daily_moves_previously_appended_horses():
+    stallion, _ = sources()
+    entry = stallion.build_entry(stallion.find_record('1'), {})
+    first = dict(deepcopy(entry), id='s1', ruby='ん', nodeId=None, descendants=[])
+    tail = dict(deepcopy(entry), id='sg1', ruby='あ')
+    docs = game_documents()
+    source = PedigreeMasterSource(docs[0], docs[1])
+    update = game.GameUpdate(validate_game_masters(*docs), source, [first, tail], 'daily', 0, (set(), set()))
+    update.rebuild = lambda e: None
+    update.mares_enabled = False
+    update.stallions.select_new = lambda *a: game.Selection()
+    assert [e['id'] for e in update.daily_entries()][:2] == ['sg1', 's1']
