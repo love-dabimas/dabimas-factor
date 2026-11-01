@@ -1685,3 +1685,39 @@ html:not(.dabimas-dark) .exp-mobile-layout .table_main > tbody > tr > td.mother:
 html:not(.dabimas-dark) .exp-mobile-layout main .container > .spacer > .row.mx-1 {
   background-color: #dddddd;
 }
+
+/* ===== 血統表のハート ===== */
+/* 形：縁取り＝自分で押したクロス、塗り＝自動で決まったクロス。
+   色：紫＝至高を作っているクロス（「至高」の札と同じ系統）、
+   赤＝ふつうのクロス（クロスの馬名と同じ赤）、青＝手で指定したクロス。
+   手で指定したものは、赤とも紫とも紛れない青にする（ピンクは赤に近かった）。
+   ケータイ版は exp-mobile-icon-btn、PC 版は v-btn（無効だと Vuetify が灰色に
+   固定するので !important で上書きする）。 */
+.exp-mobile-layout td .exp-mobile-icon-btn--disabled {
+  color: #d0002b;
+  opacity: 1;
+}
+
+.inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon {
+  color: #d0002b !important;
+}
+
+.exp-mobile-layout td .exp-mobile-icon-btn--active,
+.inbreed-heart-btn--manual.v-btn .v-icon {
+  color: #1565c0 !important;
+}
+
+.exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--active,
+.exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--disabled,
+td.inbreed-heart--supreme .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon,
+td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
+  color: #8e44c9 !important;
+}
+
+/* 血統表のマスで、メモのある馬は ▼ の代わりにメモの印を出す。
+   ▼（10px）より 2px だけ大きくして、形が潰れないようにする。 */
+/* クロスの赤（.inbreed の .mdi）より強くして、クロスの馬でも紫で出す。 */
+.exp-mobile-autocomplete-root .exp-mobile-horse-trigger .mdi.exp-mobile-horse-memo-mark {
+  color: #5b45b0 !important;
+  font-size: 12px;
+}

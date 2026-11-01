@@ -76,7 +76,9 @@
         </span>
       </td>
 
-      <td :class="rowState.inbreedButtonClass">
+      <!-- ハートは形で「自分で押した（縁取り）／自動で決まった（塗り）」、
+           色で「至高（紫）／ふつうのクロス（赤）／手で指定（青）」を分ける。 -->
+      <td :class="[rowState.inbreedButtonClass, { 'inbreed-heart--supreme': rowState.supremeCross }]">
         <template v-if="$vuetify.breakpoint.smAndDown">
           <button
             v-if="rowState.inbreedButtonState === -1"
@@ -89,7 +91,7 @@
             type="button"
             class="exp-mobile-icon-btn exp-mobile-icon-btn--active"
             @click="onInbreedButtonClick"
-          ><i class="mdi mdi-heart"></i></button>
+          ><i class="mdi mdi-heart-outline"></i></button>
           <button
             v-else
             type="button"
@@ -110,15 +112,15 @@
             :key="displayOptions.reload"
             @click="onInbreedButtonClick"
             icon
-            color="pink"
+            class="inbreed-heart-btn--manual"
             v-bind="displayOptions.size"
-          ><v-icon>mdi-heart</v-icon></v-btn>
+          ><v-icon>mdi-heart-outline</v-icon></v-btn>
           <v-btn
             v-else
             :key="displayOptions.reload"
             icon
-            color="pink"
             disabled
+            class="inbreed-heart-btn--auto"
             v-bind="displayOptions.size"
           ><v-icon>mdi-heart</v-icon></v-btn>
         </template>

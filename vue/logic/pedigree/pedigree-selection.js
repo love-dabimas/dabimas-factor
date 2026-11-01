@@ -102,6 +102,8 @@
     // 直系祖先として重複しているセル）。血統表全体としては至高などが成立していても、
     // その1点（配合を行った瞬間）は自己複製に近い近親なので個別に警告する。
     var selfAncestorWarningIndexes = arrays.selfAncestorWarningIndexes || [];
+    // 至高の配合を作っているクロスのマス（judgeInbreed の sameNameSpecialChecks）。
+    var supremeIndexes = arrays.sameNameSpecialChecks || [];
 
     return {
       index: index,
@@ -117,6 +119,7 @@
       parentLineClass: parentLineClass,
       inbreedButtonState: typeof rawInbreedState === "number" ? rawInbreedState : 0,
       inbreedButtonClass: inbreedButtonClass,
+      supremeCross: supremeIndexes.indexOf(index) !== -1,
       rowColorClass: (arrays.dispColor || [])[index] || "",
       factorTexts: factorTexts,
       factorClasses: factorClasses,

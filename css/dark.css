@@ -888,3 +888,31 @@ html.dabimas-dark footer {
 html.dabimas-dark .exp-mobile-option-more {
   color: var(--dk-accent);
 }
+
+/* 血統表のハート（明るい側は unified.css）。色相はそのままで、黒地で読める明るさにする。 */
+/* まだ押していない縁取りのハート。明るい側の濃い灰のままだと黒地に埋もれて、
+   縁取りと塗りの見分けがつかないので、補助の文字の色にする。 */
+html.dabimas-dark .exp-mobile-layout td .exp-mobile-icon-btn {
+  color: var(--dk-muted);
+}
+
+html.dabimas-dark .exp-mobile-layout td .exp-mobile-icon-btn--disabled,
+html.dabimas-dark .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon {
+  color: #ff6b7d !important;
+}
+
+html.dabimas-dark .exp-mobile-layout td .exp-mobile-icon-btn--active,
+html.dabimas-dark .inbreed-heart-btn--manual.v-btn .v-icon {
+  color: #7ab4ff !important;
+}
+
+html.dabimas-dark .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--active,
+html.dabimas-dark .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--disabled,
+html.dabimas-dark td.inbreed-heart--supreme .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon,
+html.dabimas-dark td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
+  color: #c79bf2 !important;
+}
+
+html.dabimas-dark .exp-mobile-autocomplete-root .exp-mobile-horse-trigger .mdi.exp-mobile-horse-memo-mark {
+  color: var(--dk-accent) !important;
+}

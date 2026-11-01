@@ -154,6 +154,7 @@
             sireLineColors: this.sireLineColorSettings,
             planDangerCellIndexes: this.planDangerCellIndexes,
             selfAncestorWarningIndexes: this.visibleSelfAncestorWarningIndexes,
+            sameNameSpecialChecks: this.sameNameSpecialChecks,
           };
         },
         // 種牡馬側16行ぶんの rowState。selected 等が変わるたびに作り直される

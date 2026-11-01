@@ -63,7 +63,9 @@
               @click="onTriggerClick"
             >
               <span class="exp-mobile-horse-text">{{ mobileTriggerLabel }}</span>
-              <i class="mdi mdi-chevron-down"></i>
+              <!-- メモのある馬は ▼ の代わりにメモの印を出す（幅をほぼ変えずに知らせる）。 -->
+              <i v-if="cellMemo" class="mdi mdi-note-text exp-mobile-horse-memo-mark" aria-label="メモあり"></i>
+              <i v-else class="mdi mdi-chevron-down"></i>
             </button>
 
             <mobile-horse-picker
