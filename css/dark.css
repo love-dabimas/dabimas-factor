@@ -890,8 +890,8 @@ html.dabimas-dark .exp-mobile-option-more {
 }
 
 /* 血統表のハート（明るい側は unified.css）。色相はそのままで、黒地で読める明るさにする。 */
-/* まだ押していない縁取りのハート。明るい側の濃い灰のままだと黒地に埋もれて、
-   縁取りと塗りの見分けがつかないので、補助の文字の色にする。 */
+/* まだ押していない縁取りのハート。明るい側の濃い灰のままだと黒地に埋もれるので、
+   補助の文字の色にする。 */
 html.dabimas-dark .exp-mobile-layout td .exp-mobile-icon-btn {
   color: var(--dk-muted);
 }
