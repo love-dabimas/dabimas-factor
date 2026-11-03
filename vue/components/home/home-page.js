@@ -73,6 +73,15 @@
         this.duplicating = true;
         workspaceSync
           .duplicateCategory(category.id)
+          .then((created) => {
+            // 複製の名前は「〇〇のコピー」なので、そのまま名前を変えられるように
+            // 複製した配合の編集ダイアログを開く。
+            var id = created && created.category && created.category.id;
+            var copied = this.categories.find((c) => c.id === id);
+            if (copied) {
+              this.openEditDialog(copied);
+            }
+          })
           .catch((error) => {
             console.error(error);
             this.showError("複製に失敗しました。もう一度お試しください。");
