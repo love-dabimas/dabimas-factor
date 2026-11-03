@@ -896,7 +896,7 @@ html.dabimas-dark .exp-mobile-layout td .exp-mobile-icon-btn {
   color: var(--dk-muted);
 }
 
-html.dabimas-dark .exp-mobile-layout td .exp-mobile-icon-btn--disabled,
+html.dabimas-dark .exp-mobile-layout td .exp-mobile-icon-btn--auto,
 html.dabimas-dark .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon {
   color: #ff6b7d !important;
 }
@@ -907,7 +907,7 @@ html.dabimas-dark .inbreed-heart-btn--manual.v-btn .v-icon {
 }
 
 html.dabimas-dark .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--active,
-html.dabimas-dark .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--disabled,
+html.dabimas-dark .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--auto,
 html.dabimas-dark td.inbreed-heart--supreme .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon,
 html.dabimas-dark td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
   color: #c79bf2 !important;

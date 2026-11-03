@@ -91,9 +91,14 @@
         ? rawInbreedButtonClass
         : fallbackThemeClass + " styleInbreedButton";
 
-    var rawInbreedState = arrays.isInbreedButtonClicked
-      ? arrays.isInbreedButtonClicked[index]
-      : 0;
+    var inbreedStates = arrays.isInbreedButtonClicked || [];
+    var rawInbreedState = inbreedStates[index] !== undefined ? inbreedStates[index] : 0;
+    // 押せないハート（0）は「クロス判定の前（血統表がまだ埋まっていない）」と
+    // 「自動で決まったクロス」の 2 通りある。判定前は全マスが 0 なので、
+    // 0 以外が 1 つでもあれば判定済みと見て、0 のマスを自動クロスとする。
+    var inbreedJudged = inbreedStates.some(function (state) {
+      return state !== 0;
+    });
 
     // 工程診断で危険と出た工程の種牡馬セル。診断結果の index 一覧を見るだけで、
     // ここで危険判定はやり直さない（仕様 §16.2）。
@@ -119,6 +124,7 @@
       parentLineClass: parentLineClass,
       inbreedButtonState: typeof rawInbreedState === "number" ? rawInbreedState : 0,
       inbreedButtonClass: inbreedButtonClass,
+      autoCross: inbreedJudged && rawInbreedState === 0,
       supremeCross: supremeIndexes.indexOf(index) !== -1,
       rowColorClass: (arrays.dispColor || [])[index] || "",
       factorTexts: factorTexts,

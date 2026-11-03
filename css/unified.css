@@ -1693,7 +1693,7 @@ html:not(.dabimas-dark) .exp-mobile-layout main .container > .spacer > .row.mx-1
    青＝手で指定したクロス（赤とも紫とも紛れない色）。
    ケータイ版は exp-mobile-icon-btn、PC 版は v-btn（無効だと Vuetify が灰色に
    固定するので !important で上書きする）。 */
-.exp-mobile-layout td .exp-mobile-icon-btn--disabled {
+.exp-mobile-layout td .exp-mobile-icon-btn--auto {
   color: #d0002b;
   opacity: 1;
 }
@@ -1708,7 +1708,7 @@ html:not(.dabimas-dark) .exp-mobile-layout main .container > .spacer > .row.mx-1
 }
 
 .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--active,
-.exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--disabled,
+.exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--auto,
 td.inbreed-heart--supreme .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon,
 td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
   color: #8e44c9 !important;

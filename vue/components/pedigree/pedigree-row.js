@@ -77,7 +77,8 @@
       </td>
 
       <!-- クロスのハートは塗りで、色で「至高（紫）／ふつうのクロス（赤）／手で指定（青）」を
-           分ける。縁取りはまだ押していないハートだけ。 -->
+           分ける。縁取りはまだ押していないハートだけ。血統表が埋まる前の押せない
+           ハートは灰色のまま（autoCross が付かない）。 -->
       <td :class="[rowState.inbreedButtonClass, { 'inbreed-heart--supreme': rowState.supremeCross }]">
         <template v-if="$vuetify.breakpoint.smAndDown">
           <button
@@ -96,6 +97,7 @@
             v-else
             type="button"
             class="exp-mobile-icon-btn exp-mobile-icon-btn--disabled"
+            :class="{ 'exp-mobile-icon-btn--auto': rowState.autoCross }"
             disabled
           ><i class="mdi mdi-heart"></i></button>
         </template>
@@ -120,7 +122,7 @@
             :key="displayOptions.reload"
             icon
             disabled
-            class="inbreed-heart-btn--auto"
+            :class="{ 'inbreed-heart-btn--auto': rowState.autoCross }"
             v-bind="displayOptions.size"
           ><v-icon>mdi-heart</v-icon></v-btn>
         </template>
