@@ -19,6 +19,10 @@
 
   var workspaceSync = window.Dabimas.workspaceSync;
 
+  // 配合のカードをこの時間押し続けたら長押しとみなし、編集メニューを出す。
+  // 選ぶ画面の「行の長押しで血統表」と同じ長さにして、長押しの感覚をそろえる。
+  var CARD_LONG_PRESS_MS = 500;
+
   var HomePage = {
     name: "home-page",
     data() {
@@ -30,6 +34,12 @@
         deleteTarget: null,
         deleting: false,
         duplicating: false,
+        // 長押し（PC は右クリック）で出す編集メニュー。
+        cardMenuVisible: false,
+        cardMenuTarget: null,
+        cardPressTimer: null,
+        cardPressStart: null,
+        cardLongPressFired: false,
         errorSnackbar: { show: false, message: "" },
       };
     },
@@ -57,6 +67,11 @@
         this.dialogVisible = true;
       },
       onCardClick(category) {
+        // 長押しでメニューを出したときは、指を離したときのクリックで配合を開かない。
+        if (this.cardLongPressFired) {
+          this.cardLongPressFired = false;
+          return;
+        }
         if (this.editMode) {
           this.openEditDialog(category);
           return;
@@ -89,6 +104,67 @@
           .finally(() => {
             this.duplicating = false;
           });
+      },
+      // ===== 配合のカードの長押し（PC は右クリック）で編集メニューを出す =====
+      // 編集モードの間はカードにボタンが並んでいるので、メニューは出さない。
+      clearCardPressTimer() {
+        if (this.cardPressTimer) {
+          clearTimeout(this.cardPressTimer);
+          this.cardPressTimer = null;
+        }
+      },
+      openCardMenu(category) {
+        this.cardMenuTarget = category;
+        this.cardMenuVisible = true;
+      },
+      onCardPressStart(event, category) {
+        this.cardLongPressFired = false;
+        this.clearCardPressTimer();
+        if (this.editMode || (event.button !== undefined && event.button !== 0)) {
+          return;
+        }
+        this.cardPressStart = { x: event.clientX, y: event.clientY };
+        this.cardPressTimer = setTimeout(() => {
+          this.cardPressTimer = null;
+          this.cardLongPressFired = true;
+          this.openCardMenu(category);
+        }, CARD_LONG_PRESS_MS);
+      },
+      // 一覧をスクロールしようとして指が動いたら、長押しにしない。
+      onCardPressMove(event) {
+        if (!this.cardPressTimer || !this.cardPressStart) {
+          return;
+        }
+        var dx = event.clientX - this.cardPressStart.x;
+        var dy = event.clientY - this.cardPressStart.y;
+        if (dx * dx + dy * dy > 100) {
+          this.clearCardPressTimer();
+        }
+      },
+      onCardPressEnd() {
+        this.clearCardPressTimer();
+      },
+      // PC の右クリック。Android は長押しでも来るので、出ていれば何もしない。
+      onCardContextMenu(category) {
+        if (this.editMode || this.cardMenuVisible) {
+          return;
+        }
+        this.clearCardPressTimer();
+        this.openCardMenu(category);
+      },
+      onCardMenuAction(action) {
+        var category = this.cardMenuTarget;
+        this.cardMenuVisible = false;
+        if (!category) {
+          return;
+        }
+        if (action === "edit") {
+          this.openEditDialog(category);
+        } else if (action === "duplicate") {
+          this.duplicate(category);
+        } else if (action === "delete") {
+          this.confirmDelete(category);
+        }
       },
       confirmDelete(category) {
         this.deleteTarget = category;
@@ -190,7 +266,18 @@
               sm="4"
               md="3"
             >
-              <v-card outlined ripple class="dabimas-category-card" @click="onCardClick(category)">
+              <v-card
+                outlined
+                ripple
+                class="dabimas-category-card"
+                @click="onCardClick(category)"
+                @pointerdown="onCardPressStart($event, category)"
+                @pointermove="onCardPressMove"
+                @pointerup="onCardPressEnd"
+                @pointerleave="onCardPressEnd"
+                @pointercancel="onCardPressEnd"
+                @contextmenu.prevent="onCardContextMenu(category)"
+              >
                 <div v-if="editMode" class="dabimas-category-duplicate">
                   <v-btn
                     x-small
@@ -241,6 +328,25 @@
         </v-container>
 
         <category-dialog v-model="dialogVisible" :category="dialogCategory"></category-dialog>
+
+        <!-- 配合のカードの長押し（PC は右クリック）で出す編集メニュー -->
+        <v-bottom-sheet v-model="cardMenuVisible" max-width="480" content-class="dabimas-card-menu">
+          <v-list v-if="cardMenuTarget">
+            <v-subheader class="dabimas-card-menu-title">{{ cardMenuTarget.name }}</v-subheader>
+            <v-list-item @click="onCardMenuAction('edit')">
+              <v-list-item-icon><v-icon>mdi-pencil</v-icon></v-list-item-icon>
+              <v-list-item-title>名前・アイコンを変更</v-list-item-title>
+            </v-list-item>
+            <v-list-item :disabled="duplicating" @click="onCardMenuAction('duplicate')">
+              <v-list-item-icon><v-icon>mdi-content-copy</v-icon></v-list-item-icon>
+              <v-list-item-title>複製</v-list-item-title>
+            </v-list-item>
+            <v-list-item class="dabimas-card-menu-delete" @click="onCardMenuAction('delete')">
+              <v-list-item-icon><v-icon color="error">mdi-delete</v-icon></v-list-item-icon>
+              <v-list-item-title>削除</v-list-item-title>
+            </v-list-item>
+          </v-list>
+        </v-bottom-sheet>
 
         <v-dialog v-model="deleteDialogVisible" max-width="320">
           <v-card v-if="deleteTarget">

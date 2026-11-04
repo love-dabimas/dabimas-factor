@@ -111,6 +111,10 @@
   border-radius: 12px !important;
   cursor: pointer;
   padding: 12px 8px;
+  /* 長押しで編集メニューを出すので、iPhone の文字選択・長押しメニューを止める。 */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .dabimas-category-card-body {
@@ -1720,4 +1724,17 @@ td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
 .exp-mobile-autocomplete-root .exp-mobile-horse-trigger .mdi.exp-mobile-horse-memo-mark {
   color: #5b45b0 !important;
   font-size: 12px;
+}
+
+/* ホームの配合を長押しで出す編集メニュー */
+.dabimas-card-menu .v-list {
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}
+
+.dabimas-card-menu .dabimas-card-menu-title {
+  font-weight: 600;
+}
+
+.dabimas-card-menu .dabimas-card-menu-delete .v-list-item__title {
+  color: #d32f2f;
 }

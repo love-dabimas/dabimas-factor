@@ -916,3 +916,18 @@ html.dabimas-dark td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-
 html.dabimas-dark .exp-mobile-autocomplete-root .exp-mobile-horse-trigger .mdi.exp-mobile-horse-memo-mark {
   color: var(--dk-accent) !important;
 }
+
+/* ホームの配合を長押しで出す編集メニュー（明るい側は unified.css）。 */
+html.dabimas-dark .dabimas-card-menu .v-list-item__title,
+html.dabimas-dark .dabimas-card-menu .v-list-item .v-icon:not(.error--text) {
+  color: var(--dk-text) !important;
+}
+
+html.dabimas-dark .dabimas-card-menu .dabimas-card-menu-title {
+  color: var(--dk-muted);
+}
+
+html.dabimas-dark .dabimas-card-menu .dabimas-card-menu-delete .v-list-item__title,
+html.dabimas-dark .dabimas-card-menu .dabimas-card-menu-delete .v-icon {
+  color: #ff6b7d !important;
+}
