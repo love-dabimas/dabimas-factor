@@ -28,9 +28,26 @@
     return Array.from(new Set(A.concat(B))).length;
   }
 
-  // 両方に nodeId があれば同一ノードで照合し、片方でも無ければ名前へ縮退する。
-  function isMiracleMatch(a, b) {
+  // 馬の奇跡グループ（kiseki_group_id）。血統ノード表が無い・グループの無い馬は null。
+  function kisekiOf(horse, nodeTable) {
+    if (!nodeTable || !horse) return null;
+    var pedigreeId = horse.pedigreeId;
+    if (pedigreeId == null && typeof horse.nodeId === "string") {
+      var node = nodeTable.getNode(horse.nodeId);
+      pedigreeId = node ? node.pedigreeId : null;
+    }
+    var pedigree = pedigreeId != null ? nodeTable.getPedigree(pedigreeId) : null;
+    return pedigree && pedigree.kiseki != null ? pedigree.kiseki : null;
+  }
+
+  // 同じ版（nodeId）か、同じ奇跡グループなら一致とする（設計 §7.2.5）。
+  // 版が違う同じ馬（ホーンビーム央瓏と神煌など）はグループで拾う。グループは
+  // 別の実馬どうし（グリーングラスとグランディなど）をまとめていることもある。
+  // グループの無い馬は版の一致だけで見て、片方でも nodeId が無ければ名前へ縮退する。
+  function isMiracleMatch(a, b, nodeTable) {
     if (!a || !b) return false;
+    var kisekiA = kisekiOf(a, nodeTable);
+    if (kisekiA != null && kisekiA === kisekiOf(b, nodeTable)) return true;
     if (typeof a.nodeId === "string" && typeof b.nodeId === "string") {
       return a.nodeId === b.nodeId;
     }
@@ -61,8 +78,9 @@
 
     if (perfect) {
       var motherThirdGeneration = selected[19];
+      var nodeTable = safeContext.nodeTable || window.Dabimas.pedigreeNodes || null;
       var miracleMatchCount = [4, 5, 6, 7].filter(function (index) {
-        return isMiracleMatch(selected[index], motherThirdGeneration);
+        return isMiracleMatch(selected[index], motherThirdGeneration, nodeTable);
       }).length;
       if (miracleMatchCount === 1) matched.push("MIRACLE");
     }
