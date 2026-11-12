@@ -1039,11 +1039,11 @@
           if (typeof window === "undefined" || !window.localStorage) {
             return;
           }
-          window.localStorage.setItem(
+          window.Dabimas.logic.storage.working.setItem(
             "dabimasFactor",
             JSON.stringify(this.serializeSelectedForStorage(this.selected))
           );
-          window.localStorage.setItem(
+          window.Dabimas.logic.storage.working.setItem(
             "dabimasFactorCategory",
             JSON.stringify(this.category)
           );

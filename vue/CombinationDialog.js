@@ -207,14 +207,14 @@ Vue.component('combination-dialog', {
       this.saving = true;
 
       try {
-        const dabimasFactor = localStorage.getItem('dabimasFactor');
+        const dabimasFactor = window.Dabimas.logic.storage.working.getItem('dabimasFactor');
         const configData = {
           dabimasFactor: dabimasFactor,
-          dabimasFactorCategory: localStorage.getItem('dabimasFactorCategory'),
-          dabimasMemo: localStorage.getItem('dabimasMemo'),
-          dabimasMemoStallion: localStorage.getItem('dabimasMemoStallion'),
-          dabimasMemoBroodmare: localStorage.getItem('dabimasMemoBroodmare'),
-          dabimasManualInbreed: localStorage.getItem('dabimasManualInbreed')
+          dabimasFactorCategory: window.Dabimas.logic.storage.working.getItem('dabimasFactorCategory'),
+          dabimasMemo: window.Dabimas.logic.storage.working.getItem('dabimasMemo'),
+          dabimasMemoStallion: window.Dabimas.logic.storage.working.getItem('dabimasMemoStallion'),
+          dabimasMemoBroodmare: window.Dabimas.logic.storage.working.getItem('dabimasMemoBroodmare'),
+          dabimasManualInbreed: window.Dabimas.logic.storage.working.getItem('dabimasManualInbreed')
         };
 
         // 指摘 D: この配合が参照する自家製馬レコードを config に同梱して
@@ -407,22 +407,22 @@ Vue.component('combination-dialog', {
         const configData = config.configData;
 
         if (configData.dabimasFactor) {
-          localStorage.setItem('dabimasFactor', configData.dabimasFactor);
+          window.Dabimas.logic.storage.working.setItem('dabimasFactor', configData.dabimasFactor);
         }
         if (configData.dabimasFactorCategory) {
-          localStorage.setItem('dabimasFactorCategory', configData.dabimasFactorCategory);
+          window.Dabimas.logic.storage.working.setItem('dabimasFactorCategory', configData.dabimasFactorCategory);
         }
         if (configData.dabimasMemo) {
-          localStorage.setItem('dabimasMemo', configData.dabimasMemo);
+          window.Dabimas.logic.storage.working.setItem('dabimasMemo', configData.dabimasMemo);
         }
         if (configData.dabimasMemoStallion) {
-          localStorage.setItem('dabimasMemoStallion', configData.dabimasMemoStallion);
+          window.Dabimas.logic.storage.working.setItem('dabimasMemoStallion', configData.dabimasMemoStallion);
         }
         if (configData.dabimasMemoBroodmare) {
-          localStorage.setItem('dabimasMemoBroodmare', configData.dabimasMemoBroodmare);
+          window.Dabimas.logic.storage.working.setItem('dabimasMemoBroodmare', configData.dabimasMemoBroodmare);
         }
         if (configData.dabimasManualInbreed) {
-          localStorage.setItem('dabimasManualInbreed', configData.dabimasManualInbreed);
+          window.Dabimas.logic.storage.working.setItem('dabimasManualInbreed', configData.dabimasManualInbreed);
         }
 
         // 指摘 D: 同梱された自家製馬を customHorses store へ書き戻す。

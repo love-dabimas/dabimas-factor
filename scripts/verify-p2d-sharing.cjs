@@ -25,7 +25,9 @@ async function main() {
   const db={transaction:()=>({objectStore:()=>({get:()=>{
     const request={}; queueMicrotask(()=>{request.result={title:'shared',configData};request.onsuccess();}); return request;
   }})})};
-  context.localStorage={setItem:(k,v)=>restoredSnapshot.set(k,v)};
+  // 編集中の血統表は working（タブごとの保存先）経由で書く。
+  window.Dabimas.logic.storage=window.Dabimas.logic.storage||{};
+  window.Dabimas.logic.storage.working={setItem:(k,v)=>restoredSnapshot.set(k,v)};
   let emitted;
   await methods.restoreConfig.call({...methods,db,selectedId:1,writeCustomHorses:async rows=>rows.forEach(r=>received.set(r.id,r)),
     showToast:()=>{},close:()=>{},$emit:(event,value)=>{assert.equal(event,'restore');assert.equal(savedEdits.length,1);emitted=value;}});

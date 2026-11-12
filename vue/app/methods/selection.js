@@ -67,17 +67,17 @@
         },
         memoChange: function (index, input) {
           this.$set(this.inputed, index, input);
-          localStorage.setItem("dabimasMemo", JSON.stringify(this.inputed));
+          window.Dabimas.logic.storage.working.setItem("dabimasMemo", JSON.stringify(this.inputed));
           window.Dabimas.workspaceSync?.notifyLocalChange();
         },
         memoChangeStallion: function (input) {
           this.inputedMemoStallion = input;
-          localStorage.setItem("dabimasMemoStallion", this.inputedMemoStallion);
+          window.Dabimas.logic.storage.working.setItem("dabimasMemoStallion", this.inputedMemoStallion);
           window.Dabimas.workspaceSync?.notifyLocalChange();
         },
         memoChangeBroodmare: function (input) {
           this.inputedMemoBroodmare = input;
-          localStorage.setItem("dabimasMemoBroodmare", this.inputedMemoBroodmare);
+          window.Dabimas.logic.storage.working.setItem("dabimasMemoBroodmare", this.inputedMemoBroodmare);
           window.Dabimas.workspaceSync?.notifyLocalChange();
         },
         // ドロップダウンリスト選択時

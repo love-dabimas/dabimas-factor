@@ -139,15 +139,15 @@
         },
         // 復元処理
         restoreInputData: async function () {
-          const parseArray = JSON.parse(localStorage.getItem("dabimasFactor"));
+          const parseArray = JSON.parse(window.Dabimas.logic.storage.working.getItem("dabimasFactor"));
           // 【最適化】不要なArray.fromを削減
           // ローカルストレージから取得したものでnull要素は排除してからセット
           const filteredArray = parseArray.filter((v) => v);
           this.refreshCandidateLists(filteredArray, [
             parseArray[16] ? parseArray[16] : "",
           ]);
-          this.selected = JSON.parse(localStorage.getItem("dabimasFactor"));
-          this.category = JSON.parse(localStorage.getItem("dabimasFactorCategory"));
+          this.selected = JSON.parse(window.Dabimas.logic.storage.working.getItem("dabimasFactor"));
+          this.category = JSON.parse(window.Dabimas.logic.storage.working.getItem("dabimasFactorCategory"));
 
           await this.backfillPedigreeIds();
 
@@ -190,11 +190,11 @@
         },
         initializer() {
           // localStorageをクリア
-          localStorage.removeItem("dabimasFactor");
-          localStorage.removeItem("dabimasMemo");
-          localStorage.removeItem("dabimasMemoStallion");
-          localStorage.removeItem("dabimasMemoBroodmare");
-          localStorage.removeItem(MANUAL_INBREED_STORAGE_KEY);
+          window.Dabimas.logic.storage.working.removeItem("dabimasFactor");
+          window.Dabimas.logic.storage.working.removeItem("dabimasMemo");
+          window.Dabimas.logic.storage.working.removeItem("dabimasMemoStallion");
+          window.Dabimas.logic.storage.working.removeItem("dabimasMemoBroodmare");
+          window.Dabimas.logic.storage.working.removeItem(MANUAL_INBREED_STORAGE_KEY);
 
           this.selected = Array.from(new Array(32).fill(null));
           this.category = Array.from(new Array(32).fill(null));

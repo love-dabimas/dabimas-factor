@@ -30,6 +30,7 @@
   var workspaceRepo = window.Dabimas.repositories.workspaces;
   var appMetaRepo = window.Dabimas.repositories.appMeta;
   var localStorageHelper = window.Dabimas.logic.storage.localStorage;
+  var workingStorage = window.Dabimas.logic.storage.working;
 
   // snapshot の短縮キー名 ⇔ localStorage の実キー名の対応（統合版仕様 §12.2）。
   var SNAPSHOT_KEY_MAP = {
@@ -57,10 +58,20 @@
   var flushDebounceTimer = null;
   var lastFlushedSnapshotString = null;
 
+  // 編集中の血統表（このタブの分）を snapshot の形で読む。
   function readSnapshotFromLocalStorage() {
+    return readSnapshotFrom(workingStorage);
+  }
+
+  // 統合版より前の版が localStorage に残した血統表を読む（初回の移行だけで使う）。
+  function readLegacySnapshot() {
+    return readSnapshotFrom(window.localStorage);
+  }
+
+  function readSnapshotFrom(storage) {
     var snapshot = {};
     Object.keys(SNAPSHOT_KEY_MAP).forEach(function (shortKey) {
-      snapshot[shortKey] = window.localStorage.getItem(SNAPSHOT_KEY_MAP[shortKey]);
+      snapshot[shortKey] = storage.getItem(SNAPSHOT_KEY_MAP[shortKey]);
     });
     return snapshot;
   }
@@ -262,7 +273,7 @@
       if (migrationDone) {
         return false;
       }
-      var snapshot = readSnapshotFromLocalStorage();
+      var snapshot = readLegacySnapshot();
       if (!hasAnyLegacyData(snapshot)) {
         return appMetaRepo
           .set("migrationDone", true)
@@ -325,6 +336,8 @@
       .catch(function (error) {
         console.error("workspace-sync boot failed", error);
         state.dbUnavailable = true;
+        // 配合を残す先が無いので、編集中の血統表を従来どおり localStorage に置く。
+        workingStorage.useShared();
         window.Dabimas.workspaceSync.resolvedInitialScreen = "category";
         return { currentScreen: "category" };
       });

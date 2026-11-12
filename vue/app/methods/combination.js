@@ -229,24 +229,24 @@
           // 開いた直後の血統表で危険が見つかっても、結果パネルは勝手に開かない。
           this.resetPlanAutoBaseline();
           try {
-            if (JSON.parse(localStorage.getItem("dabimasFactor"))) {
+            if (JSON.parse(window.Dabimas.logic.storage.working.getItem("dabimasFactor"))) {
               await this.restoreInputData();
             }
-            if (JSON.parse(localStorage.getItem("dabimasMemo"))) {
-              const parseArray = JSON.parse(localStorage.getItem("dabimasMemo"));
+            if (JSON.parse(window.Dabimas.logic.storage.working.getItem("dabimasMemo"))) {
+              const parseArray = JSON.parse(window.Dabimas.logic.storage.working.getItem("dabimasMemo"));
               this.inputed = parseArray;
             } else {
               this.inputed = Array.from(new Array(32).fill(null));
             }
-            if (localStorage.getItem("dabimasMemoStallion")) {
-              this.inputedMemoStallion = localStorage.getItem(
+            if (window.Dabimas.logic.storage.working.getItem("dabimasMemoStallion")) {
+              this.inputedMemoStallion = window.Dabimas.logic.storage.working.getItem(
                 "dabimasMemoStallion"
               );
             } else {
               this.inputedMemoStallion = null;
             }
-            if (localStorage.getItem("dabimasMemoBroodmare")) {
-              this.inputedMemoBroodmare = localStorage.getItem(
+            if (window.Dabimas.logic.storage.working.getItem("dabimasMemoBroodmare")) {
+              this.inputedMemoBroodmare = window.Dabimas.logic.storage.working.getItem(
                 "dabimasMemoBroodmare"
               );
             } else {
