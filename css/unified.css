@@ -1738,3 +1738,15 @@ td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
 .dabimas-card-menu .dabimas-card-menu-delete .v-list-item__title {
   color: #d32f2f;
 }
+
+/* PC の系統表示の集計で、行の見出し「色」。赤い帯の上なので、下の「系統数」
+   「出現数」と同じく白い文字にする（既定の黒だと読みにくい）。 */
+.sire-line-summary--desktop .sire-line-summary-color-head {
+  color: #fff;
+}
+
+/* 行の見出し（系統数・出現数）は PC の狭い幅でも 1 行に収める。 */
+.sire-line-summary--desktop .f00_nitro,
+.sire-line-summary--desktop .f00_inbreed:not(.sire-line-summary-back) {
+  white-space: nowrap;
+}

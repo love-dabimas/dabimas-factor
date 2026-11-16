@@ -263,6 +263,9 @@
               >
                 <v-icon size="x-large" color="white">mdi-arrow-left</v-icon>
               </th>
+              <!-- ニトロ・クロス表示と同じく、帯の色の余白をはさんでから縦書きの
+                   見出しを置く。余白が無いと戻るボタンとくっついて「←系統」に見える。 -->
+              <th rowspan="3" class="f00_inbreed_space"></th>
               <th
                 width="1%"
                 rowspan="3"
@@ -273,7 +276,7 @@
                    ぶんを割り振ったあとの余りが全部ここへ来て、PC幅では 790px の
                    赤い帯になっていた（1366px のうち6割）。ニトロ・クロス側の
                    見出しと同じ 1% にして、余りは①〜⑨の列へ回す。 -->
-              <th width="5%" class="f00_inbreed_header">色</th>
+              <th width="4%" class="f00_inbreed_header sire-line-summary-color-head">色</th>
               <th
                 v-for="bucket in sireLineBuckets"
                 :key="'desktop-head-' + bucket.index"
@@ -298,7 +301,7 @@
               ><v-icon size="x-large" color="white">mdi-reload</v-icon></th>
             </tr>
             <tr>
-              <th width="5%" class="f00_nitro">系統数</th>
+              <th width="4%" class="f00_nitro">系統数</th>
               <td
                 v-for="bucket in sireLineBuckets"
                 :key="'desktop-distinct-' + bucket.index"
@@ -307,7 +310,7 @@
               >{{ sireLineBucketValue('distinct', bucket.index) }}</td>
             </tr>
             <tr>
-              <th width="5%" class="f00_inbreed">出現数</th>
+              <th width="4%" class="f00_inbreed">出現数</th>
               <td
                 v-for="bucket in sireLineBuckets"
                 :key="'desktop-total-' + bucket.index"
