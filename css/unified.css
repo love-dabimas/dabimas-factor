@@ -1750,3 +1750,26 @@ td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
 .sire-line-summary--desktop .f00_inbreed:not(.sire-line-summary-back) {
   white-space: nowrap;
 }
+
+/* PC の系統表示の集計は、ニトロ・クロス表示と同じ 84px の高さにそろえる。
+   切り替えるたびに下の血統表が上下に動かないようにするため。
+   色の見出しの行＝ニトロの因子名の行（32px）、系統数・出現数は 26px ずつ。
+   ニトロの数字の行（50px・20px の文字）をそのまま 2 段にすると 125px になっていた。 */
+.sire-line-summary--desktop > tr:first-child > th {
+  height: 32px;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1;
+}
+
+.sire-line-summary--desktop > tr:nth-child(2) > *,
+.sire-line-summary--desktop > tr:nth-child(3) > * {
+  height: 26px;
+  padding-top: 0;
+  padding-bottom: 0;
+  line-height: 1;
+}
+
+.sire-line-summary--desktop .factorNumCell {
+  font-size: 18px;
+}
