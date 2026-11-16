@@ -991,6 +991,13 @@
   white-space: nowrap;
 }
 
+/* PC のニトロ・クロス表示では、理論のマスが幅 約140px・高さ 50px と広く、
+   まわりの因子の数字も 20px なので、12px だと小さく見える。数字にそろえる。
+   スマホ（exp-mobile-layout）と PC の系統表示（相性の小さいマス）は 12px のまま。 */
+.v-application:not(.exp-mobile-layout) header tbody:not(.sire-line-summary) .theory-remaining {
+  font-size: 20px;
+}
+
 /* リセット（血統表を空にする）の確認ダイアログ。消えるもの・残るものを並べて見せる。 */
 .v-dialog.dabimas-reset-dialog {
   border-radius: 18px;
