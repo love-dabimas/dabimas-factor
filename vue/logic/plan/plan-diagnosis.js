@@ -93,9 +93,74 @@
   // 片側の母系から工程一覧を作る。工程の種牡馬は「一つ浅い牝馬の父」セル。
   // 繁殖牝馬側（minDepth 0）の最後の工程は種牡馬側のセル 0（画面左側の種牡馬）、
   // 種牡馬側（minDepth 1）の最後の工程はセル 1（左側の種牡馬の父）になる。
+  // 牝馬を選ぶと、その牝馬の祖先のマスにはすべて "(牝馬名)" が付く。一つ浅いマスと
+  // 同じ牝馬名なら、それは浅い側の牝馬から引き継いだ飾りで、その深さの牝馬の名前では
+  // ない。自分で選んだマスの印が無い種牡馬側では、これを見ないと一つ深く数えてしまい、
+  // 牝馬をその父に付ける工程（例: センドバック × ダマスカス）が出来てしまう。
+  function settleInheritedMareDepth(selected, sideOffset, depth, minDepth) {
+    while (depth > Math.max(minDepth, 1)) {
+      var name = readMareNameFromCell(selected[sideOffset + maternalSireCell(depth)]);
+      var shallower = readMareNameFromCell(
+        selected[sideOffset + maternalSireCell(depth - 1)]
+      );
+      if (!name || name !== shallower) {
+        break;
+      }
+      depth -= 1;
+    }
+    return depth;
+  }
+
+  function hasSelfSelectedMare(selected, sideOffset) {
+    for (var depth = 1; depth <= MAX_BASE_DEPTH; depth += 1) {
+      var entry = selected[sideOffset + maternalSireCell(depth)];
+      if (entry && entry.selfSelected === true) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // 組んだ種牡馬（自家製馬）の母系を、保存した父母の参照で辿る。自家製・仮の牝馬の
+  // 間は工程の途中なので深く進み、公式の牝馬に着いたらそこが基礎繁殖牝馬になる。
+  // 例: ☆バステッドの牡馬 → 母 ☆（アドミラルドレイク × センドバック）→ 母 センドバック
+  //     なら深さ 2・センドバックが基礎で、2 工程になる。辿れなければ null。
+  function walkBuiltMareChain(selected, resolver, sideOffset) {
+    var ref = selected[sideOffset] && selected[sideOffset].identityRef;
+    if (!ref || !resolver || !resolver.parentsOf) {
+      return null;
+    }
+    for (var depth = 1; depth <= MAX_BASE_DEPTH; depth += 1) {
+      var parents = resolver.parentsOf(ref);
+      var mother = parents ? parents.mother : null;
+      if (!mother || mother.kind === "unknown") {
+        return null;
+      }
+      if (mother.kind !== "custom" && mother.kind !== "implied") {
+        return { depth: depth, ref: mother };
+      }
+      ref = mother;
+    }
+    return null;
+  }
+
   function detectChainPlan(selected, resolver, sideOffset, minDepth) {
-    var baseDepth = detectBaseDepth(selected, sideOffset, minDepth);
-    var baseMareRef = mareRefAtDepth(selected, baseDepth, sideOffset);
+    var baseDepth = settleInheritedMareDepth(
+      selected,
+      sideOffset,
+      detectBaseDepth(selected, sideOffset, minDepth),
+      minDepth
+    );
+    var walkedBase =
+      minDepth > 0 && !hasSelfSelectedMare(selected, sideOffset)
+        ? walkBuiltMareChain(selected, resolver, sideOffset)
+        : null;
+    if (walkedBase) {
+      baseDepth = Math.max(walkedBase.depth, minDepth);
+    }
+    var baseMareRef = walkedBase
+      ? walkedBase.ref
+      : mareRefAtDepth(selected, baseDepth, sideOffset);
     while (
       baseDepth < MAX_BASE_DEPTH &&
       resolver &&

@@ -134,4 +134,43 @@ const loopQue = pedigree.getCellIdQue(0, Object.assign(new Array(16).fill(null),
 }));
 assert.ok(loopQue.length <= 16, "セル0を繁殖牝馬の経路で展開しても止まる");
 
+// 5) 自家製の母の母が公式の牝馬なら、そこが基礎繁殖牝馬で 2 工程になる（#14）。
+//    3 代目の "(センドバック)" はセンドバックの祖先に付く飾りで、3 代目の牝馬の名前ではない。
+//    これを読み違えると「センドバック × ダマスカス（センドバックの父）」の工程が出来て危険になる。
+const sendBack = find("センドバック");
+const admiralMare = custom("broodmare", "ア牝", find("アドミラルドレイク", "瞬闘"), sendBack);
+// テスト用の uuid は盤面を作るたびに振り直されるので、2 頭の id が重ならないように付け直す。
+admiralMare.id = "ch_admiral_mare";
+admiralMare.identityRef = { kind: "custom", id: admiralMare.id };
+const bustedStallion = custom("stallion", "バステッドの牡馬", find("バステッド", "1967"), admiralMare);
+bustedStallion.id = "ch_busted_stallion";
+bustedStallion.identityRef = { kind: "custom", id: bustedStallion.id };
+const bustedResolver = pedigree.buildIdentityResolver({
+  nodeTable: table,
+  customRecordsById: Object.fromEntries(
+    [admiralMare, bustedStallion].map((record) => [record.id, record])
+  ),
+});
+const bustedById = new Map([admiralMare, bustedStallion].map((record) => [record.id, record]));
+const bustedResult = plan.diagnoseBreedingPlan({
+  selected: board(bustedStallion, mezon),
+  brosData: bros,
+  nodeTable: table,
+  resolver: bustedResolver,
+  inbreedExceptions: exceptions,
+  resolveHorse: (entry) => {
+    if (!entry) return null;
+    const customId = entry.customHorseId || (entry.identityRef?.kind === "custom" && entry.identityRef.id);
+    return (customId && bustedById.get(customId)) || byNodeId.get(entry.nodeId) || null;
+  },
+  resolveMareByRef: (ref) =>
+    ref?.kind === "master" ? byNodeId.get(ref.nodeId) || null : null,
+});
+const bustedSteps = sireSideSummary(bustedResult);
+console.log("バステッド:", JSON.stringify(bustedSteps));
+assert.equal(bustedResult.sireSide.baseMareName, "センドバック");
+assert.deepEqual(bustedSteps.map((step) => step.sireIndex), [3, 1],
+  "センドバック × アドミラルドレイク、その産駒 × バステッドの 2 工程");
+assert.ok(bustedSteps.every((step) => step.status === "safe"), "父と娘の工程は作らない");
+
 console.log("OK: 組んだ種牡馬（自家製・★薄め）の母系も種牡馬側の工程として診断される");
