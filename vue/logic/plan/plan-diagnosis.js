@@ -169,6 +169,12 @@
     var source = readMareNameFromCell(record)
       ? Object.assign({}, record, { subName: "" })
       : record;
+    // 祖先のマスから引いた馬（種牡馬側の工程の種牡馬など）は性別を持たない。
+    // そのまま渡すと setDataForPedigree が繁殖牝馬として展開し、上と同じく
+    // getCellIdQue が戻ってこない。牝馬と明示されていなければ種牡馬として展開する。
+    if (side === 0 && source && source.sex !== "0") {
+      source = Object.assign({}, source, { sex: "0" });
+    }
     var list = pedigree.setDataForPedigree(side, 0, source, brosData);
     var que = pedigree.getCellIdQue(0, list);
     var board = new Array(ROWS_PER_SIDE).fill(null);

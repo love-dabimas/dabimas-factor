@@ -902,6 +902,12 @@
           while (index !== -1) {
             is_checked[index] = true;
 
+            // 歯止め: セル0から繁殖牝馬の経路に入ると 0 を積み続けて戻ってこない。
+            // 片側 16 マスを超えて積むことは無いので、そこで打ち切る。
+            if (cell_id_que.length >= 16) {
+              break;
+            }
+
             if (2 * cell_id_que[index] < max_cell_id) {
               if (
                 i === 1 &&
@@ -928,7 +934,7 @@
             index = is_checked.indexOf(false);
           }
 
-          return cell_id_que;
+          return cell_id_que.length > 16 ? cell_id_que.slice(0, 16) : cell_id_que;
         }
 
   window.Dabimas.logic.pedigree.generateUuid = generateUuid;

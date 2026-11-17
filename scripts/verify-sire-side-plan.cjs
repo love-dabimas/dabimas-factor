@@ -118,4 +118,20 @@ const mareSteps = plain(customResult.steps.map((step) => step.sireIndex));
 assert.equal(mareSteps[mareSteps.length - 1], 0, "繁殖牝馬側の最後の工程は左上の種牡馬");
 assert.ok(mareSteps.every((index) => index === 0 || index >= 16), "繁殖牝馬側の工程に種牡馬側のマスは混ざらない");
 
+// 4) 祖先のマスから引いた種牡馬は性別を持たない（画面では {...セル, descendants} の形）。
+//    これを繁殖牝馬として展開すると getCellIdQue が戻らず、画面が固まった（#13）。
+const damascus = find("ダマスカス", "1967");
+const sexless = Object.assign({}, damascus);
+delete sexless.sex;
+assert.deepEqual(
+  plain(plan.expandHorseBoard(sexless, bros)).map((cell) => cell && cell.name),
+  plain(plan.expandHorseBoard(damascus, bros)).map((cell) => cell && cell.name),
+  "性別の無い馬も種牡馬として展開する"
+);
+const loopQue = pedigree.getCellIdQue(0, Object.assign(new Array(16).fill(null), {
+  0: { subName: "(牝馬)" },
+  15: "broodmares",
+}));
+assert.ok(loopQue.length <= 16, "セル0を繁殖牝馬の経路で展開しても止まる");
+
 console.log("OK: 組んだ種牡馬（自家製・★薄め）の母系も種牡馬側の工程として診断される");
