@@ -224,21 +224,41 @@
     return detectChainPlan(selected, resolver, 0, 1);
   }
 
+  // 血統を組み立てるときの牡牝。血統表のマスから取り出した馬は、マスを組み立てた
+  // ときに位置から決めた印（sexKind）を持つ。祖先のマスの馬は性別欄（sex）が空なので、
+  // 印があればそれを使う。印の無い馬（公式の馬・保存した自家製馬そのもの）は性別欄で
+  // 決める。どちらも無ければ null（組み立てられない）。
+  function boardSexOf(record) {
+    if (!record) {
+      return null;
+    }
+    if (record.sexKind === "female") {
+      return "1";
+    }
+    if (record.sexKind === "male") {
+      return "0";
+    }
+    if (record.sex === "0" || record.sex === "1") {
+      return record.sex;
+    }
+    return null;
+  }
+
   // 1頭ぶんの血統（16セル）を、既存の血統表展開処理そのままで作る。
   function expandHorseBoard(record, brosData) {
     var pedigree = window.Dabimas.logic.pedigree;
-    var side = record && record.sex === "1" ? 1 : 0;
+    var sex = boardSexOf(record);
+    if (sex === null) {
+      // 牡牝が分からないまま組み立てると、繁殖牝馬の経路に入って戻ってこない（#13）。
+      throw new Error("牡牝の分からない馬は血統を組み立てられません: " + (record && record.name));
+    }
+    var side = sex === "1" ? 1 : 0;
     // 牝馬を置いたセルの父は subName が "(牝馬名)" に差し替わっている。その形のまま
     // セル0として展開すると getCellIdQue が「繁殖牝馬を選んだ」経路に入り、
     // セル0を積み続けて戻ってこない。血統を展開するだけならこの飾りは要らない。
-    var source = readMareNameFromCell(record)
-      ? Object.assign({}, record, { subName: "" })
-      : record;
-    // 祖先のマスから引いた馬（種牡馬側の工程の種牡馬など）は性別を持たない。
-    // そのまま渡すと setDataForPedigree が繁殖牝馬として展開し、上と同じく
-    // getCellIdQue が戻ってこない。牝馬と明示されていなければ種牡馬として展開する。
-    if (side === 0 && source && source.sex !== "0") {
-      source = Object.assign({}, source, { sex: "0" });
+    var source = Object.assign({}, record, { sex: sex });
+    if (readMareNameFromCell(record)) {
+      source.subName = "";
     }
     var list = pedigree.setDataForPedigree(side, 0, source, brosData);
     var que = pedigree.getCellIdQue(0, list);
