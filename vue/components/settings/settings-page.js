@@ -125,7 +125,7 @@
                 <v-list-item-title>クロスのハートの色</v-list-item-title>
                 <v-list-item-subtitle>旧は 自動＝灰色、手で指定＝ピンク</v-list-item-subtitle>
                 <v-btn-toggle v-model="heartColor" mandatory dense class="dabimas-theme-toggle">
-                  <v-btn value="modern" small>今の色分け</v-btn>
+                  <v-btn value="modern" small>標準</v-btn>
                   <v-btn value="classic" small>旧ダビふぁく</v-btn>
                 </v-btn-toggle>
               </v-list-item-content>
