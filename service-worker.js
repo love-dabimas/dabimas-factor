@@ -31,6 +31,7 @@ var urlsToCache = [
   BASE_PATH + 'css/dark.css',
   BASE_PATH + 'vue/logic/theme.js',
   BASE_PATH + 'vue/logic/name-size.js',
+  BASE_PATH + 'vue/logic/heart-color.js',
   BASE_PATH + 'css/loading.css',
   BASE_PATH + 'css/materialdesignicons.min.css',
   BASE_PATH + 'css/notosansjapanese.css',

@@ -1725,6 +1725,28 @@ td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
   color: #8e44c9 !important;
 }
 
+/* 設定で「旧ダビふぁくと同じ」を選んだときのハート（vue/logic/heart-color.js が
+   html.dabimas-heart-classic を付ける）。11月の色分けより前の色に戻す：
+   自動で決まったクロスは灰色（至高も灰色）、手で指定したクロスはピンク。
+   至高のマスの紫より強くするため、至高の形の選択子も並べる。 */
+html.dabimas-heart-classic .exp-mobile-layout td .exp-mobile-icon-btn--auto,
+html.dabimas-heart-classic .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--auto {
+  color: #9e9e9e !important;
+  opacity: 0.75;
+}
+
+html.dabimas-heart-classic .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon,
+html.dabimas-heart-classic td.inbreed-heart--supreme .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon {
+  color: #9e9e9e !important;
+}
+
+html.dabimas-heart-classic .exp-mobile-layout td .exp-mobile-icon-btn--active,
+html.dabimas-heart-classic .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--active,
+html.dabimas-heart-classic .inbreed-heart-btn--manual.v-btn .v-icon,
+html.dabimas-heart-classic td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
+  color: #e91e63 !important;
+}
+
 /* 血統表のマスで、メモのある馬は ▼ の代わりにメモの印を出す。
    ▼（10px）より 2px だけ大きくして、形が潰れないようにする。 */
 /* クロスの赤（.inbreed の .mdi）より強くして、クロスの馬でも紫で出す。 */

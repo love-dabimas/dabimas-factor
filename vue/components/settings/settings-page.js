@@ -10,12 +10,14 @@
       var link = window.Dabimas.logic.musumeLink;
       var planAuto = window.Dabimas.logic.plan.autoSetting;
       var nameSize = window.Dabimas.logic.nameSize;
+      var heartColor = window.Dabimas.logic.heartColor;
       return {
         activeMenu: null,
         themeMode: theme ? theme.get() : "light",
         pedigreeOpen: !!(link && link.pedigreeOpen()),
         planAutoDiagnosis: planAuto.get(),
         nameSize: nameSize ? nameSize.get() : "small",
+        heartColor: heartColor ? heartColor.get() : "modern",
       };
     },
     watch: {
@@ -33,6 +35,10 @@
       nameSize: function (size) {
         var nameSize = window.Dabimas.logic.nameSize;
         if (nameSize) nameSize.set(size);
+      },
+      heartColor: function (mode) {
+        var heartColor = window.Dabimas.logic.heartColor;
+        if (heartColor) heartColor.set(mode);
       },
       planAutoDiagnosis: function (value) {
         this.$root.planAutoDiagnosis = window.Dabimas.logic.plan.autoSetting.set(value);
@@ -110,6 +116,17 @@
                 <v-btn-toggle v-model="nameSize" mandatory dense class="dabimas-theme-toggle">
                   <v-btn value="large" small>大</v-btn>
                   <v-btn value="small" small>小</v-btn>
+                </v-btn-toggle>
+              </v-list-item-content>
+            </v-list-item>
+            <v-list-item class="dabimas-theme-item">
+              <v-list-item-icon><v-icon>mdi-heart-outline</v-icon></v-list-item-icon>
+              <v-list-item-content>
+                <v-list-item-title>クロスのハートの色</v-list-item-title>
+                <v-list-item-subtitle>旧は 自動＝灰色、手で指定＝ピンク</v-list-item-subtitle>
+                <v-btn-toggle v-model="heartColor" mandatory dense class="dabimas-theme-toggle">
+                  <v-btn value="modern" small>今の色分け</v-btn>
+                  <v-btn value="classic" small>旧ダビふぁく</v-btn>
                 </v-btn-toggle>
               </v-list-item-content>
             </v-list-item>

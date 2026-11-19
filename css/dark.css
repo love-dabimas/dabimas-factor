@@ -913,6 +913,22 @@ html.dabimas-dark td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-
   color: #c79bf2 !important;
 }
 
+/* 設定で「旧ダビふぁくと同じ」を選んだときのハート（明るい側は unified.css）。
+   灰色とピンクの色相はそのままで、黒地で読める明るさにする。 */
+html.dabimas-dark.dabimas-heart-classic .exp-mobile-layout td .exp-mobile-icon-btn--auto,
+html.dabimas-dark.dabimas-heart-classic .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--auto,
+html.dabimas-dark.dabimas-heart-classic .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon,
+html.dabimas-dark.dabimas-heart-classic td.inbreed-heart--supreme .inbreed-heart-btn--auto.v-btn.v-btn--disabled .v-icon {
+  color: #8d88a3 !important;
+}
+
+html.dabimas-dark.dabimas-heart-classic .exp-mobile-layout td .exp-mobile-icon-btn--active,
+html.dabimas-dark.dabimas-heart-classic .exp-mobile-layout td.inbreed-heart--supreme .exp-mobile-icon-btn--active,
+html.dabimas-dark.dabimas-heart-classic .inbreed-heart-btn--manual.v-btn .v-icon,
+html.dabimas-dark.dabimas-heart-classic td.inbreed-heart--supreme .inbreed-heart-btn--manual.v-btn .v-icon {
+  color: #f06292 !important;
+}
+
 html.dabimas-dark .exp-mobile-autocomplete-root .exp-mobile-horse-trigger .mdi.exp-mobile-horse-memo-mark {
   color: var(--dk-accent) !important;
 }
