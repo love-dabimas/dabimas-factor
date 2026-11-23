@@ -268,10 +268,13 @@
     });
   }
 
+  // { freshDb, justMigrated } を返す。freshDb は「migrationDone が無かった＝
+  // データベースが空だった」こと。初めて開いたときのほか、ブラウザに保存データを
+  // 消されたあとも空になる（#17）。
   function runMigrationCheck() {
     return appMetaRepo.get("migrationDone").then(function (migrationDone) {
       if (migrationDone) {
-        return false;
+        return { freshDb: false, justMigrated: false };
       }
       var snapshot = readLegacySnapshot();
       if (!hasAnyLegacyData(snapshot)) {
@@ -281,13 +284,52 @@
             return appMetaRepo.set("schemaVersion", 1);
           })
           .then(function () {
-            return false;
+            return { freshDb: true, justMigrated: false };
           });
       }
       return migrateLegacyData(snapshot).then(function () {
-        return true;
+        return { freshDb: true, justMigrated: true };
       });
     });
+  }
+
+  // ===== 消された配合の拾い直し（#17）=====
+  // ブラウザは、保護を頼まれていないサイトの IndexedDB を、ディスクの空きが減った
+  // ときなどに丸ごと消すことがある。そのとき配合の一覧は消えるが、編集中の血統表は
+  // このタブの sessionStorage に残っている。データベースが空なのに編集中の血統表が
+  // あるなら、それを「復元した配合」として一覧に戻し、そのまま開く。
+  var RECOVERED_CATEGORY_NAME = "復元した配合";
+
+  function recoverWorkingSnapshot(freshDb) {
+    if (!freshDb) {
+      return Promise.resolve(null);
+    }
+    var snapshot = readSnapshotFromLocalStorage();
+    if (!snapshot.factor) {
+      return Promise.resolve(null);
+    }
+    return categoryRepo
+      .create({
+        name: RECOVERED_CATEGORY_NAME,
+        iconKey: "mdi-folder",
+        initialSnapshot: snapshot,
+      })
+      .then(function (result) {
+        return appMetaRepo.set("lastOpenedCategoryId", result.category.id).then(function () {
+          return result.category;
+        });
+      });
+  }
+
+  // ブラウザに保存データの保護を頼む（#17）。ブックマークしてあるサイトやよく使う
+  // サイトなら、Chrome は確認を出さずに受け入れる。断られても動きは変わらないので
+  // 結果は待たない。
+  function requestPersistentStorage() {
+    var storage = window.Dabimas.logic.storage.combinationStorage;
+    if (!storage || typeof storage.ensurePersistentStorage !== "function") {
+      return;
+    }
+    storage.ensurePersistentStorage().catch(function () {});
   }
 
   // ===== 起動シーケンス（統合版仕様 §9.1）=====
@@ -297,9 +339,16 @@
     return unifiedDb
       .openDB()
       .then(function () {
+        requestPersistentStorage();
         return runMigrationCheck();
       })
-      .then(function (justMigrated) {
+      .then(function (check) {
+        return recoverWorkingSnapshot(check.freshDb).then(function (recovered) {
+          return { justMigrated: check.justMigrated && !recovered };
+        });
+      })
+      .then(function (check) {
+        var justMigrated = check.justMigrated;
         return categoryRepo.getAll().then(function (categories) {
           state.categories = categories;
           if (justMigrated) {
