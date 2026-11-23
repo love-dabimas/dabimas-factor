@@ -1,5 +1,6 @@
 // cache name, cache files
 var CACHE_NAME = 'dabimas-factor-v20261123-01';
+var CACHE_PREFIX = 'dabimas-factor-';
 var BASE_PATH = self.location.pathname.replace(/\/service-worker\.js$/, '/');
 var APP_SHELL_URL = BASE_PATH + 'index.html';
 // プリキャッシュは「実行時に実際に使われるもの」だけに絞る。
@@ -271,7 +272,9 @@ self.addEventListener('activate', function (event) {
         return Promise.all(
           cacheNames
             .filter(function (cacheName) {
-              return cacheName !== CACHE_NAME;
+              // 同じ love-dabimas.github.io のダビ娘（dabimas-data-…）とキャッシュの
+              // 置き場を共有しているので、消すのは自分の古いキャッシュだけにする。
+              return cacheName.indexOf(CACHE_PREFIX) === 0 && cacheName !== CACHE_NAME;
             })
             .map(function (cacheName) {
               return caches.delete(cacheName);
