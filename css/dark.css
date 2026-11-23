@@ -947,3 +947,8 @@ html.dabimas-dark .dabimas-card-menu .dabimas-card-menu-delete .v-list-item__tit
 html.dabimas-dark .dabimas-card-menu .dabimas-card-menu-delete .v-icon {
   color: #ff6b7d !important;
 }
+
+/* バックアップの注意書き（#19）。暗い地でも読めるよう明るい赤にする。 */
+html.dabimas-dark .dabimas-backup-warning {
+  color: #ef9a9a;
+}

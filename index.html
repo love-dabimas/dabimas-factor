@@ -165,6 +165,16 @@
         </template>
       </v-snackbar>
 
+      <!-- 起動時の知らせ（保存データを控えから戻したときなど。#20） -->
+      <v-snackbar v-model="storageNotice.show" :timeout="-1" top multi-line>
+        {{ storageNotice.message }}
+        <template v-slot:action="{ attrs }">
+          <v-btn text v-bind="attrs" @click="storageNotice.show = false">
+            閉じる
+          </v-btn>
+        </template>
+      </v-snackbar>
+
 
       <main ref="appMain" v-show="currentScreen === 'category'">
         <v-container fluid>
@@ -253,6 +263,10 @@
   <script src="./vue/logic/storage/category-repository.js"></script>
   <script src="./vue/logic/storage/workspace-repository.js"></script>
   <script src="./vue/logic/storage/app-meta-repository.js"></script>
+  <!-- 保存データの控え（localStorage）とバックアップのファイル（#19, #20） -->
+  <script src="./vue/logic/storage/data-dump.js"></script>
+  <script src="./vue/logic/storage/storage-mirror.js"></script>
+  <script src="./vue/logic/storage/backup-file.js"></script>
   <script src="./vue/logic/workspace-sync.js"></script>
   <script src="./vue/logic/storage/edit-stallion-repository.js"></script>
   <script src="./vue/logic/storage/favorite-repository.js"></script>

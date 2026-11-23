@@ -1,5 +1,5 @@
 // cache name, cache files
-var CACHE_NAME = 'dabimas-factor-v20261123-02';
+var CACHE_NAME = 'dabimas-factor-v20261124-01';
 var CACHE_PREFIX = 'dabimas-factor-';
 var BASE_PATH = self.location.pathname.replace(/\/service-worker\.js$/, '/');
 var APP_SHELL_URL = BASE_PATH + 'index.html';
@@ -88,6 +88,9 @@ var urlsToCache = [
   BASE_PATH + 'vue/logic/storage/category-repository.js',
   BASE_PATH + 'vue/logic/storage/workspace-repository.js',
   BASE_PATH + 'vue/logic/storage/app-meta-repository.js',
+  BASE_PATH + 'vue/logic/storage/data-dump.js',
+  BASE_PATH + 'vue/logic/storage/storage-mirror.js',
+  BASE_PATH + 'vue/logic/storage/backup-file.js',
   BASE_PATH + 'vue/logic/workspace-sync.js',
   BASE_PATH + 'vue/logic/storage/edit-stallion-repository.js',
   BASE_PATH + 'vue/logic/storage/favorite-repository.js',

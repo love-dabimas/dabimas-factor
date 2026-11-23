@@ -1670,6 +1670,43 @@
   letter-spacing: normal;
 }
 
+/* バックアップ（#19）。書き出す・読み込むのボタンを行の中に並べる。 */
+.dabimas-backup-item .dabimas-backup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dabimas-backup-item .dabimas-backup-actions .v-btn {
+  font-size: 12px;
+  letter-spacing: normal;
+}
+
+.dabimas-backup-input {
+  display: none;
+}
+
+.dabimas-backup-note,
+.dabimas-backup-warning,
+.dabimas-backup-date {
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.dabimas-backup-date {
+  margin-bottom: 4px;
+}
+
+.dabimas-backup-note,
+.dabimas-backup-warning {
+  margin-top: 10px;
+}
+
+.dabimas-backup-warning {
+  color: #c62828;
+}
+
 
 /* ===== 明るい表示の血統表の区切り線を灰色にそろえる =====
    行と行の間は #ddd なのに、左端の父・母の帯の右線（css/style.css で #FFFFFF）と、

@@ -93,6 +93,12 @@
           horseDetailPreloadStarted: false,
           horseDetailLoadingIndexes: {},
           horseDetailError: { show: false, message: "" },
+          // 起動時の知らせ（保存データを控えから戻したときなど。#20）
+          storageNotice: (function () {
+            var sync = window.Dabimas.workspaceSync;
+            var message = sync && sync.bootNotice;
+            return { show: !!message, message: message || "" };
+          })(),
           // インブリードボタン押下フラグを一次元配列で定義（-1：未クリック　1：クリック　0:使用不可）
           isInbreedButtonClicked: Array.from(new Array(32).fill(0)),
           // styleInbreedButtonClasses（インブリードさせるボタン定義）を一次元配列で定義

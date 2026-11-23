@@ -57,6 +57,8 @@
 
   var flushDebounceTimer = null;
   var lastFlushedSnapshotString = null;
+  // バックアップを読み込んで再読み込みするまでの間は、開いていた配合を書き戻さない（#19）。
+  var detached = false;
 
   // 編集中の血統表（このタブの分）を snapshot の形で読む。
   function readSnapshotFromLocalStorage() {
@@ -142,7 +144,7 @@
       clearTimeout(flushDebounceTimer);
       flushDebounceTimer = null;
     }
-    if (!state.activeWorkspaceId) {
+    if (!state.activeWorkspaceId || detached) {
       return Promise.resolve();
     }
     var snapshot = readSnapshotFromLocalStorage();
@@ -335,11 +337,43 @@
   // ===== 起動シーケンス（統合版仕様 §9.1）=====
   // vue/app/main.js から new Vue(...) より前に呼ばれる。解決時点で
   // localStorage が正しいアクティブ作業枠の内容になっていることを保証する。
+  // データベースが消されていたら、localStorage の控えから戻す（#20）。
+  // 戻せなかったときは何もしなかったことにして、いつもの起動を続ける。
+  function restoreFromMirror() {
+    var mirror = window.Dabimas.logic.storage.storageMirror;
+    if (!mirror) return Promise.resolve(null);
+    return mirror.restoreIfWiped().catch(function (error) {
+      console.error("storage mirror restore failed", error);
+      return null;
+    });
+  }
+
+  function restoredMessage(restored) {
+    var message = "ブラウザに保存データが消されていたので、控えから戻しました。";
+    if (restored.configsIncluded < restored.configsTotal) {
+      message +=
+        "保存した配合は新しい " + restored.configsIncluded + " 件だけ戻っています（全 " +
+        restored.configsTotal + " 件）。";
+    }
+    return message;
+  }
+
+  function startMirror() {
+    var mirror = window.Dabimas.logic.storage.storageMirror;
+    if (mirror) mirror.start();
+  }
+
   function boot() {
     return unifiedDb
       .openDB()
       .then(function () {
         requestPersistentStorage();
+        return restoreFromMirror();
+      })
+      .then(function (restored) {
+        if (restored) {
+          window.Dabimas.workspaceSync.bootNotice = restoredMessage(restored);
+        }
         return runMigrationCheck();
       })
       .then(function (check) {
@@ -380,6 +414,7 @@
       })
       .then(function (currentScreen) {
         window.Dabimas.workspaceSync.resolvedInitialScreen = currentScreen;
+        startMirror();
         return { currentScreen: currentScreen };
       })
       .catch(function (error) {
@@ -532,9 +567,22 @@
     return base + suffix;
   }
 
+  // バックアップを読み込んだあと、ページを読み直すまでの間に、開いていた配合の
+  // 古い内容が読み込んだデータへ書き戻されないようにする（#19）。
+  function detachForReload() {
+    detached = true;
+    if (flushDebounceTimer) {
+      clearTimeout(flushDebounceTimer);
+      flushDebounceTimer = null;
+    }
+  }
+
   window.Dabimas.workspaceSync = {
     state: state,
     resolvedInitialScreen: null,
+    // 起動時に知らせたいこと（控えから戻したときなど）。画面が出たら一度だけ見せる。
+    bootNotice: null,
+    detachForReload: detachForReload,
     boot: boot,
     notifyLocalChange: notifyLocalChange,
     flushNow: flushNow,

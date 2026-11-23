@@ -72,10 +72,12 @@
       ? window.Dabimas.workspaceSync.boot()
       : Promise.resolve({ currentScreen: "category" });
 
-  var favoritesPromise =
-    window.Dabimas.favorites && typeof window.Dabimas.favorites.load === "function"
+  // お気に入りは、控えから戻す（#20）のを待ってから読む。先に読むと空のまま始まる。
+  var favoritesPromise = bootPromise.then(function () {
+    return window.Dabimas.favorites && typeof window.Dabimas.favorites.load === "function"
       ? window.Dabimas.favorites.load()
-      : Promise.resolve();
+      : null;
+  });
 
   Promise.all([bootPromise, favoritesPromise]).then(function () {
     window.__debugAppInstance = new Vue(window.Dabimas.app.createAppOptions());
