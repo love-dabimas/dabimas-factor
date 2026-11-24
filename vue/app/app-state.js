@@ -79,7 +79,8 @@
           customHorseDb: null,
           savedHorseSummaries: [],
           // 馬のメモを書くダイアログ（vue/components/memo/horse-memo-dialog.js）。
-          horseMemoEditor: { show: false, target: null, name: "", text: "", saving: false },
+          // cellIndex があるときは、そのマスだけのメモ（inputed）を書く（#21）。
+          horseMemoEditor: { show: false, target: null, cellIndex: null, name: "", text: "", reference: "", saving: false },
           // 選ぶ画面の候補の血統表（vue/components/assist/assist-pedigree-dialog.js を使う）。
           horsePedigreePreview: { show: false, title: "", note: "", sections: null },
           editStallions: [],

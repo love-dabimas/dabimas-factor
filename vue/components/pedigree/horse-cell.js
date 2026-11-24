@@ -53,7 +53,7 @@
             <button
               type="button"
               class="exp-mobile-horse-trigger"
-              :class="{ 'exp-mobile-horse-trigger--memo': !!cellMemoTarget }"
+              :class="{ 'exp-mobile-horse-trigger--memo': cellMemoWritable }"
               @pointerdown="onTriggerPressStart"
               @pointermove="onTriggerPressMove"
               @pointerup="onTriggerPressEnd"
@@ -190,7 +190,7 @@
         onTriggerPressStart(event) {
           this.memoLongPressFired = false;
           this.clearMemoPressTimer();
-          if (!this.cellMemoTarget || (event.button !== undefined && event.button !== 0)) {
+          if (!this.cellMemoWritable || (event.button !== undefined && event.button !== 0)) {
             return;
           }
           var trigger = event.currentTarget;
@@ -217,7 +217,7 @@
         },
         // iPhone の長押しメニュー（コピーなど）を出さない。
         onTriggerContextMenu(event) {
-          if (this.cellMemoTarget) {
+          if (this.cellMemoWritable) {
             event.preventDefault();
           }
         },
@@ -235,7 +235,7 @@
         // hover が true なら PC のマウスオーバー（見るだけ。触っても消す仕組みは付けない）。
         showMemoBubble(trigger, hover) {
           var memo = this.cellMemo;
-          if (!trigger || !this.cellMemoTarget || (hover && !memo)) {
+          if (!trigger || !this.cellMemoWritable || (hover && !memo)) {
             return;
           }
           var rect = trigger.getBoundingClientRect();
@@ -275,11 +275,11 @@
           document.addEventListener("pointerdown", this.memoBubbleCloser, true);
           window.addEventListener("scroll", this.memoBubbleScrollCloser, true);
         },
-        // 吹き出しの「書く」。吹き出しを閉じて、メモを書くダイアログを開く。
+        // 吹き出しの「書く」。吹き出しを閉じて、このマスだけのメモを書くダイアログを開く（#21）。
+        // 馬ごとのメモは選ぶ画面の鉛筆から書く。
         onBubbleWrite() {
-          var horse = this.selected[this.index];
           this.hideMemoBubble();
-          this.$root.openHorseMemoEditor(horse);
+          this.$root.openCellMemoEditor(this.index, this.cellMemoHorseName);
         },
         // PC はマウスを重ねている間だけ吹き出しを出す（メモがあるときだけ）。
         onCellMouseEnter() {
@@ -394,17 +394,37 @@
         cellMemoTarget() {
           return window.Dabimas.logic.horses.horseMemo.memoTargetOf(this.selected[this.index]);
         },
-        // このマスの馬のメモ。自家製馬は配合の保存の画面のメモ、公式の馬は端末に持つメモ。
+        // 馬が入っていれば、このマスだけのメモ（子系統・メモモードの欄と同じ inputed）を書ける。
+        // ★N薄めの仮の馬・ワタシノヒンバのマスも書ける（馬ごとのメモは無い）。
+        cellMemoWritable() {
+          return !!this.selected[this.index];
+        },
+        // このマスだけのメモ（#21）。
+        cellOwnMemo() {
+          var text = this.inputed[this.index];
+          return typeof text === "string" ? text.trim() : "";
+        },
+        // 吹き出しとメモの印に出すメモ。このマスだけのメモがあればそれを、なければ馬のメモ。
+        // 馬のメモは、自家製馬は配合の保存の画面のメモ、公式の馬は端末に持つメモ。
         // 血統表の馬はメモを付ける前に選んだこともあるので、マスの中ではなく一覧から引く。
         cellMemo() {
+          if (!this.cellMemoWritable) {
+            return "";
+          }
+          if (this.cellOwnMemo) {
+            return this.cellOwnMemo;
+          }
           void window.Dabimas.logic.horses.horseMemo.state.memos;
           return this.cellMemoTarget ? this.$root.getHorseMemo(this.selected[this.index]) : "";
         },
         cellMemoHorseName() {
           var horse = this.selected[this.index];
           var target = this.cellMemoTarget;
-          if (!horse || !target) {
+          if (!horse) {
             return "";
+          }
+          if (!target) {
+            return this.getHorseNameText(horse);
           }
           if (target.kind === "custom") {
             var summaries = this.$root.savedHorseSummaries || [];

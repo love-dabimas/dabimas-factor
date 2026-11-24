@@ -793,6 +793,16 @@ html.dabimas-dark .combination-memo-counter {
   color: var(--dk-muted);
 }
 
+html.dabimas-dark .combination-memo-reference {
+  background: var(--dk-surface);
+  color: var(--dk-text);
+}
+
+html.dabimas-dark .combination-memo-reference-label,
+html.dabimas-dark .combination-memo-hint {
+  color: var(--dk-muted);
+}
+
 html.dabimas-dark .combination-memo-cancel.v-btn {
   background-color: var(--dk-surface) !important;
   color: var(--dk-text) !important;

@@ -391,8 +391,29 @@
           this.horseMemoEditor = {
             show: true,
             target: target,
+            cellIndex: null,
             name: name,
             text: this.getHorseMemo(horse),
+            reference: "",
+            saving: false,
+          };
+        },
+        // 血統表のマスの吹き出しの「書く」。このマスだけのメモ（子系統・メモモードの欄と
+        // 同じ inputed）を書く（#21）。馬のメモは参考として下に出す。
+        openCellMemoEditor(index, name) {
+          const horse = this.selected[index];
+          if (!horse) {
+            return;
+          }
+          const own = typeof this.inputed[index] === "string" ? this.inputed[index].trim() : "";
+          const horseMemo = this.canWriteHorseMemo(horse) ? this.getHorseMemo(horse) : "";
+          this.horseMemoEditor = {
+            show: true,
+            target: null,
+            cellIndex: index,
+            name: name || window.Dabimas.logic.horses.getHorseNameText(horse),
+            text: own,
+            reference: horseMemo,
             saving: false,
           };
         },
@@ -401,6 +422,12 @@
         async saveHorseMemo(memo) {
           const editor = this.horseMemoEditor;
           const target = editor.target;
+          if (editor.cellIndex !== null && editor.cellIndex !== undefined) {
+            // マスのメモはメモモードの 1 行の欄にも出るので、改行は空白にする。
+            this.memoChange(editor.cellIndex, (memo || "").replace(/\s*\n\s*/g, " ").trim());
+            editor.show = false;
+            return;
+          }
           if (!target || editor.saving) {
             return;
           }

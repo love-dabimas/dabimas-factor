@@ -138,6 +138,8 @@
         :horse-name="horseMemoEditor.name"
         :initial-text="horseMemoEditor.text"
         :saving="horseMemoEditor.saving"
+        :cell-mode="horseMemoEditor.cellIndex !== null"
+        :reference-text="horseMemoEditor.reference"
         @save="saveHorseMemo"
       ></horse-memo-dialog>
 

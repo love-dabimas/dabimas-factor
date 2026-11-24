@@ -1,7 +1,9 @@
 /**
  * このコンポーネントの役割:
- * - 馬のメモ（100 文字まで・改行あり）を書くダイアログ。血統表のマスの吹き出しの
- *   「書く」ボタンと、馬を選ぶ画面の行の鉛筆ボタンから開く。
+ * - メモ（100 文字まで）を書くダイアログ。
+ *   - 馬を選ぶ画面の行の鉛筆ボタン → 馬ごとのメモ（改行あり）。
+ *   - 血統表のマスの吹き出しの「書く」 → そのマスだけのメモ（#21）。cellMode が true。
+ *     そのマスの馬のメモがあれば、参考として下に出す（referenceText）。
  * - 見た目は配合の保存の画面のメモ（vue/CombinationDialog.js）と同じクラスを使う。
  *
  * このコンポーネントに置かない処理:
@@ -24,6 +26,10 @@
       // 開いたときに入っているメモ。
       initialText: { type: String, default: "" },
       saving: { type: Boolean, default: false },
+      // そのマスだけのメモを書くとき true。
+      cellMode: { type: Boolean, default: false },
+      // マスのメモを書くときに参考で出す、その馬のメモ。
+      referenceText: { type: String, default: "" },
     },
     data: function () {
       return {
@@ -57,7 +63,7 @@
           <div class="combination-memo-head">
             <v-icon class="combination-memo-head-icon">mdi-pencil-outline</v-icon>
             <div class="combination-memo-head-text">
-              <div class="combination-memo-title">メモ</div>
+              <div class="combination-memo-title">{{ cellMode ? 'このマスだけのメモ' : 'メモ' }}</div>
               <div class="combination-memo-target">{{ horseName }}</div>
             </div>
           </div>
@@ -67,9 +73,13 @@
               class="combination-memo-input"
               rows="5"
               :maxlength="maxLength"
-              placeholder="例：凱旋門賞狙い。母父に底を2つ入れた版"
+              :placeholder="cellMode ? '例：ナッツ妹' : '例：凱旋門賞狙い。母父に底を2つ入れた版'"
             ></textarea>
             <div class="combination-memo-counter">{{ (text || '').length }} / {{ maxLength }}</div>
+            <div v-if="cellMode && referenceText" class="combination-memo-reference"><span class="combination-memo-reference-label">馬のメモ</span>{{ referenceText }}</div>
+            <div v-if="cellMode" class="combination-memo-hint">
+              ほかのマスや、ほかの配合には出ません。馬ごとのメモは、馬を選ぶ画面の鉛筆から書けます。
+            </div>
           </div>
           <div class="combination-memo-actions">
             <v-btn depressed rounded class="combination-memo-cancel" @click="close">キャンセル</v-btn>

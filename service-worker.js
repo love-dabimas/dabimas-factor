@@ -1,5 +1,5 @@
 // cache name, cache files
-var CACHE_NAME = 'dabimas-factor-v20261124-01';
+var CACHE_NAME = 'dabimas-factor-v20261124-02';
 var CACHE_PREFIX = 'dabimas-factor-';
 var BASE_PATH = self.location.pathname.replace(/\/service-worker\.js$/, '/');
 var APP_SHELL_URL = BASE_PATH + 'index.html';
