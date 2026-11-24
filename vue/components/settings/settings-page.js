@@ -249,7 +249,7 @@
                 <v-list-item-title>クロスのハートの色</v-list-item-title>
                 <v-btn-toggle v-model="heartColor" mandatory dense class="dabimas-theme-toggle">
                   <v-btn value="modern" small>標準</v-btn>
-                  <v-btn value="classic" small>旧ダビふぁく</v-btn>
+                  <v-btn value="classic" small>クラシック</v-btn>
                 </v-btn-toggle>
               </v-list-item-content>
             </v-list-item>
